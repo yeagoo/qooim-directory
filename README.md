@@ -1,5 +1,7 @@
 # Qoo.IM Directory
 
+![CI](https://github.com/yeagoo/qooim-directory/actions/workflows/ci.yml/badge.svg)
+
 Qoo.IM Directory 用一套应用管理多个独立导航站。P0、P1 已完成；P2 已实现版本化主档、各站独立发布、多语言目录、分类搜索、投稿审核和收藏，P3 已加入模板 SDK、AI 模板示例、邮件认证、会话策略、账号绑定/解绑，以及 GitHub/Google/通用 OIDC 接入；真实 GitHub/Google 账号联调待应用凭据。P4 已实现 GitHub 项目来源同步、人工审核和独立发布，P5 已加入备份恢复、源码归档与容量验收工具，公开发行前的剩余条件见发行记录。
 
 - [发行边界与依赖 Review](docs/RELEASE-REVIEW.md)
