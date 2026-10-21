@@ -4,13 +4,13 @@
 
 Qoo.IM Directory 用一套应用管理多个独立导航站。P0、P1 已完成；P2 已实现版本化主档、各站独立发布、多语言目录、分类搜索、投稿审核和收藏，P3 已加入模板 SDK、AI 模板示例、邮件认证、会话策略、账号绑定/解绑，以及 GitHub/Google/通用 OIDC 接入；真实 GitHub/Google 账号联调待应用凭据。P4 已实现 GitHub 项目来源同步、人工审核和独立发布，P5 已加入备份恢复、源码归档与容量验收工具，公开发行前的剩余条件见发行记录。
 
-- [发行边界与依赖 Review](docs/RELEASE-REVIEW.md)
-- [P5 运行与发行准备](docs/P5-FINAL.md) · [备份恢复与源码操作](docs/P5-OPERATIONS.md)
-- [P4 交付与 Review](docs/P4-FINAL.md) · [GitHub 项目操作](docs/P4-GITHUB.md)
-- [P3 交付与待联调项](docs/P3-FINAL.md) · [认证操作](docs/P3-AUTH.md) · [模板开发](docs/TEMPLATE-DEVELOPMENT.md)
-- [P2 交付与 Review](docs/P2-FINAL.md) · [内容操作](docs/P2-CONTENT.md)
-- [P1 交付与 Review](docs/P1-FINAL.md)
-- [安装和操作](docs/P1-OPERATIONS.md) · [后台任务 Review](docs/WORKER-REVIEW.md)
+- [发行边界与依赖 Review](docs/history/RELEASE-REVIEW.md)
+- [P5 运行与发行准备](docs/history/P5-FINAL.md) · [备份恢复与源码操作](docs/P5-OPERATIONS.md)
+- [P4 交付与 Review](docs/history/P4-FINAL.md) · [GitHub 项目操作](docs/P4-GITHUB.md)
+- [P3 交付与待联调项](docs/history/P3-FINAL.md) · [认证操作](docs/P3-AUTH.md) · [模板开发](docs/TEMPLATE-DEVELOPMENT.md)
+- [P2 交付与 Review](docs/history/P2-FINAL.md) · [内容操作](docs/P2-CONTENT.md)
+- [P1 交付与 Review](docs/history/P1-FINAL.md)
+- [安装和操作](docs/P1-OPERATIONS.md) · [后台任务 Review](docs/history/WORKER-REVIEW.md)
 - [开发方案](docs/DEVELOPMENT-PLAN.md) · [文档索引](docs/README.md)
 
 新实现未迁入旧项目平台源码。许可证为 [AGPL-3.0-only](LICENSE)，正式品牌待确定；包保持 private，避免误发布 npm。构建会生成本部署对应源码下载包，页面提供获取入口。

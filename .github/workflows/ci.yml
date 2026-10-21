@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -36,3 +37,31 @@ jobs:
   # Full P0-P5 and Docker acceptance require the pinned linux/arm64 image
   # evidence and passwordless Docker/sudo; run them on an arm64 host, not this
   # x64 static job.
+
+  arm64-full:
+    # Requires a self-hosted runner labeled linux, arm64 and qooim-directory,
+    # with Docker, passwordless sudo and Playwright browser dependencies.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, linux, arm64, qooim-directory]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium firefox
+      - run: pnpm test:p0
+      - run: pnpm test:p1
+      - run: pnpm test:p2
+      - run: pnpm test:p3
+      - run: pnpm test:p4
+      - run: pnpm test:p5
+      - run: pnpm test:release
+      - run: pnpm release:check
+      - run: pnpm release:check:image
+      - run: pnpm test:docker

@@ -39,7 +39,7 @@ node --env-file=.env --env-file=.local/backup.env scripts/backup.mjs restore iso
 
 恢复后先在隔离应用中使用原 origin/密钥检查后台登录、公众旧会话和新登录、收藏、主档、站点发布、配置及待消费任务。若需要连接新数据库，Compose 的 `APP_DATABASE=network_restore` 只选择应用数据库；初始 PostgreSQL 数据库仍为 network。切换前停止旧 web/worker 写入，保留旧卷，完成校验后再启动新服务；数据库和源站访问权限、TLS、DNS 切换由部署者执行。本轮没有切换生产或恢复旧站。
 
-备份调度和异地复制由部署者设置。例如每日备份的理论 RPO 取决于最后一次成功且可恢复的备份，不能据此承诺 24 小时；故障和复制失败会扩大损失窗口。本地恢复时间见 [P5 验收记录](P5-FINAL.md)，不等于生产故障发现、取回归档、DNS/TLS 切换的端到端 RTO。
+备份调度和异地复制由部署者设置。例如每日备份的理论 RPO 取决于最后一次成功且可恢复的备份，不能据此承诺 24 小时；故障和复制失败会扩大损失窗口。本地恢复时间见 [P5 验收记录](history/P5-FINAL.md)，不等于生产故障发现、取回归档、DNS/TLS 切换的端到端 RTO。
 
 ## 升级
 
@@ -61,7 +61,7 @@ pnpm release:check
 
 归档使用明确根目录和顶层文件清单，拒绝符号链接，排除内部背景、规划日志、`.local`、环境凭据、构建缓存、node_modules 和 Git 历史；扫描内部绝对路径、私钥标记、提供方 Token 和字面认证密钥。归档包含完整源码、迁移、测试、构建/部署脚本、锁文件、许可证、SHA-256 文件清单及安装树依赖通知。它是可供人工审查的候选，不是自动推送、建仓或发布动作。扫描只识别明确模式，不能替代人工检查品牌、数据与完整 Git 历史。
 
-[后续 Review](RELEASE-REVIEW.md) 已为 4 个包补齐固定来源许可文本。源码许可缺口已由维护者按 MIT 归属决定关闭，`release:check` 通过；两个 `sharp-libvips` 平台包已随 `sharp` 移除。六组镜像已由 QooIM 带保留签署，镜像门禁通过；`next-swc` 的逐 crate 通知风险已记录。`release:check` 会阻止缺少许可文本的依赖清单通过公开发行门槛；这不阻止本地开发构建。镜像还包含基础系统及原生库，分发镜像前须单独完成其通知、对应源码等核查。模板 AI 生成代码仍须人工审查。[GNU AGPL 原文](https://www.gnu.org/licenses/agpl-3.0.html)。
+[后续 Review](history/RELEASE-REVIEW.md) 已为 4 个包补齐固定来源许可文本。源码许可缺口已由维护者按 MIT 归属决定关闭，`release:check` 通过；两个 `sharp-libvips` 平台包已随 `sharp` 移除。六组镜像已由 QooIM 带保留签署，镜像门禁通过；`next-swc` 的逐 crate 通知风险已记录。`release:check` 会阻止缺少许可文本的依赖清单通过公开发行门槛；这不阻止本地开发构建。镜像还包含基础系统及原生库，分发镜像前须单独完成其通知、对应源码等核查。模板 AI 生成代码仍须人工审查。[GNU AGPL 原文](https://www.gnu.org/licenses/agpl-3.0.html)。
 
 ## 容量重现
 
@@ -78,28 +78,28 @@ pnpm test:capacity
 
 `pnpm release:check` 检查源码候选包级通知，`pnpm release:check:image` 额外检查当前平台及固定构建输入对应的六组镜像审查状态；当前六组均为带保留签署。两者均不替代品牌和真实外部登录验收。
 
-使用 `pnpm release:inventory LOCAL_APPLICATION_IMAGE .local/NEW-inventory.json` 盘点本地已构建镜像；输出文件须不存在。工具只执行隔离只读探针，不启动应用或连接数据库，输出为本地采集证据。实际范围、限制和未解决项见 [镜像分发Review](DISTRIBUTION-REVIEW.md)。
+使用 `pnpm release:inventory LOCAL_APPLICATION_IMAGE .local/NEW-inventory.json` 盘点本地已构建镜像；输出文件须不存在。工具只执行隔离只读探针，不启动应用或连接数据库，输出为本地采集证据。实际范围、限制和未解决项见 [镜像分发Review](history/DISTRIBUTION-REVIEW.md)。
 
-原生源材料维护可使用Python标准库采集器，应用运行及Docker构建不需要Python。原始通知不会因采集成功自动放行；实际源码导出会校验工作目录和副本中的证据摘要。命令、大小限制、失败记录与剩余审查见 [原始通知与导出Review](COMPONENT-NOTICES-REVIEW.md)。
+原生源材料维护可使用Python标准库采集器，应用运行及Docker构建不需要Python。原始通知不会因采集成功自动放行；实际源码导出会校验工作目录和副本中的证据摘要。命令、大小限制、失败记录与剩余审查见 [原始通知与导出Review](history/COMPONENT-NOTICES-REVIEW.md)。
 
-librsvg 原始 Cargo 输入和完整锁定包清单也纳入实际导出校验；Python 3.11+ 的离线维护命令及“锁定记录不等于编译图”的边界见 [Rust 锁文件 Review](RUST-LOCK-REVIEW.md)。
+librsvg 原始 Cargo 输入和完整锁定包清单也纳入实际导出校验；Python 3.11+ 的离线维护命令及“锁定记录不等于编译图”的边界见 [Rust 锁文件 Review](history/RUST-LOCK-REVIEW.md)。
 
-按原始锁文件 checksum 采集 crate、从保留归档离线复检，以及未找到独立通知的告警处理见 [crate 原始材料 Review](CRATE-NOTICES-REVIEW.md)。导出也会检查这批原始材料，采集成功不改变发行审查状态。
+按原始锁文件 checksum 采集 crate、从保留归档离线复检，以及未找到独立通知的告警处理见 [crate 原始材料 Review](history/CRATE-NOTICES-REVIEW.md)。导出也会检查这批原始材料，采集成功不改变发行审查状态。
 
-缺独立通知包的 README／源码前缀，以及原始锁与配方执行后锁文件的范围规则见 [缺通知 crate Review](CRATE-FOLLOWUP-REVIEW.md)。前缀不能当作完整成员，补充材料不会消除缺独立通知的告警。
+缺独立通知包的 README／源码前缀，以及原始锁与配方执行后锁文件的范围规则见 [缺通知 crate Review](history/CRATE-FOLLOWUP-REVIEW.md)。前缀不能当作完整成员，补充材料不会消除缺独立通知的告警。
 
-使用已有 Rust 工具链离线解析候选包集合的命令与隔离要求见 [Rust 离线范围 Review](RUST-RESOLUTION-REVIEW.md)。该步骤不编译、不执行第三方构建脚本，结果也不能作为历史二进制链接证明。
+使用已有 Rust 工具链离线解析候选包集合的命令与隔离要求见 [Rust 离线范围 Review](history/RUST-RESOLUTION-REVIEW.md)。该步骤不编译、不执行第三方构建脚本，结果也不能作为历史二进制链接证明。
 
-优先 crate 的固定提交逐文件匹配、许可材料取得及离线缓存复检见 [优先 crate 来源 Review](PRIORITY-CRATES-REVIEW.md)。源码导出已校验这些材料；缓存复检不替代发布者认证或许可义务审查。
+优先 crate 的固定提交逐文件匹配、许可材料取得及离线缓存复检见 [优先 crate 来源 Review](history/PRIORITY-CRATES-REVIEW.md)。源码导出已校验这些材料；缓存复检不替代发布者认证或许可义务审查。
 
-原始配方补丁的导出约束及 GLib 的 gvdb 嵌套来源缺口见 [原生补丁 Review](NATIVE-PATCH-REVIEW.md)。补丁快照不证明历史二进制匹配，28 顶层归档也不等于完整嵌套源码集合。
+原始配方补丁的导出约束及 GLib 的 gvdb 嵌套来源缺口见 [原生补丁 Review](history/NATIVE-PATCH-REVIEW.md)。补丁快照不证明历史二进制匹配，28 顶层归档也不等于完整嵌套源码集合。
 
-gvdb 固定提交源码与通知的离线采集、输入快照约束及嵌套来源导出校验见 [gvdb 来源 Review](GVDB-SOURCE-REVIEW.md)。这项补齐不代表完整原生包的历史构建或对应源码交付已经验证。
+gvdb 固定提交源码与通知的离线采集、输入快照约束及嵌套来源导出校验见 [gvdb 来源 Review](history/GVDB-SOURCE-REVIEW.md)。这项补齐不代表完整原生包的历史构建或对应源码交付已经验证。
 
-PR 补丁和 main 通知的当前快照、固定提交关联、Git blob 核对及历史未知范围见 [可变输入 Review](MUTABLE-INPUTS-REVIEW.md)。离线导出校验这些材料，但当前内容相同不能用来推定历史下载相同。
+PR 补丁和 main 通知的当前快照、固定提交关联、Git blob 核对及历史未知范围见 [可变输入 Review](history/MUTABLE-INPUTS-REVIEW.md)。离线导出校验这些材料，但当前内容相同不能用来推定历史下载相同。
 
-保留的原生/crate/gvdb 原归档可以生成独立离线材料包，命令及未完成的完整交付边界见 [源码交付 Review](SOURCE-DELIVERY-REVIEW.md)。该本地材料包未自动进入应用的公开源码下载。
+保留的原生/crate/gvdb 原归档可以生成独立离线材料包，命令及未完成的完整交付边界见 [源码交付 Review](history/SOURCE-DELIVERY-REVIEW.md)。该本地材料包未自动进入应用的公开源码下载。
 
-固定打包工作树的离线采集、Git 对象验证和材料包新增必需参数 `--packaging-archive` 见 [打包工作树 Review](PACKAGING-SOURCE-REVIEW.md)。已保留工作树，不代表历史基础镜像、工具链或 sysroot 已恢复。
+固定打包工作树的离线采集、Git 对象验证和材料包新增必需参数 `--packaging-archive` 见 [打包工作树 Review](history/PACKAGING-SOURCE-REVIEW.md)。已保留工作树，不代表历史基础镜像、工具链或 sysroot 已恢复。
 
-原生构建环境声明及历史 CI 任务元数据可离线采集核对，命令与未来固定基线所需材料见 [环境 Review](NATIVE-ENVIRONMENT-REVIEW.md)。runner 标签、成功状态和显式版本声明均不自动成为历史容器版本证明。
+原生构建环境声明及历史 CI 任务元数据可离线采集核对，命令与未来固定基线所需材料见 [环境 Review](history/NATIVE-ENVIRONMENT-REVIEW.md)。runner 标签、成功状态和显式版本声明均不自动成为历史容器版本证明。

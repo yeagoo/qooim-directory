@@ -55,4 +55,4 @@ Nodemailer 用于 Worker SMTP 投递，没有复制其源码到本项目。锁�
 
 P4 未新增 npm 包；GitHub 客户端使用 Node fetch 和既有 Zod 校验，模块与同步源码为本项目新写，未迁入旧站平台源码。
 
-P5 后续：原8项缺失通知中4项有固定版本上游证据，本地文本及哈希见 [review.json](../third-party/review.json)；其余4项及原生二进制分发另见 [发行 Review](RELEASE-REVIEW.md)。
+P5 后续：原8项缺失通知中4项有固定版本上游证据，本地文本及哈希见 [review.json](../third-party/review.json)；其余4项及原生二进制分发另见 [发行 Review](history/RELEASE-REVIEW.md)。

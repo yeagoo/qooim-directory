@@ -24,12 +24,12 @@
 
 | 阶段 | 目标与结果 | 当前状态 |
 | --- | --- | --- |
-| P0 风险验证 | 身份/账号空间、配置协作与冲突、来源和架构风险；31 个场景验收证据及认证 ADR | 已完成，见 [P0-FINAL](P0-FINAL.md) |
-| P1 站群底座 | 多站点、后台权限、配置版本、Host、缓存一致性、迁移和 Docker 运维基础 | 已完成，见 [P1-FINAL](P1-FINAL.md) |
-| P2 内容系统 | 内容主档与站点发布、多语言、分类搜索、投稿审核、收藏及公共数据访问层 | 已完成，见 [P2-FINAL](P2-FINAL.md) |
-| P3 模板与认证 | 模板 SDK/预览、邮件和认证流程、GitHub/Google/通用 OIDC 提供方适配、账号中心显式绑定/解绑 | 本地实现和受控测试完成；真实 GitHub/Google 登录尚待平台凭据联调，见 [P3-FINAL](P3-FINAL.md) |
-| P4 垂直模块 | GitHub 项目来源同步、候选审核、冻结版本发布和操作界面 | 已完成；不等于真实 OAuth 登录联调，见 [P4-FINAL](P4-FINAL.md) |
-| P5 运维与发行准备 | 加密备份/恢复、安装升级、源码获取、容量短基线及发行检查工具 | 功能交付完成；严格发行门禁仍失败，见 [P5-FINAL](P5-FINAL.md) 及后续发行 Review |
+| P0 风险验证 | 身份/账号空间、配置协作与冲突、来源和架构风险；31 个场景验收证据及认证 ADR | 已完成，见 [P0-FINAL](history/P0-FINAL.md) |
+| P1 站群底座 | 多站点、后台权限、配置版本、Host、缓存一致性、迁移和 Docker 运维基础 | 已完成，见 [P1-FINAL](history/P1-FINAL.md) |
+| P2 内容系统 | 内容主档与站点发布、多语言、分类搜索、投稿审核、收藏及公共数据访问层 | 已完成，见 [P2-FINAL](history/P2-FINAL.md) |
+| P3 模板与认证 | 模板 SDK/预览、邮件和认证流程、GitHub/Google/通用 OIDC 提供方适配、账号中心显式绑定/解绑 | 本地实现和受控测试完成；真实 GitHub/Google 登录尚待平台凭据联调，见 [P3-FINAL](history/P3-FINAL.md) |
+| P4 垂直模块 | GitHub 项目来源同步、候选审核、冻结版本发布和操作界面 | 已完成；不等于真实 OAuth 登录联调，见 [P4-FINAL](history/P4-FINAL.md) |
+| P5 运维与发行准备 | 加密备份/恢复、安装升级、源码获取、容量短基线及发行检查工具 | 功能交付完成；严格发行门禁仍失败，见 [P5-FINAL](history/P5-FINAL.md) 及后续发行 Review |
 | 阶段后持续 Review | 修复账号、投稿、编辑器、后台页面、异步请求、事务权限、运维下载/恢复和第三方材料导出等问题 | 多轮修复与回归见 [文档索引](README.md)；后续模型先读近期专项 Review，避免重复实现 |
 
 历史测试数字只代表对应提交和范围。最近记录中 P5 功能回归 115/115 通过（另有容量测试），后续发行边界测试 10/10、受影响运维测试 6/6 通过；生产构建及严格源码/镜像检查也已运行。功能测试通过不等于外部登录联调、第三方许可核查或发行门禁通过。 2026-10-20 又在当前源码上执行 P0 48/48、P1 87/87、P2 134/134、P3 36/36、P4 28/28、P5 11/11、发行 69/69，并通过空库、三站、共享登录、SMTP、内容/GitHub、worker 重启与数据库恢复的 Docker 验收；见 [本地验收记录](ACCEPTANCE-20261020.md)。
@@ -68,9 +68,9 @@
 - [配置协议](CONFIGURATION.md)
 - [身份设计](IDENTITY.md)
 - [公共数据访问约束](DATA-ACCESS.md)
-- [P3 认证交付与待联调](P3-FINAL.md)
-- [P4 GitHub 模块交付](P4-FINAL.md)
-- [P5 运维与发行准备](P5-FINAL.md)
-- [发行许可缺口](RELEASE-REVIEW.md)
-- [镜像分发门槛](DISTRIBUTION-REVIEW.md)
+- [P3 认证交付与待联调](history/P3-FINAL.md)
+- [P4 GitHub 模块交付](history/P4-FINAL.md)
+- [P5 运维与发行准备](history/P5-FINAL.md)
+- [发行许可缺口](history/RELEASE-REVIEW.md)
+- [镜像分发门槛](history/DISTRIBUTION-REVIEW.md)
 - [完整文档索引](README.md)
