@@ -15,7 +15,9 @@ concurrency:
 
 jobs:
   static-and-release:
-    runs-on: ubuntu-latest
+    # The product is pinned to linux/arm64; native Next/SWC and esbuild
+    # optional dependencies cannot build on an x64 runner.
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -30,9 +32,7 @@ jobs:
       - run: pnpm check
       - run: pnpm build
       - run: pnpm test:release
-      # The source gate is pinned to the linux/arm64 dependency set.
       - run: pnpm release:check
-        if: runner.arch == 'ARM64'
 
   # Full P0-P5 and Docker acceptance require the pinned linux/arm64 image
   # evidence and passwordless Docker/sudo; run them on an arm64 host, not this

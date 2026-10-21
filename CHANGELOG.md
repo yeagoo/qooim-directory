@@ -3,6 +3,7 @@
 ## Unreleased
 
 - M1：独立账号收口（`legacyShared` API 开关）和 `pg_trgm` 搜索增强；P0–P5、发行测试和 Docker 通过。
+- M2：站点级 Passkey 注册/登录/删除（不做 MFA）；新增 `@better-auth/passkey@1.7.10`；P3 37/37、Docker 通过；升级后需对每个独立账号/中心执行 `auth-upgrade`。
 
 - 新站点创建固定使用独立账号；API 新共享站点需要显式 `legacyShared: true`；共享账号中心标记为 legacy，仅保留既有部署兼容。
 - 搜索迁移到 PostgreSQL `pg_trgm` GIN 索引，增加相关度排序；短查询允许回退。

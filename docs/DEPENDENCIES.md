@@ -5,6 +5,7 @@
 | 包 | 版本 | 声明许可证 |
 | --- | --- | --- |
 | @better-auth/oauth-provider | 1.7.10 | MIT |
+| @better-auth/passkey | 1.7.10 | MIT |
 | better-auth | 1.7.10 | MIT |
 | next | 16.4.2 | MIT |
 | pg | 8.23.1 | MIT |
@@ -42,6 +43,10 @@
 ## P1 运行镜像
 
 Node 24 bookworm-slim、PostgreSQL 18 Alpine 和演示 Caddy 均按镜像摘要固定，准确摘要见 Dockerfile、compose.yaml 和 compose.demo.yaml。P1 未新增应用运行时 npm 依赖。镜像层及传递依赖的完整分发许可证审计仍在公开发行前完成。
+
+## M2 Passkey 依赖
+
+`@better-auth/passkey@1.7.10` 使用 MIT；其传递依赖 `@simplewebauthn/server`、`@simplewebauthn/browser`（MIT）随包安装。浏览器端使用随包 UMD 文件 `src/ui/vendor/simplewebauthn.js`（13.3.0），保留 [LICENSE](../src/ui/vendor/simplewebauthn.LICENSE.md) 和包声明；源码许可/镜像通知由归档工具复核。
 
 ## P3 邮件依赖
 

@@ -203,6 +203,39 @@ for (const button of document.querySelectorAll("[data-provider]"))
     "click",
     () => void execute("provider:" + button.dataset.provider),
   );
+const passkeyLogin = document.querySelector("#passkey-login");
+if (passkeyLogin) {
+  if (!window.PublicKeyCredential || !window.SimpleWebAuthnBrowser)
+    passkeyLogin.hidden = true;
+  else {
+    passkeyLogin.hidden = false;
+    passkeyLogin.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true;
+      manualStarted = true;
+      passkeyLogin.disabled = true;
+      notice("正在验证 Passkey…");
+      try {
+        const optionsResponse = await fetch(
+          "/api/auth/passkey/generate-authenticate-options",
+        );
+        const options = await optionsResponse.json();
+        if (!optionsResponse.ok)
+          throw new Error(options?.message || "无法获取 Passkey 选项");
+        const response = await window.SimpleWebAuthnBrowser.startAuthentication(
+          { optionsJSON: options },
+        );
+        await send("passkey/verify-authentication", { response });
+        location.assign(localReturn());
+      } catch (error) {
+        notice("Passkey 登录失败：" + error.message, true);
+        passkeyLogin.disabled = false;
+      } finally {
+        busy = false;
+      }
+    });
+  }
+}
 const error = new URLSearchParams(location.search).get("error");
 if (error) notice("登录或验证链接不可用，请重新发起操作。", true);
 if (new URLSearchParams(location.search).has("verified"))

@@ -764,6 +764,64 @@ test("P3 external HTTPS OIDC authorization validates identity and returns throug
   }
 });
 
+test("P3 passkey registration, login and deletion work with a virtual authenticator", async () => {
+  const email = "passkey-reader@example.test";
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  try {
+    await register(context, 0, email);
+    await verify(context, email);
+    assert.equal((await login(context, 0, email)).status(), 200);
+    const page = await context.newPage();
+    page.setDefaultTimeout(15000);
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    await cdp.send("WebAuthn.addVirtualAuthenticator", {
+      options: {
+        protocol: "ctap2",
+        transport: "usb",
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true,
+      },
+    });
+    await page.goto(origins[0] + "/account");
+    await page.locator("#passkey-name").fill("Virtual key");
+    await page.locator("#add-passkey").click();
+    await page.locator("#passkeys").getByText("Virtual key").waitFor();
+    assert.ok(
+      (await (await context.request.get(origins[0] + "/api/session")).json())
+        .email,
+    );
+
+    await context.request.post(origins[0] + "/api/auth/sign-out", {
+      data: {},
+      headers: { origin: origins[0] },
+    });
+    await page.goto(origins[0] + "/login");
+    await page.locator("#passkey-login").click();
+    await page.waitForURL(origins[0] + "/");
+    assert.equal(
+      (await (await context.request.get(origins[0] + "/api/session")).json())
+        .email,
+      email,
+    );
+
+    await page.goto(origins[0] + "/account");
+    await page.locator("#passkeys").getByText("Virtual key").waitFor();
+    page.on("dialog", (dialog) => dialog.accept());
+    await page.locator("#passkeys").getByRole("button", { name: "删除" }).click();
+    await page
+      .locator("#passkeys")
+      .getByText("Virtual key")
+      .waitFor({ state: "detached" });
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+});
+
 test("P3 explicit provider linking and unlinking works end to end", async () => {
   await app.auth.providers.set(admin, "atlas", {
     id: "oidc-lab",
@@ -1069,7 +1127,7 @@ test("P3 templates and account pages fit mobile screens, and provider labels can
       await page.locator('[data-provider="github"]').textContent(),
       "通过 GitHub </script><script>injected</script> 登录",
     );
-    assert.equal(await page.locator("script").count(), 2);
+    assert.equal(await page.locator("script").count(), 3);
     assert.equal(
       await page
         .locator("#account-options")

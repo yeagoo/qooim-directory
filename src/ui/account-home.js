@@ -3,6 +3,9 @@ const data = JSON.parse(
 );
 const linked = document.querySelector("#linked-accounts"),
   linkBox = document.querySelector("#link-providers"),
+  passkeys = document.querySelector("#passkeys"),
+  passkeyName = document.querySelector("#passkey-name"),
+  addPasskey = document.querySelector("#add-passkey"),
   message = document.querySelector("#message");
 const labels = new Map(data.providers.map((provider) => [provider.id, provider.label]));
 let busy = false,
@@ -109,6 +112,90 @@ function render() {
     }
   }
 }
+function passkeySupported() {
+  return Boolean(
+    window.PublicKeyCredential && window.SimpleWebAuthnBrowser,
+  );
+}
+function renderPasskeys(items) {
+  passkeys.replaceChildren();
+  if (!items.length) {
+    passkeys.append(
+      element("p", "muted", "还没有 Passkey。添加后可用设备生物识别或 PIN 登录。"),
+    );
+    return;
+  }
+  const list = element("div", "linked-list");
+  for (const item of items) {
+    const row = element("div", "linked-row");
+    const left = element("div");
+    left.append(
+      element("strong", "", item.name || "Passkey"),
+      element(
+        "div",
+        "muted",
+        item.backedUp ? "已同步/备份的凭据" : "仅此设备",
+      ),
+    );
+    const remove = element("button", "secondary", "删除");
+    remove.type = "button";
+    remove.addEventListener("click", () => deletePasskey(item));
+    row.append(left, remove);
+    list.append(row);
+  }
+  passkeys.append(list);
+}
+async function loadPasskeys() {
+  if (!passkeySupported()) {
+    passkeys.replaceChildren(
+      element("p", "muted", "此浏览器不支持 Passkey。"),
+    );
+    return;
+  }
+  try {
+    renderPasskeys(await request("passkey/list-user-passkeys"));
+  } catch (error) {
+    passkeys.replaceChildren(
+      element("p", "muted", "Passkey 加载失败：" + error.message),
+    );
+  }
+}
+async function addNewPasskey() {
+  if (busy || !passkeySupported()) return;
+  setBusy(true);
+  notice("正在创建 Passkey…");
+  try {
+    const options = await request("passkey/generate-register-options");
+    const response = await window.SimpleWebAuthnBrowser.startRegistration({
+      optionsJSON: options,
+    });
+    await request("passkey/verify-registration", {
+      response,
+      name: passkeyName.value.trim() || "Passkey",
+    });
+    passkeyName.value = "";
+    notice("Passkey 已添加。");
+    await loadPasskeys();
+  } catch (error) {
+    notice("Passkey 添加失败：" + error.message, true);
+  } finally {
+    setBusy(false);
+  }
+}
+async function deletePasskey(item) {
+  if (busy) return;
+  if (!confirm(`删除 Passkey「${item.name || "Passkey"}」？`)) return;
+  setBusy(true);
+  try {
+    await request("passkey/delete-passkey", { id: item.id });
+    notice("Passkey 已删除。");
+    await loadPasskeys();
+  } catch (error) {
+    notice("Passkey 删除失败：" + error.message, true);
+  } finally {
+    setBusy(false);
+  }
+}
 async function load() {
   try {
     accounts = await request("list-accounts");
@@ -116,6 +203,7 @@ async function load() {
   } catch (error) {
     notice(error.message, true);
   }
+  await loadPasskeys();
 }
 async function link(provider) {
   if (busy) return;
@@ -153,6 +241,10 @@ async function unlink(account) {
   } finally {
     setBusy(false);
   }
+}
+if (addPasskey) {
+  if (!passkeySupported()) addPasskey.hidden = true;
+  addPasskey.addEventListener("click", addNewPasskey);
 }
 if (new URLSearchParams(location.search).get("error"))
   notice("绑定未完成，请重试。", true);

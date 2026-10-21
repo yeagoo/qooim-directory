@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@better-auth/oauth-provider": "1.7.10",
+    "@better-auth/passkey": "1.7.10",
     "better-auth": "1.7.10",
     "next": "16.4.2",
     "nodemailer": "10.1.2",
@@ -56,6 +57,14 @@
   "pnpm": {
     "ignoredOptionalDependencies": [
       "sharp"
-    ]
+    ],
+    "supportedArchitectures": {
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm64"
+      ]
+    }
   }
 }

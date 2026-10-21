@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "reviewedAt": "2026-10-20",
-  "lockfileSha256": "bb7b235c4ad0c5f0faeacd5ebd23b07c2f703dfa7b5830217eee6eebd3c646d4",
+  "reviewedAt": "2026-10-21",
+  "lockfileSha256": "6c78cd34d2039c03f65eacab5795a9cbec983b7e17882aec07b0fcbdaebdc986",
   "notices": [
     {
       "name": "@esbuild/linux-arm64",
@@ -101,7 +101,8 @@
       "pg": "8.23.1",
       "react": "19.3.1",
       "react-dom": "19.3.1",
-      "zod": "4.6.7"
+      "zod": "4.6.7",
+      "@better-auth/passkey": "1.7.10"
     },
     "devDependencies": {
       "@playwright/test": "1.64.1",

@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID, randomBytes } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { betterAuth } from "better-auth";
+import { passkey } from "@better-auth/passkey";
 import { getMigrations } from "better-auth/db/migration";
 import { jwt, genericOAuth } from "better-auth/plugins";
 import { oauthProvider } from "@better-auth/oauth-provider";
@@ -419,6 +420,12 @@ export class AuthRegistry {
           ]
         : [
             jwt({ schema: { jwks: { modelName: table + "jwks" } } }),
+            passkey({
+              rpID: new URL(instance.origin).hostname,
+              rpName: "Qoo.IM Directory",
+              origin: instance.origin,
+              schema: { passkey: { modelName: table + "passkey" } },
+            }),
             oauthProvider({
               loginPage: "/login",
               consentPage: "/login",
@@ -627,7 +634,7 @@ export class AuthRegistry {
           const part = await reader.read();
           if (part.done) break;
           size += part.value.length;
-          if (size > 16384) {
+          if (size > (path.startsWith("/api/auth/passkey/") ? 65536 : 16384)) {
             await Promise.all([reader.cancel(), request.body?.cancel()]);
             throw new HttpError(413, "认证请求过大");
           }

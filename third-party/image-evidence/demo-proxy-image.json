@@ -1,7 +1,7 @@
 {
   "format": 1,
   "scope": "demo-proxy-image",
-  "collectedAt": "2026-10-21T03:51:24.261Z",
+  "collectedAt": "2026-10-21T04:46:57.227Z",
   "collectorSha256": "3dddccb155f34bad6cdc203737fab04d6ce8cfffc152fddc581d59ef7b3bbb37",
   "image": {
     "reference": "caddy@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f",

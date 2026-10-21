@@ -4,6 +4,7 @@
 
 ## 实施状态（2026-10-21）
 
+- M2 已完成代码：`@better-auth/passkey@1.7.10`、站点级 RP ID、账号页添加/删除、登录页 Passkey 登录；P3 37/37 通过，详见 [M2 验收](ACCEPTANCE-M2-20261021.md)。尚未发布。
 - M1 已完成代码：新建站点表单只提供独立账号；API 新共享站点必须显式 `legacyShared: true`；共享中心标记 legacy；搜索迁移 `006-search.sql` 与 `pg_trgm` 相关度查询已实现。
 - 搜索测试：P1 88/88、P2 135/135 通过。
 - 尚未发布：M1 变更未进入 `v0.1.0` tag，发布前需重新跑全量回归和镜像 evidence。

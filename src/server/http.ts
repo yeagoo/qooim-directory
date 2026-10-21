@@ -251,7 +251,9 @@ export class Application {
             ? "account.js"
             : path === "/assets/account-home.js" && !admin
               ? "account-home.js"
-              : path === "/assets/github-admin.js" && admin
+              : path === "/assets/simplewebauthn.js" && !admin
+                ? "vendor/simplewebauthn.js"
+                : path === "/assets/github-admin.js" && admin
               ? "github-admin.js"
               : path === "/assets/content-admin.js" && admin
                 ? "content-admin.js"
