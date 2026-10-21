@@ -22,6 +22,7 @@
 | [P3 认证操作](P3-AUTH.md) | 提供方配置、账号绑定/解绑、邮件、代理与会话 |
 | [内置 AI 生成/翻译](P3-AI.md) | 站点级供应商配置、异步任务、预算、人工确认与安全边界 |
 | [P4 GitHub 操作](P4-GITHUB.md) | 来源、任务、字段审核、统计自动更新与独立发布 |
+| [垂直采集器](P4-COLLECTORS.md) | RSS/npm/通用 JSON、候选审核、SSRF 边界与限制 |
 | [P5 运维操作](P5-OPERATIONS.md) | 加密备份、隔离恢复、升级、源码归档和容量重现 |
 | [模板开发](TEMPLATE-DEVELOPMENT.md) | SDK、AI 示例、夹具预览与审查要求 |
 | [GitHub/Google 上线前验收](OAUTH-ACCEPTANCE.md) | 真实凭据回调、冲突、绑定/解绑与回滚 |
@@ -40,6 +41,7 @@
 | [M2 验收记录](ACCEPTANCE-M2-20261021.md) | 站点级 Passkey、虚拟认证器测试、升级与安全边界 |
 | [M3 验收记录](ACCEPTANCE-M3-20261021.md) | 媒体库、图片发布、加密媒体备份与恢复 |
 | [M4 验收记录](ACCEPTANCE-M4-20261021.md) | AI 配置/任务/预算、人工确认与测试 |
+| [M5 验收记录](ACCEPTANCE-M5-20261021.md) | 三类采集器、候选接受为草稿、SSRF 与限制 |
 | [代码 Review 修复记录](CODE-REVIEW-20261021.md) | 2026-10-21 的问题、修复与保留项 |
 | [源码许可与镜像证据](SOURCE-LICENSE-DECISIONS.md) | MIT 归属、sharp 移除、六组证据 |
 | [镜像审查指南](IMAGE-REVIEW-GUIDE.md) | 逐项核对、署名格式与 AGPL 提示 |

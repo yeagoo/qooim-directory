@@ -3,6 +3,7 @@ import { OutboxWorker } from "../domain/outbox.js";
 import { GithubWorker } from "./github.js";
 import { AuthRegistry } from "./auth.js";
 import { AiWorker } from "./ai.js";
+import { CollectorWorker } from "./collectors.js";
 export async function runJobs(
   pool: Pool,
   auth: AuthRegistry,
@@ -40,6 +41,11 @@ export async function runJobs(
   });
   // Bound SMTP work per iteration so a failing transport cannot starve maintenance.
   if (key) await attempt(() => new AiWorker(pool, key).runOnce());
+  await attempt(async () => {
+    const collectors = new CollectorWorker(pool);
+    await collectors.schedule();
+    await collectors.runOnce();
+  });
   await attempt(() => auth.mail.runOnce());
   await attempt(() => auth.maintain());
   // Keep the last successful heartbeat: partial progress must not hide a failure.

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - M1：独立账号收口（`legacyShared` API 开关）和 `pg_trgm` 搜索增强；P0–P5、发行测试和 Docker 通过。
+- M5：RSS/npm/通用 JSON 采集器、候选人工审核、接受只建草稿；迁移 `009-collectors.sql`；GitHub 专用同步保留。
 - M4：站点级 AI 生成/翻译/SEO、异步 Worker、密钥封装、月度预算与 SSRF 防护；迁移 `008-ai.sql`；人工确认后才可进入草稿。
 - M3：站点级媒体库/图片发布/公开访问、加密媒体备份与恢复；迁移 `007-media.sql`；不引入 sharp。
 - M2：站点级 Passkey 注册/登录/删除（不做 MFA）；新增 `@better-auth/passkey@1.7.10`；P3 37/37、Docker 通过；升级后需对每个独立账号/中心执行 `auth-upgrade`。

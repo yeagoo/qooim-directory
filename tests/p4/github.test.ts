@@ -14,6 +14,12 @@ import { migrate } from "../../src/server/migrate.js";
 import { Application } from "../../src/server/http.js";
 import { GithubClient, GithubError } from "../../src/server/github-client.js";
 import { GithubWorker, GithubSources } from "../../src/server/github.js";
+import {
+  CollectorWorker,
+  parseJsonFeed,
+  parseNpm,
+  parseRss,
+} from "../../src/server/collectors.js";
 import type { Operator } from "../../src/server/operators.js";
 let pool: Pool,
   app: Application,
@@ -247,6 +253,121 @@ async function publish(
     operationId: randomUUID(),
   });
 }
+
+test("P4 RSS collector yields a reviewable candidate and acceptance only creates a draft", async () => {
+  const source = await app.collectors.save(admin, {
+    siteId: "atlas",
+    kind: "rss",
+    config: { url: "https://feed.example.test/rss", locale: "zh" },
+    enabled: true,
+    intervalSeconds: 3600,
+    expectedVersion: 0,
+  });
+  const task = await app.collectors.enqueue(admin, source.id, randomUUID());
+  assert.equal(task.source_id, source.id);
+  const xml = `<?xml version="1.0"?><rss><channel><title>Feed</title>
+    <item><guid>one</guid><title>RSS &amp; Tools</title><link>https://example.com/one</link><description><![CDATA[<p>公开说明</p>]]></description></item>
+    <item><guid>two</guid><title>Second</title><link>https://example.com/two</link><description>Second description</description></item>
+  </channel></rss>`;
+  const worker = new CollectorWorker(pool, async () => ({
+    notModified: false,
+    text: xml,
+    etag: '"feed-1"',
+  }));
+  assert.equal(await worker.runOnce(), "done");
+  const candidates = await app.collectors.candidates(admin, "atlas");
+  assert.equal(candidates.length, 2);
+  const candidate = candidates.find((row) => row.external_id === "one");
+  assert.ok(candidate);
+  assert.equal(candidate.data.translations.zh.title, "RSS & Tools");
+  const accepted = await app.collectors.review(admin, "atlas", candidate.id, {
+    decision: "accept",
+    expectedVersion: candidate.version,
+  });
+  assert.ok(accepted.resourceId);
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT count(*)::int AS count FROM content_draft WHERE site_id='atlas' AND resource_id=$1 AND locale='zh'",
+        [accepted.resourceId],
+      )
+    ).rows[0].count,
+    1,
+  );
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT count(*)::int AS count FROM publication WHERE site_id='atlas' AND resource_id=$1",
+        [accepted.resourceId],
+      )
+    ).rows[0].count,
+    0,
+  );
+  await assert.rejects(
+    app.collectors.save(admin, {
+      siteId: "atlas",
+      kind: "rss",
+      config: { url: "https://127.0.0.1/feed", locale: "zh" },
+      enabled: true,
+      intervalSeconds: 3600,
+      expectedVersion: 0,
+    }),
+    /公开|私网/,
+  );
+});
+
+test("P4 RSS/npm adapters reject unsafe feeds and normalize npm search results", () => {
+  assert.throws(
+    () =>
+      parseRss(
+        '<!DOCTYPE x [<!ENTITY e "x">]><rss><channel><item><title>x</title><link>https://example.com</link></item></channel></rss>',
+        "https://feed.example.test/rss",
+        "zh",
+      ),
+    /unsafe_feed/,
+  );
+  const items = parseNpm(
+    {
+      objects: [
+        {
+          package: {
+            name: "react",
+            description: "UI library",
+            links: { npm: "https://www.npmjs.com/package/react" },
+          },
+        },
+      ],
+    },
+    "en",
+  );
+  assert.equal(items.length, 1);
+  assert.equal(items[0].externalId, "react");
+  assert.equal(items[0].data.translations.en!.description, "UI library");
+  const json = parseJsonFeed(
+    {
+      items: [
+        {
+          id: "j-1",
+          title: "JSON Tool",
+          description: "Mapped description",
+          url: "https://example.com/json",
+        },
+      ],
+    },
+    {
+      url: "https://feed.example.test/items.json",
+      itemsPath: "items",
+      idField: "id",
+      titleField: "title",
+      descriptionField: "description",
+      urlField: "url",
+      locale: "zh",
+    },
+  );
+  assert.equal(json.length, 1);
+  assert.equal(json[0].externalId, "j-1");
+  assert.equal(json[0].data.translations.zh!.title, "JSON Tool");
+});
 
 test("P4 fixed GitHub API produces an unpublished review candidate and never exposes the sync token", async () => {
   const s = await source("project-one", "Acme/Editor");

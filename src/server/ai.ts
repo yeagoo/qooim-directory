@@ -1,10 +1,11 @@
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
 import { request as httpsRequest } from "node:https";
+import { isIP } from "node:net";
+import { lookup } from "node:dns/promises";
 import type { Pool } from "pg";
 import { z } from "zod";
 import { unseal, seal } from "./crypto.js";
 import { HttpError, Operators, type Operator } from "./operators.js";
+import { privateAddress } from "./outbound.js";
 
 const MAX_INPUT = 4000,
   MAX_BRIEF = 500,
@@ -76,38 +77,6 @@ export type AiTransport = (request: {
   maxTokens: number;
 }) => Promise<{ output: AiOutput; tokensIn: number; tokensOut: number; model: string }>;
 
-function privateAddress(address: string) {
-  if (isIP(address) === 4) {
-    const [a, b] = address.split(".").map(Number);
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 0 && address.split(".")[2] === "0") ||
-      (a === 192 && b === 168) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224
-    );
-  }
-  if (isIP(address) === 6) {
-    const value = address.toLowerCase();
-    if (value === "::1" || value === "::") return true;
-    if (value.startsWith("::ffff:")) return privateAddress(value.slice(7));
-    return (
-      value.startsWith("fc") ||
-      value.startsWith("fd") ||
-      value.startsWith("fe8") ||
-      value.startsWith("fe9") ||
-      value.startsWith("fea") ||
-      value.startsWith("feb") ||
-      value.startsWith("ff")
-    );
-  }
-  return true;
-}
 function prompt(kind: AiJobRow["kind"], payload: AiJobRow["payload"]) {
   const source = JSON.stringify({
     locale: payload.locale,
@@ -406,4 +375,3 @@ export class AiWorker {
     return true;
   }
 }
-export { privateAddress };

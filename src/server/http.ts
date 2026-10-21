@@ -26,6 +26,8 @@ import { githubHttp } from "./github-http.js";
 import { Content } from "./content.js";
 import { contentHttp } from "./content-http.js";
 import { AiService } from "./ai.js";
+import { Collectors } from "./collectors.js";
+import { collectorsHttp } from "./collectors-http.js";
 import { aiHttp } from "./ai-http.js";
 import { Media } from "./media.js";
 import { mediaHttp } from "./media-http.js";
@@ -49,6 +51,7 @@ export class Application {
   readonly audit: AuditLog;
   readonly media: Media;
   readonly ai: AiService;
+  readonly collectors: Collectors;
   private assets = new Map<string, { body: string; etag: string }>();
   constructor(
     readonly pool: Pool,
@@ -80,6 +83,7 @@ export class Application {
     this.audit = new AuditLog(pool);
     this.media = new Media(pool, config.mediaRoot ?? ".local/media");
     this.ai = new AiService(pool, config.key);
+    this.collectors = new Collectors(pool);
   }
   async close() {
     await this.auth.close();
@@ -315,6 +319,8 @@ export class Application {
                   ? "media-admin.js"
                   : path === "/assets/ai-admin.js" && admin
                     ? "ai-admin.js"
+                    : path === "/assets/collector-admin.js" && admin
+                      ? "collector-admin.js"
                   : path === "/assets/github-admin.js" && admin
               ? "github-admin.js"
               : path === "/assets/content-admin.js" && admin
@@ -419,6 +425,14 @@ export class Application {
         () => this.body(request),
       );
       if (contentResponse) return contentResponse;
+      const collectorResponse = await collectorsHttp(
+        this.collectors,
+        operator,
+        action,
+        request,
+        () => this.body(request),
+      );
+      if (collectorResponse) return collectorResponse;
       const aiResponse = await aiHttp(
         this.ai,
         operator,

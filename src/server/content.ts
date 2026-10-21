@@ -706,6 +706,65 @@ export class Content {
       return row.version;
     });
   }
+  async acceptCollected(
+    actor: Operator,
+    site: string,
+    candidateId: string,
+    expectedVersion: number,
+  ) {
+    await this.operators.require(actor, site, true);
+    if (!z.uuid().safeParse(candidateId).success)
+      throw new HttpError(404, "采集候选不存在");
+    return transaction(this.pool, async (c) => {
+      const candidate = (
+        await c.query(
+          `SELECT cc.* FROM collector_candidate cc JOIN collector_source cs ON cs.id=cc.source_id WHERE cc.id=$1 AND cs.site_id=$2 FOR UPDATE OF cc`,
+          [candidateId, site],
+        )
+      ).rows[0];
+      if (!candidate) throw new HttpError(404, "采集候选不存在");
+      await this.operators.require(actor, site, true, c);
+      if (candidate.status !== "pending" || candidate.version !== expectedVersion)
+        throw new Conflict("采集候选已审核或版本已改变");
+      const resource = "collector-" + candidate.id.replace(/-/g, "").slice(0, 32);
+      await this.writeResource(
+        c,
+        actor,
+        {
+          id: resource,
+          expectedVersion: 0,
+          data: resourceData.parse(candidate.data),
+          public: true,
+          internalNote: "collector:" + candidate.source_id,
+        },
+        site,
+      );
+      await c.query(
+        "INSERT INTO content_draft(site_id,resource_id,locale,candidate) VALUES($1,$2,$3,$4)",
+        [
+          site,
+          resource,
+          candidate.locale,
+          candidateSchema.parse({
+            resourceVersion: 1,
+            slug: resource,
+            categoryId: null,
+            rank: 0,
+            overrides: {},
+          }),
+        ],
+      );
+      await c.query(
+        "UPDATE collector_candidate SET status='accepted',version=version+1,accepted_resource_id=$2 WHERE id=$1",
+        [candidateId, resource],
+      );
+      await this.audit(c, actor, site, "collector.accept", {
+        candidateId,
+        resource,
+      });
+      return { resourceId: resource };
+    });
+  }
   async submissions(actor: Operator, site: string, page = 1) {
     await this.operators.require(actor, site);
     return (
