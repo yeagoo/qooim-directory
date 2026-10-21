@@ -822,6 +822,42 @@ test("P3 passkey registration, login and deletion work with a virtual authentica
   }
 });
 
+test("P3 admin media library uploads an image and renders its preview", async () => {
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  await context.addCookies([
+    {
+      name: "network_operator",
+      value: await app.sites.operators.login(admin.email, password),
+      url: origins[3],
+    },
+  ]);
+  const page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  try {
+    await page.goto(origins[3] + "/admin#media/atlas");
+    await page.locator("#upload-media").waitFor();
+    await page.locator("#media-file").setInputFiles({
+      name: "pixel.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    });
+    await page.locator("#media-alt").fill("像素封面");
+    await page.locator("#upload-media").click();
+    await page.locator("article.site-card", { hasText: "pixel.png" }).waitFor();
+    assert.match(
+      (await page.locator("article.site-card img").getAttribute("src")) ?? "",
+      /^\/admin\/api\/media\/[0-9a-f-]{36}\/file$/,
+    );
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+});
+
 test("P3 explicit provider linking and unlinking works end to end", async () => {
   await app.auth.providers.set(admin, "atlas", {
     id: "oidc-lab",

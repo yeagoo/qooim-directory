@@ -36,11 +36,16 @@ let pool: Pool, app: Application, temp: string, cookie: string;
 const key = randomBytes(32).toString("hex");
 const origin = `https://${process.env.P0_HOSTS!.split(",")[0]}`;
 const container = process.env.P0_CONTAINER!;
-const options = (path: string, name = "navigation_p0") => ({
+const options = (
+  path: string,
+  name = "navigation_p0",
+  mediaPath?: string,
+) => ({
   container,
   database: name,
   user: "postgres",
   path,
+  mediaPath,
 });
 const password = "P5-restore-password-429!";
 async function request(path: string, body?: unknown, session = "") {
@@ -157,13 +162,22 @@ after(async () => {
   if (temp) await rm(temp, { recursive: true, force: true });
 });
 test("P5 encrypted backup restores identities, sessions, content, favorites, secrets and queued events into a new database", async () => {
-  const path = join(temp, "snapshot");
-  const saved = await backup(options(path));
+  const path = join(temp, "snapshot"),
+    media = join(temp, "media"),
+    restoredMedia = join(temp, "media-restored");
+  await mkdir(media, { recursive: true });
+  await writeFile(join(media, "cover.png"), Buffer.from("MEDIA-FIXTURE"));
+  const saved = await backup(options(path, "navigation_p0", media));
   assert.equal((await stat(path)).mode & 0o777, 0o700);
   assert.equal((await stat(join(path, "database.enc"))).mode & 0o777, 0o600);
+  assert.equal((await stat(join(path, "media.tar.enc"))).mode & 0o777, 0o600);
   const encrypted = await readFile(join(path, "database.enc"));
   assert.equal(encrypted.includes(Buffer.from("private restore note")), false);
-  const restored = await restore(options(path, "p5_restored"));
+  const encryptedMedia = await readFile(join(path, "media.tar.enc"));
+  assert.equal(encryptedMedia.includes(Buffer.from("MEDIA-FIXTURE")), false);
+  const restored = await restore(
+    options(path, "p5_restored", restoredMedia),
+  );
   const target = new URL(process.env.P0_DATABASE_URL!);
   target.pathname = "/p5_restored";
   const restoredPool = new Pool({ connectionString: target.toString() });
@@ -177,6 +191,10 @@ test("P5 encrypted backup restores identities, sessions, content, favorites, sec
     assert.equal(
       (await (await request("/api/session", undefined, cookie)).json()).email,
       "reader@example.test",
+    );
+    assert.equal(
+      await readFile(join(restoredMedia, "cover.png"), "utf8"),
+      "MEDIA-FIXTURE",
     );
     assert.equal(
       (await restoredPool.query("SELECT count(*) FROM favorite")).rows[0].count,
@@ -247,10 +265,13 @@ test("P5 encrypted backup restores identities, sessions, content, favorites, sec
     await restoredPool.end();
   }
   await assert.rejects(
-    restore(options(path, "p5_restored")),
+    restore(options(path, "p5_restored", join(temp, "media-again"))),
     /database command failed/,
   );
-  await assert.rejects(backup(options(path)), /EEXIST/);
+  await assert.rejects(
+    backup(options(path, "navigation_p0", media)),
+    /EEXIST/,
+  );
 });
 test("P5 wrong keys, corrupted ciphertext, modified metadata and migration drift are rejected before database creation", async () => {
   const source = join(temp, "snapshot"),
@@ -378,7 +399,7 @@ test("P5 authenticated backups from a different PostgreSQL major are rejected be
   envelope.tag = encrypt.getAuthTag().toString("hex");
   await writeFile(join(path, "manifest.json"), JSON.stringify(envelope));
   await assert.rejects(
-    restore(options(path, "p5_major_mismatch")),
+    restore(options(path, "p5_major_mismatch", join(temp, "media-major"))),
     /same PostgreSQL major/,
   );
   assert.equal(

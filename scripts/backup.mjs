@@ -14,6 +14,7 @@ import {
   mkdtemp,
   readdir,
   lstat,
+  stat,
   open,
 } from "node:fs/promises";
 import { resolve, join, dirname } from "node:path";
@@ -21,6 +22,91 @@ import { tmpdir } from "node:os";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 const hash = (v) => createHash("sha256").update(v).digest("hex");
+async function scanMedia(root) {
+  let files = 0,
+    bytes = 0;
+  const walk = async (directory) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      const info = await lstat(path);
+      if (info.isSymbolicLink()) throw new Error("Media tree must not contain symlinks");
+      if (info.isDirectory()) await walk(path);
+      else if (info.isFile()) {
+        files++;
+        bytes += info.size;
+      } else throw new Error("Media tree contains an unsupported entry");
+    }
+  };
+  await walk(root);
+  return { files, bytes };
+}
+function tarCreate(source, target) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("tar", ["-C", source, "-cf", target, "."], {
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    let stderr = "";
+    proc.stderr.on("data", (b) => {
+      stderr = (stderr + b).slice(-4096);
+    });
+    proc.on("error", reject);
+    proc.on("close", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error("Media archive failed: " + stderr.trim())),
+    );
+  });
+}
+function tarExtract(source, target) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("tar", ["-C", target, "-xf", source], {
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    let stderr = "";
+    proc.stderr.on("data", (b) => {
+      stderr = (stderr + b).slice(-4096);
+    });
+    proc.on("error", reject);
+    proc.on("close", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error("Media restore failed: " + stderr.trim())),
+    );
+  });
+}
+async function fileHash(path) {
+  const digest = createHash("sha256");
+  for await (const chunk of createReadStream(path)) digest.update(chunk);
+  return digest.digest("hex");
+}
+async function decryptFile(source, target, encryptionKey, nonce, aad, tag) {
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    Buffer.from(encryptionKey, "hex"),
+    Buffer.from(nonce, "hex"),
+  );
+  decipher.setAAD(Buffer.from(aad));
+  decipher.setAuthTag(Buffer.from(tag, "hex"));
+  await pipeline(
+    createReadStream(source),
+    decipher,
+    createWriteStream(target, { flags: "wx", mode: 0o600 }),
+  );
+}
+async function encryptFile(source, target, encryptionKey, nonce, aad) {
+  const cipher = createCipheriv(
+    "aes-256-gcm",
+    Buffer.from(encryptionKey, "hex"),
+    Buffer.from(nonce, "hex"),
+  );
+  cipher.setAAD(Buffer.from(aad));
+  await pipeline(
+    createReadStream(source),
+    cipher,
+    createWriteStream(target, { flags: "wx", mode: 0o600, flush: true }),
+  );
+  return cipher.getAuthTag().toString("hex");
+}
 async function syncDirectory(path) {
   const directory = await open(path, "r");
   try {
@@ -109,7 +195,8 @@ export async function backup(options) {
   const directory = resolve(options.path);
   // Exclusive creation; never remove or overwrite a directory we did not create.
   await mkdir(directory, { mode: 0o700 });
-  const start = Date.now();
+  const start = Date.now(),
+    temporary = await mkdtemp(join(tmpdir(), "navigation-backup-"));
   try {
     const identity = await applicationIdentity();
     const secrets = JSON.parse(
@@ -168,12 +255,47 @@ export async function backup(options) {
       throw new Error(
         "Database migrations differ from application; use the matching application revision",
       );
+    let media;
+    if (options.mediaPath) {
+      const mediaPath = resolve(options.mediaPath),
+        info = await stat(mediaPath);
+      if (!info.isDirectory()) throw new Error("Media path must be a directory");
+      const archive = join(temporary, "media.tar");
+      await tarCreate(mediaPath, archive);
+      const scan = await scanMedia(mediaPath),
+        mediaNonce = randomBytes(12).toString("hex"),
+        mediaSha = await fileHash(archive),
+        mediaAad = JSON.stringify({
+          format: 1,
+          kind: "media",
+          sha256: mediaSha,
+          files: scan.files,
+          bytes: scan.bytes,
+          nonce: mediaNonce,
+        });
+      const tag = await encryptFile(
+        archive,
+        join(directory, "media.tar.enc"),
+        encryptionKey,
+        mediaNonce,
+        mediaAad,
+      );
+      media = {
+        archive: "media.tar.enc",
+        nonce: mediaNonce,
+        tag,
+        aad: mediaAad,
+        sha256: mediaSha,
+        ...scan,
+      };
+    }
     const manifest = {
       format: 1,
       createdAt: new Date().toISOString(),
       application: identity,
       authKeyFingerprint: hash(Buffer.from(authKey, "hex")),
       nonce: randomBytes(12).toString("hex"),
+      ...(media ? { media } : {}),
       postgresVersion: await collect([
         "exec",
         options.container,
@@ -266,10 +388,13 @@ export async function backup(options) {
       elapsedMs: Date.now() - start,
       application: identity,
       encrypted: true,
+      ...(media ? { media: { files: media.files, bytes: media.bytes } } : {}),
     };
   } catch (error) {
     await rm(directory, { recursive: true, force: true });
     throw error;
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
   }
 }
 export async function restore(options) {
@@ -298,6 +423,21 @@ export async function restore(options) {
     throw new Error("Unsupported backup format");
   if (manifest.authKeyFingerprint !== hash(Buffer.from(authKey, "hex")))
     throw new Error("Application encryption key does not match backup");
+  const media = manifest.media;
+  if (media) {
+    if (
+      media.archive !== "media.tar.enc" ||
+      !/^[a-f0-9]{24}$/.test(media.nonce ?? "") ||
+      !/^[a-f0-9]{32}$/.test(media.tag ?? "") ||
+      !/^[a-f0-9]{64}$/.test(media.sha256 ?? "") ||
+      typeof media.aad !== "string" ||
+      !Number.isSafeInteger(media.files) ||
+      !Number.isSafeInteger(media.bytes)
+    )
+      throw new Error("Invalid media backup manifest");
+    if (!options.mediaPath)
+      throw new Error("Restore requires a media directory for this backup");
+  }
   const current = await applicationIdentity();
   if (
     JSON.stringify(manifest.application?.migrations) !==
@@ -382,9 +522,33 @@ export async function restore(options) {
       await operation.done.catch(() => {});
       throw error;
     }
+    let restoredMedia;
+    if (media) {
+      const target = resolve(options.mediaPath);
+      await mkdir(target, { recursive: true, mode: 0o700 });
+      if ((await readdir(target)).length)
+        throw new Error("Media restore directory must be empty");
+      const plaintextMedia = join(temporary, "media.tar");
+      await decryptFile(
+        join(directory, media.archive),
+        plaintextMedia,
+        encryptionKey,
+        media.nonce,
+        media.aad,
+        media.tag,
+      );
+      if ((await fileHash(plaintextMedia)) !== media.sha256)
+        throw new Error("Media archive digest mismatch");
+      await tarExtract(plaintextMedia, target);
+      const scan = await scanMedia(target);
+      if (scan.files !== media.files || scan.bytes !== media.bytes)
+        throw new Error("Media restore count or size mismatch");
+      restoredMedia = scan;
+    }
     return {
       database: options.database,
       elapsedMs: Date.now() - start,
+      ...(restoredMedia ? { media: restoredMedia } : {}),
       createdAt: manifest.createdAt,
       application: manifest.application,
     };
@@ -396,12 +560,12 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  const [action, container, database, user, path, ...extra] =
+  const [action, container, database, user, path, mediaPath, ...extra] =
     process.argv.slice(2);
   try {
     if (!["create", "restore"].includes(action) || extra.length)
       throw new Error(
-        "Usage: backup.mjs create|restore CONTAINER DATABASE USER DIRECTORY",
+        "Usage: backup.mjs create|restore CONTAINER DATABASE USER DIRECTORY [MEDIA_DIRECTORY]",
       );
     console.log(
       JSON.stringify(
@@ -410,6 +574,7 @@ if (
           database,
           user,
           path,
+          mediaPath,
         }),
         null,
         2,

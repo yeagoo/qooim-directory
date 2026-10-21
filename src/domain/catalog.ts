@@ -107,7 +107,7 @@ export class Catalog {
     const q = options.q.trim().replace(/[%_]/g, " ").slice(0, 200);
     const { rows } = await this.pool.query(
       `WITH filtered AS (
-      SELECT p.resource_id,p.slug,p.title,p.description,p.url,p.locale,p.category_id,p.rank,p.version,p.seo_title,p.seo_description,p.project,
+      SELECT p.resource_id,p.slug,p.title,p.description,p.url,p.locale,p.category_id,p.rank,p.version,p.seo_title,p.seo_description,p.project,p.image,
         CASE WHEN $3='' THEN 0
           ELSE similarity(lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description),lower($3))
         END AS score
@@ -139,7 +139,7 @@ export class Catalog {
     this.check(ctx);
     const row = (
       await this.pool.query(
-        "SELECT resource_id,slug,title,description,url,locale,category_id,rank,version,seo_title,seo_description,project FROM public_listing WHERE site_id=$1 AND locale=$2 AND slug=$3",
+        "SELECT resource_id,slug,title,description,url,locale,category_id,rank,version,seo_title,seo_description,project,image FROM public_listing WHERE site_id=$1 AND locale=$2 AND slug=$3",
         [ctx.siteId, locale, slug],
       )
     ).rows[0];
@@ -197,4 +197,5 @@ export type PublicItem = {
   version: number;
   seo_title: string;
   seo_description: string;
+  image: { url: string; alt: string } | null;
 };

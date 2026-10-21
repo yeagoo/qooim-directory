@@ -3,6 +3,7 @@
 ## Unreleased
 
 - M1：独立账号收口（`legacyShared` API 开关）和 `pg_trgm` 搜索增强；P0–P5、发行测试和 Docker 通过。
+- M3：站点级媒体库/图片发布/公开访问、加密媒体备份与恢复；迁移 `007-media.sql`；不引入 sharp。
 - M2：站点级 Passkey 注册/登录/删除（不做 MFA）；新增 `@better-auth/passkey@1.7.10`；P3 37/37、Docker 通过；升级后需对每个独立账号/中心执行 `auth-upgrade`。
 
 - 新站点创建固定使用独立账号；API 新共享站点需要显式 `legacyShared: true`；共享账号中心标记为 legacy，仅保留既有部署兼容。

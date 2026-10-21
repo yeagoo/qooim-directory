@@ -25,6 +25,8 @@ import { GithubSources } from "./github.js";
 import { githubHttp } from "./github-http.js";
 import { Content } from "./content.js";
 import { contentHttp } from "./content-http.js";
+import { Media } from "./media.js";
+import { mediaHttp } from "./media-http.js";
 import { Personal } from "./personal.js";
 import { AuditLog } from "./audit.js";
 import {
@@ -43,6 +45,7 @@ export class Application {
   readonly personal: Personal;
   readonly github: GithubSources;
   readonly audit: AuditLog;
+  readonly media: Media;
   private assets = new Map<string, { body: string; etag: string }>();
   constructor(
     readonly pool: Pool,
@@ -52,6 +55,7 @@ export class Application {
       databaseUrl: string;
       development: boolean;
       auth?: AuthPolicy;
+      mediaRoot?: string;
     },
   ) {
     this.sites = new Sites(
@@ -71,6 +75,7 @@ export class Application {
     this.personal = new Personal(pool);
     this.github = new GithubSources(pool, this.content);
     this.audit = new AuditLog(pool);
+    this.media = new Media(pool, config.mediaRoot ?? ".local/media");
   }
   async close() {
     await this.auth.close();
@@ -148,6 +153,7 @@ export class Application {
     // with another Response would make the original body unusable.
     const path = new URL(request.url).pathname;
     const publicAsset = path.startsWith("/assets/");
+    const publicMedia = /^\/media\/[0-9a-f-]{36}$/.test(path);
     const publicPage =
       path === "/" ||
       path === "/sitemap.xml" ||
@@ -157,7 +163,7 @@ export class Application {
       request.method === "GET" &&
       response.status === 200 &&
       !response.headers.has("set-cookie") &&
-      (publicAsset || publicPage);
+      (publicAsset || publicPage || publicMedia);
     const body = cacheable
       ? Buffer.from(await response.arrayBuffer())
       : undefined;
@@ -173,7 +179,11 @@ export class Application {
         '"';
       copy.headers.set(
         "cache-control",
-        publicAsset ? "public, max-age=3600" : "public, max-age=60, must-revalidate",
+        publicMedia
+          ? "public, max-age=31536000, immutable"
+          : publicAsset
+            ? "public, max-age=3600"
+            : "public, max-age=60, must-revalidate",
       );
       copy.headers.set("etag", etag);
       if (request.headers.get("if-none-match") === etag)
@@ -215,6 +225,29 @@ export class Application {
       throw new HttpError(400, "JSON 格式错误");
     }
   }
+  private async mediaBody(request: Request) {
+    if (!request.headers.get("content-type")?.startsWith("application/json"))
+      throw new HttpError(415, "请提交 JSON");
+    const reader = request.body?.getReader();
+    if (!reader) throw new HttpError(400, "缺少请求内容");
+    let size = 0;
+    const chunks: Uint8Array[] = [];
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      size += part.value.length;
+      if (size > 15 * 1024 * 1024) {
+        await reader.cancel();
+        throw new HttpError(413, "图片请求超过 15 MiB");
+      }
+      chunks.push(part.value);
+    }
+    try {
+      return JSON.parse(Buffer.concat(chunks).toString());
+    } catch {
+      throw new HttpError(400, "JSON 格式错误");
+    }
+  }
   private cookie(token: string, maxAge: number) {
     return `network_operator=${token}; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${this.config.adminOrigin.startsWith("https:") ? "; Secure" : ""}`;
   }
@@ -225,10 +258,31 @@ export class Application {
     const path = new URL(request.url).pathname;
     const admin = host === new URL(this.config.adminOrigin).host;
     let site;
+    let mediaContext: import("../domain/catalog.js").SiteContext | undefined;
     if (!admin) {
-      const ctx = await this.catalog.resolve(host);
-      site = await this.auth.instance(ctx.siteId);
+      mediaContext = await this.catalog.resolve(host);
+      site = await this.auth.instance(mediaContext.siteId);
       if (new URL(site.origin).host !== host) throw new NotFound();
+    }
+    if (path.startsWith("/media/") && request.method === "GET") {
+      if (!mediaContext) throw new NotFound();
+      const mediaMatch = path.match(/^\/media\/([0-9a-f-]{36})$/);
+      if (!mediaMatch) throw new NotFound();
+      const usage = await this.content.mediaUsage(mediaContext.siteId, mediaMatch[1]);
+      if (!usage.published) throw new NotFound();
+      const { row, data } = await this.media.publicFile(mediaMatch[1]);
+      if (row.site_id !== mediaContext.siteId) throw new NotFound();
+      const etag = `"${row.sha256}"`;
+      const headers = {
+        "content-type": row.mime,
+        "content-length": String(data.length),
+        "cache-control": "public, max-age=31536000, immutable",
+        etag,
+        "x-content-type-options": "nosniff",
+      };
+      if (request.headers.get("if-none-match") === etag)
+        return new Response(null, { status: 304, headers });
+      return new Response(data, { headers });
     }
     if (path === "/source.tar.gz") {
       if (request.method !== "GET")
@@ -253,7 +307,9 @@ export class Application {
               ? "account-home.js"
               : path === "/assets/simplewebauthn.js" && !admin
                 ? "vendor/simplewebauthn.js"
-                : path === "/assets/github-admin.js" && admin
+                : path === "/assets/media-admin.js" && admin
+                  ? "media-admin.js"
+                  : path === "/assets/github-admin.js" && admin
               ? "github-admin.js"
               : path === "/assets/content-admin.js" && admin
                 ? "content-admin.js"
@@ -264,10 +320,12 @@ export class Application {
       return this.asset(file);
     }
     if (admin) {
-      if (request.method !== "GET" && request.method !== "POST")
+      const mediaDelete =
+        request.method === "DELETE" && path.startsWith("/admin/api/media/");
+      if (request.method !== "GET" && request.method !== "POST" && !mediaDelete)
         throw new HttpError(405, "Method not allowed");
       if (
-        request.method === "POST" &&
+        request.method !== "GET" &&
         request.headers.get("origin") !== this.config.adminOrigin
       )
         throw new HttpError(403, "来源验证失败");
@@ -355,6 +413,15 @@ export class Application {
         () => this.body(request),
       );
       if (contentResponse) return contentResponse;
+      const mediaResponse = await mediaHttp(
+        this.media,
+        this.content,
+        operator,
+        action,
+        request,
+        () => this.mediaBody(request),
+      );
+      if (mediaResponse) return mediaResponse;
       const match = action.match(
         /^\/sites\/([a-z][a-z0-9-]{0,47})(?:\/([a-z-]+))?$/,
       );

@@ -14,7 +14,7 @@ COPY --from=build /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/p
 RUN ln -s /usr/local/lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm
 COPY --from=build --chown=node:node /app /app
 # P0 test harness is build/test-only; keep it out of the runtime image.
-RUN rm -rf /app/p0
+RUN rm -rf /app/p0 && mkdir -p /app/data/media && chown node:node /app/data/media
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s CMD node -e 'fetch("http://127.0.0.1:3000/health",{headers:{host:new URL(process.env.ADMIN_ORIGIN).host}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'

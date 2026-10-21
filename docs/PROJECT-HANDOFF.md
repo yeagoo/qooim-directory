@@ -65,7 +65,9 @@
 
 M1 已完成：新建站点固定独立账号，共享中心标记 legacy；搜索迁移 `006-search.sql`/`pg_trgm` 已上线。验收见 [M1 记录](ACCEPTANCE-M1-20261021.md)。
 
-M2 已完成：站点级 Passkey 注册/登录/删除（不做 MFA），使用 `@better-auth/passkey@1.7.10`；P3 37/37、Docker 通过。升级后需对每个独立账号/中心运行 `auth-upgrade`。M3–M5 仍按计划推进。
+M2 已完成：站点级 Passkey 注册/登录/删除（不做 MFA），使用 `@better-auth/passkey@1.7.10`；P3、Docker 通过。升级后需对每个独立账号/中心运行 `auth-upgrade`。
+
+M3 已完成：站点媒体库、图片发布/公开访问、后台媒体页、加密媒体备份与恢复；迁移 `007-media.sql`，未引入 `sharp`。详见 [M3 验收](ACCEPTANCE-M3-20261021.md)。M4–M5 仍按计划推进。
 
 产品方向已调整为**新站点独立账号，不再打通跨站身份**；共享账号中心冻结为 legacy。下一批功能为搜索增强、Passkey（不做 MFA）、媒体/图片管理、AI 生成/翻译、更多垂直采集器。完整范围、架构、风险、顺序和 Review 见 [2026 Q4 功能规划](FEATURE-PLAN-2026Q4.md)。
 

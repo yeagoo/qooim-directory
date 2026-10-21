@@ -16,3 +16,5 @@ progress.md
 # Maintainer Python collection/test artifacts.
 **/__pycache__
 *.pyc
+
+/data/

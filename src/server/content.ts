@@ -50,6 +50,13 @@ export const candidateSchema = z.strictObject({
       url: webUrl.optional(),
       seoTitle: z.string().max(200).optional(),
       seoDescription: z.string().max(500).optional(),
+      image: z
+        .strictObject({
+          mediaId: z.uuid(),
+          alt: z.string().max(200).default(""),
+        })
+        .nullable()
+        .optional(),
     })
     .default({}),
 });
@@ -467,6 +474,16 @@ export class Content {
       ).rowCount
     )
       throw new HttpError(400, "分类不属于本站");
+    if (
+      candidate.overrides.image &&
+      !(
+        await c.query("SELECT 1 FROM media WHERE site_id=$1 AND id=$2", [
+          site,
+          candidate.overrides.image.mediaId,
+        ])
+      ).rowCount
+    )
+      throw new HttpError(400, "图片不属于本站");
     return {
       slug: candidate.slug,
       title: candidate.overrides.title ?? translated.title,
@@ -474,6 +491,7 @@ export class Content {
       url: candidate.overrides.url ?? data.url,
       seoTitle: candidate.overrides.seoTitle ?? "",
       seoDescription: candidate.overrides.seoDescription ?? "",
+      image: candidate.overrides.image ?? null,
       categoryId: candidate.categoryId,
       rank: candidate.rank,
       sourceVersion: candidate.resourceVersion,
@@ -481,6 +499,14 @@ export class Content {
       module: data.kind === "repository" ? "opensource" : "directory",
       project: data.project ?? null,
     };
+  }
+  async mediaUsage(site: string, mediaId: string) {
+    const { rows } = await this.pool.query(
+      `SELECT EXISTS(SELECT 1 FROM public_listing WHERE site_id=$1 AND image->>'url'='/media/'||$2) AS published,
+              EXISTS(SELECT 1 FROM content_draft WHERE site_id=$1 AND candidate->'overrides'->'image'->>'mediaId'=$2) AS draft`,
+      [site, mediaId],
+    );
+    return rows[0] as { published: boolean; draft: boolean };
   }
   async stage(
     actor: Operator,
@@ -609,8 +635,8 @@ export class Content {
         snapshot = await this.material(c, site, resource, locale, candidate),
         version = expected.published + 1;
       await c.query(
-        `INSERT INTO publication(site_id,resource_id,locale,slug,title,description,url,seo_title,seo_description,category_id,rank,version,source_version,overrides,module,project,status)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'published') ON CONFLICT(site_id,resource_id,locale) DO UPDATE SET slug=$4,title=$5,description=$6,url=$7,seo_title=$8,seo_description=$9,category_id=$10,rank=$11,version=$12,source_version=$13,overrides=$14,module=$15,project=$16,status='published'`,
+        `INSERT INTO publication(site_id,resource_id,locale,slug,title,description,url,seo_title,seo_description,category_id,rank,version,source_version,overrides,module,project,image,status)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'published') ON CONFLICT(site_id,resource_id,locale) DO UPDATE SET slug=$4,title=$5,description=$6,url=$7,seo_title=$8,seo_description=$9,category_id=$10,rank=$11,version=$12,source_version=$13,overrides=$14,module=$15,project=$16,image=$17,status='published'`,
         [
           site,
           resource,
@@ -628,6 +654,7 @@ export class Content {
           snapshot.overrides,
           snapshot.module,
           snapshot.project,
+          snapshot.image,
         ],
       );
       await c.query("INSERT INTO publication_revision VALUES($1,$2,$3,$4,$5)", [
@@ -795,6 +822,7 @@ export class Content {
           seoTitle: row.seo_title,
           seoDescription: row.seo_description,
           project: row.project ?? null,
+          image: row.image ?? null,
           module: row.module,
         };
         const differences = (Object.keys(before) as (keyof typeof before)[])

@@ -1,7 +1,7 @@
 import { spawn, execFileSync } from "node:child_process";
 import { request } from "node:https";
 import { randomBytes, randomUUID } from "node:crypto";
-import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, readFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
@@ -15,9 +15,11 @@ await new Promise((r) => probe.close(r));
 const { firefox } = await import("@playwright/test");
 const envFile = join(dir, "env");
 const password = randomBytes(24).toString("base64url");
+await mkdir(join(dir, "media"), { recursive: true, mode: 0o700 });
 await writeFile(
   envFile,
-  `POSTGRES_PASSWORD=${randomBytes(24).toString("hex")}\nAUTH_ENCRYPTION_KEY=${randomBytes(32).toString("hex")}\nADMIN_ORIGIN=https://admin.localhost:${tlsPort}\nALLOW_INSECURE_HTTP=false\nOPERATOR_EMAIL=owner@example.test\nOPERATOR_PASSWORD=${password}\nSEED_DEMO=true\nDEMO_ORIGINS=https://atlas.localhost:${tlsPort},https://notes.localhost:${tlsPort},https://library.localhost:${tlsPort}\nAPP_PORT=0\nDEMO_TLS_PORT=${tlsPort}\nIMAGE_TAG=${process.env.P1_DOCKER_IMAGE ?? id}\nPROXY_TRUST_TOKEN=${randomBytes(32).toString("hex")}\nSMTP_HOST=mailpit\nSMTP_PORT=1025\nSMTP_ALLOW_INSECURE=true\nMAIL_FROM=accounts@example.test\nAUTH_REQUIRE_EMAIL=true\n`,
+  `MEDIA_HOST_PATH=${join(dir, "media")}
+POSTGRES_PASSWORD=${randomBytes(24).toString("hex")}\nAUTH_ENCRYPTION_KEY=${randomBytes(32).toString("hex")}\nADMIN_ORIGIN=https://admin.localhost:${tlsPort}\nALLOW_INSECURE_HTTP=false\nOPERATOR_EMAIL=owner@example.test\nOPERATOR_PASSWORD=${password}\nSEED_DEMO=true\nDEMO_ORIGINS=https://atlas.localhost:${tlsPort},https://notes.localhost:${tlsPort},https://library.localhost:${tlsPort}\nAPP_PORT=0\nDEMO_TLS_PORT=${tlsPort}\nIMAGE_TAG=${process.env.P1_DOCKER_IMAGE ?? id}\nPROXY_TRUST_TOKEN=${randomBytes(32).toString("hex")}\nSMTP_HOST=mailpit\nSMTP_PORT=1025\nSMTP_ALLOW_INSECURE=true\nMAIL_FROM=accounts@example.test\nAUTH_REQUIRE_EMAIL=true\n`,
   { mode: 0o600 },
 );
 const mailOverlay = join(dir, "mail.yaml");

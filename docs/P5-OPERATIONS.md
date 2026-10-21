@@ -18,26 +18,26 @@ node -e 'require("node:fs").writeFileSync(".local/backup.env", "BACKUP_ENCRYPTIO
 在与部署完全匹配的源码目录执行（替换容器名和新备份目录）：
 
 ```bash
-node --env-file=.env --env-file=.local/backup.env scripts/backup.mjs create navigation-network-db-1 network network .local/backup-2026-10-18
+node --env-file=.env --env-file=.local/backup.env scripts/backup.mjs create navigation-network-db-1 network network .local/backup-2026-10-18 ./data/media
 ```
 
-目录必须不存在，权限 0700，包含权限 0600 的 `database.enc` 和 `manifest.json`。数据库自定义归档流式 AES-256-GCM 加密，清单作为认证附加数据，记录时间、源码摘要、版本、迁移校验和、PostgreSQL 版本、认证密钥指纹；不保存密钥。创建前实际验证库中认证实例密文可被传入密钥解开，迁移记录在备份前后核对。密文关闭前 flush；清单最后写入并 flush，再同步输出目录及父目录，全部成功才返回。目录同步依赖 Linux/POSIX 文件系统支持；同步失败按备份失败处理，不降级为成功。没有完整清单或密文认证失败的目录不能恢复。备份失败只删除本次独占创建的输出目录，已有目录不改动。文件同步不能替代异地副本、恢复演练或存储设备的持久性保证。
+目录必须不存在，权限 0700，包含权限 0600 的 `database.enc`、`media.tar.enc`（传入媒体目录时）和 `manifest.json`。数据库自定义归档流式 AES-256-GCM 加密，清单作为认证附加数据，记录时间、源码摘要、版本、迁移校验和、PostgreSQL 版本、认证密钥指纹；不保存密钥。创建前实际验证库中认证实例密文可被传入密钥解开，迁移记录在备份前后核对。密文关闭前 flush；清单最后写入并 flush，再同步输出目录及父目录，全部成功才返回。目录同步依赖 Linux/POSIX 文件系统支持；同步失败按备份失败处理，不降级为成功。没有完整清单或密文认证失败的目录不能恢复。备份失败只删除本次独占创建的输出目录，已有目录不改动。文件同步不能替代异地副本、恢复演练或存储设备的持久性保证。
 
 备份可与业务写入并行，但不得与升级迁移并行。这里采用 PostgreSQL 单库逻辑备份，不包含集群角色、tablespace 或连续 WAL 归档。需要持续恢复或更小 RPO 的部署，应另行配置 PostgreSQL 的物理备份/WAL；本工具不声称实现 PITR。[PostgreSQL pg_dump 文档](https://www.postgresql.org/docs/18/app-pgdump.html)。
 
-目前没有用户上传媒体存储，模板、静态资产和部署脚本随源码/镜像保存。若自行增加对象存储或媒体卷，须把其一致性与恢复验证加入自己的备份流程。演示 Caddy CA 卷不是数据库备份的一部分；丢失后重新生成的 CA 需要重新信任。正式 TLS 证书按部署者的证书系统管理。
+媒体文件位于 `MEDIA_HOST_PATH`（Compose 默认 `./data/media`，容器内 `/app/data/media`），不进入 PostgreSQL。备份脚本把媒体目录打成 tar 后独立 AES-256-GCM 加密为 `media.tar.enc`，清单记录 nonce/tag、明文摘要、文件数和字节数；恢复时要求目标媒体目录为空并校验摘要/数量。没有传媒体目录参数的旧备份仍可恢复，但不包含媒体。演示 Caddy CA 卷不是数据库备份的一部分；丢失后重新生成的 CA 需要重新信任。正式 TLS 证书按部署者的证书系统管理。
 
 ## 隔离恢复
 
 先取得备份创建时的源码归档、相同依赖与 PostgreSQL 主版本、原认证密钥和备份密钥。源码摘要包含操作文档、测试、构建脚本和迁移，因此修改文件后需切回对应归档；不能只比对包版本号。恢复前确保临时磁盘空间足够，使用受控主机/加密临时盘。解密暂存目录权限 0700、文件 0600，正常成功和错误都会删除；操作系统强制杀进程/断电后仍需检查临时目录。
 
 ```bash
-node --env-file=.env --env-file=.local/backup.env scripts/backup.mjs restore isolated-db network_restore network .local/backup-2026-10-18
+node --env-file=.env --env-file=.local/backup.env scripts/backup.mjs restore isolated-db network_restore network .local/backup-2026-10-18 ./data/media-restored
 ```
 
-目标 PostgreSQL 容器须事先创建好角色和连接权限（包括连接维护库 `postgres`）；`network_restore` 必须不存在。工具先完整认证密文，再读取目标服务端版本，强制与备份记录的 PostgreSQL 主版本一致；不匹配时尚未创建数据库。本工具不提供跨主版本升级恢复。检查通过后运行 `createdb --template=template0`；已有数据库（即使为空）直接拒绝，不提供 `--clean` 或覆盖开关。使用 `pg_restore --single-transaction --exit-on-error --no-owner --no-privileges`，失败则事务回滚，保留新建的空库供检查，不删除任何库。只恢复自己信任来源的归档；数据库归档可能含源库定义的可执行函数。[PostgreSQL pg_restore 文档](https://www.postgresql.org/docs/18/app-pgrestore.html)。
+目标 PostgreSQL 容器须事先创建好角色和连接权限（包括连接维护库 `postgres`）；`network_restore` 必须不存在。目标媒体目录必须为空；恢复后核对 `media.tar.enc` 解密摘要和文件数/字节。工具先完整认证密文，再读取目标服务端版本，强制与备份记录的 PostgreSQL 主版本一致；不匹配时尚未创建数据库。本工具不提供跨主版本升级恢复。检查通过后运行 `createdb --template=template0`；已有数据库（即使为空）直接拒绝，不提供 `--clean` 或覆盖开关。使用 `pg_restore --single-transaction --exit-on-error --no-owner --no-privileges`，失败则事务回滚，保留新建的空库供检查，不删除任何库。只恢复自己信任来源的归档；数据库归档可能含源库定义的可执行函数。[PostgreSQL pg_restore 文档](https://www.postgresql.org/docs/18/app-pgrestore.html)。
 
-恢复后先在隔离应用中使用原 origin/密钥检查后台登录、公众旧会话和新登录、收藏、主档、站点发布、配置及待消费任务。若需要连接新数据库，Compose 的 `APP_DATABASE=network_restore` 只选择应用数据库；初始 PostgreSQL 数据库仍为 network。切换前停止旧 web/worker 写入，保留旧卷，完成校验后再启动新服务；数据库和源站访问权限、TLS、DNS 切换由部署者执行。本轮没有切换生产或恢复旧站。
+恢复后先在隔离应用中使用原 origin/密钥检查后台登录、公众旧会话和新登录、收藏、主档、站点发布、配置、媒体文件及待消费任务。若需要连接新数据库，Compose 的 `APP_DATABASE=network_restore` 只选择应用数据库；初始 PostgreSQL 数据库仍为 network。切换前停止旧 web/worker 写入，保留旧卷，完成校验后再启动新服务；数据库和源站访问权限、TLS、DNS 切换由部署者执行。本轮没有切换生产或恢复旧站。
 
 备份调度和异地复制由部署者设置。例如每日备份的理论 RPO 取决于最后一次成功且可恢复的备份，不能据此承诺 24 小时；故障和复制失败会扩大损失窗口。本地恢复时间见 [P5 验收记录](history/P5-FINAL.md)，不等于生产故障发现、取回归档、DNS/TLS 切换的端到端 RTO。
 

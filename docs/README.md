@@ -18,6 +18,7 @@
 | --- | --- |
 | [P1 安装操作](P1-OPERATIONS.md) | Docker、HTTPS、后台、CLI、任务与升级 |
 | [P2 内容操作](P2-CONTENT.md) | 数据模型、权限、公开查询、收藏投稿、文件与 CLI |
+| [媒体/图片管理](P2-MEDIA.md) | 站点媒体库、上传校验、公开访问、删除保护与备份 |
 | [P3 认证操作](P3-AUTH.md) | 提供方配置、账号绑定/解绑、邮件、代理与会话 |
 | [P4 GitHub 操作](P4-GITHUB.md) | 来源、任务、字段审核、统计自动更新与独立发布 |
 | [P5 运维操作](P5-OPERATIONS.md) | 加密备份、隔离恢复、升级、源码归档和容量重现 |
@@ -36,6 +37,7 @@
 | [本地验收记录](ACCEPTANCE-20261020.md) | P0–P5、发行与 Docker 实际结果 |
 | [M1 验收记录](ACCEPTANCE-M1-20261021.md) | 独立账号收口、pg_trgm 搜索、测试与 Docker |
 | [M2 验收记录](ACCEPTANCE-M2-20261021.md) | 站点级 Passkey、虚拟认证器测试、升级与安全边界 |
+| [M3 验收记录](ACCEPTANCE-M3-20261021.md) | 媒体库、图片发布、加密媒体备份与恢复 |
 | [代码 Review 修复记录](CODE-REVIEW-20261021.md) | 2026-10-21 的问题、修复与保留项 |
 | [源码许可与镜像证据](SOURCE-LICENSE-DECISIONS.md) | MIT 归属、sharp 移除、六组证据 |
 | [镜像审查指南](IMAGE-REVIEW-GUIDE.md) | 逐项核对、署名格式与 AGPL 提示 |

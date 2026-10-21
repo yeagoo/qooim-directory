@@ -24,5 +24,6 @@ export function settings() {
     adminOrigin,
     key,
     development,
+    mediaRoot: process.env.MEDIA_ROOT || ".local/media",
   };
 }

@@ -69,6 +69,12 @@ P1 最小内容升级后保留版本 0 和原有标题、slug、可见性。原�
 
 ## 公开查询与多语言
 
+### 媒体与图片
+
+资源草稿的 `overrides.image` 可引用本站媒体：`{ "mediaId": "<uuid>", "alt": "说明" }`。发布时验证媒体属于本站，快照写入 `publication.image`；`public_listing.image` 输出 `/media/<uuid>` 和 alt。媒体只允许 JPEG/PNG/WebP，单文件 10 MiB，最长边 12000、总像素 4000 万；服务器按魔数和尺寸校验，拒绝 SVG/GIF 和 MIME 欺骗。首版不做服务端缩放/裁剪，避免重新引入 `sharp`/libvips；上传原图，客户端可用 CSS/`loading` 控制展示。
+
+公开 `/media/<uuid>` 仅在至少一条 `public_listing` 引用该图时返回 200，否则 404；响应为内容哈希 ETag、长缓存和 `image/*`。删除时若仍被线上记录或草稿引用返回 409。管理 API 和 UI 见 [媒体管理](P2-MEDIA.md)。
+
 所有目录、搜索、详情、分类计数、sitemap 和收藏复用 `public_listing`。必须同时满足本站有效、资源允许公开、本站记录已发布、模块启用、站点启用该语言、标题完整、分类及分类译文可用。公开结果不含主档来源、内部备注、账号空间或草稿。
 
 - `/` 与 `/{locale}/{catalogPath}`：目录、关键词和分类筛选、分页。

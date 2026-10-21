@@ -161,7 +161,7 @@ const request = (index: number, path: string) =>
 test("P2 upgrade preserves legacy publications, notes and original migration checksums", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "6",
+    "7",
   );
   const context = await app.catalog.resolve("legacy.test");
   assert.equal((await app.catalog.list(context, "zh"))[0].title, "Old content");
@@ -431,6 +431,119 @@ test("P2 trigram search ranks title matches and keeps the trigram index installe
     ).rowCount,
     1,
   );
+});
+
+test("P2 media upload, publication reference, public serving and delete guards", async () => {
+  const token = await app.sites.operators.login(admin.email, password);
+  const adminHeaders = {
+    host: new URL(origins[3]).host,
+    origin: origins[3],
+    cookie: "network_operator=" + token,
+    "content-type": "application/json",
+  };
+  const png =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+  const upload = async (alt: string, data = png, mime = "image/png") => {
+    const response = await app.respond(
+      new Request(origins[3] + "/admin/api/media", {
+        method: "POST",
+        headers: adminHeaders,
+        body: JSON.stringify({
+          site: "atlas",
+          filename: "pixel.png",
+          mime,
+          alt,
+          data,
+        }),
+      }),
+    );
+    return response;
+  };
+  const first = await upload("封面");
+  assert.equal(first.status, 201);
+  const item = await first.json();
+  assert.equal(item.mime, "image/png");
+  assert.equal(item.width, 1);
+  assert.equal(item.height, 1);
+  assert.match(item.url, /^\/media\/[0-9a-f-]{36}$/);
+  assert.equal(
+    (
+      await app.respond(
+        new Request(origins[3] + item.adminUrl, {
+          headers: {
+            host: new URL(origins[3]).host,
+            cookie: "network_operator=" + token,
+          },
+        }),
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await app.respond(request(0, item.url))).status,
+    404,
+  );
+  await resource("media-resource", "Media resource");
+  await stage("atlas", "media-resource", "zh", {
+    overrides: { image: { mediaId: item.id, alt: "资源封面" } },
+  });
+  await publish("atlas", "media-resource");
+  const page = await (
+    await app.respond(request(0, "/zh/tools/media-resource"))
+  ).text();
+  assert.match(page, new RegExp(item.url));
+  assert.match(page, /资源封面/);
+  const publicImage = await app.respond(request(0, item.url));
+  assert.equal(publicImage.status, 200);
+  assert.equal(publicImage.headers.get("content-type"), "image/png");
+  assert.match(publicImage.headers.get("cache-control") ?? "", /immutable/);
+  assert.equal(
+    (await app.respond(request(1, item.url))).status,
+    404,
+  );
+  assert.equal(
+    (
+      await app.respond(
+        new Request(origins[3] + "/admin/api/media/" + item.id, {
+          method: "DELETE",
+          headers: {
+            host: new URL(origins[3]).host,
+            origin: origins[3],
+            cookie: "network_operator=" + token,
+          },
+        }),
+      )
+    ).status,
+    409,
+  );
+
+  const png2 = Buffer.concat([
+    Buffer.from(png, "base64"),
+    Buffer.from([0]),
+  ]).toString("base64");
+  const second = await (await upload("未引用", png2)).json();
+  const removed = await app.respond(
+    new Request(origins[3] + "/admin/api/media/" + second.id, {
+      method: "DELETE",
+      headers: {
+        host: new URL(origins[3]).host,
+        origin: origins[3],
+        cookie: "network_operator=" + token,
+      },
+    }),
+  );
+  assert.equal(removed.status, 200);
+
+  const wrongType = await upload("错类型", png, "image/jpeg");
+  assert.equal(wrongType.status, 415);
+  const svg = await upload(
+    "SVG",
+    Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>').toString(
+      "base64",
+    ),
+    "image/png",
+  );
+  assert.equal(svg.status, 415);
 });
 
 test("P2 missing translations are rejected; canonical, hreflang, sitemap use trusted origin", async () => {
