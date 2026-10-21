@@ -1,16 +1,42 @@
 # Changelog
 
-## Unreleased
+## v0.2.0-rc.1 — 2026-10-21 (release candidate)
 
-- M1：独立账号收口（`legacyShared` API 开关）和 `pg_trgm` 搜索增强；P0–P5、发行测试和 Docker 通过。
-- M5：RSS/npm/通用 JSON 采集器、候选人工审核、接受只建草稿；迁移 `009-collectors.sql`；GitHub 专用同步保留。
+这是 M1–M5 的发布候选，不是稳定版。真实 OAuth、AI 供应商、RSS/npm 外网源和真实 Passkey 设备尚未验收；公开发布仍为 NO-GO（见 [整合验收](docs/ACCEPTANCE-INTEGRATION-20261021.md)）。
+
+### Added
+
+- M1：新站点固定独立账号；共享账号中心标记 legacy；`pg_trgm` GIN 搜索与相关度排序；迁移 `006-search.sql`。
+- M2：站点级 Passkey 注册/登录/删除（不做 MFA）；`@better-auth/passkey@1.7.10`；升级后需对每个独立账号/中心执行 `auth-upgrade`。
+- M3：站点级媒体库、图片发布/公开访问、删除引用保护；加密媒体归档备份/恢复；迁移 `007-media.sql`；不引入 sharp。
 - M4：站点级 AI 生成/翻译/SEO、异步 Worker、密钥封装、月度预算与 SSRF 防护；迁移 `008-ai.sql`；人工确认后才可进入草稿。
-- M3：站点级媒体库/图片发布/公开访问、加密媒体备份与恢复；迁移 `007-media.sql`；不引入 sharp。
-- M2：站点级 Passkey 注册/登录/删除（不做 MFA）；新增 `@better-auth/passkey@1.7.10`；P3 37/37、Docker 通过；升级后需对每个独立账号/中心执行 `auth-upgrade`。
+- M5：RSS/npm/通用 JSON 采集器、统一候选审核、接受只建草稿；迁移 `009-collectors.sql`；GitHub 专用同步保留。
 
-- 新站点创建固定使用独立账号；API 新共享站点需要显式 `legacyShared: true`；共享账号中心标记为 legacy，仅保留既有部署兼容。
-- 搜索迁移到 PostgreSQL `pg_trgm` GIN 索引，增加相关度排序；短查询允许回退。
-- 新增迁移 `006-search.sql`；升级需要数据库允许 `CREATE EXTENSION pg_trgm`。
+### Verified
+
+- `pnpm check`、`pnpm build`、`pnpm test:release` 69/69 通过。
+- P0 48/48、P1 88/88、P2 137/137、P3 39/39、P4 30/30、P5 11/11。
+- Docker 整合验收通过：空库/三站/HTTPS/共享登录、内容、媒体上传/公开访问、搜索、AI 配置、采集来源、GitHub、Worker 重启和数据库恢复。
+- `pnpm release:check`、`pnpm release:check:image` 通过；QooIM 已确认当前六组镜像 evidence（2026-10-21）。
+- 最终 RC 验收镜像：`sha256:8d213bed...`。
+
+### Known limitations / blockers
+
+- 真实 GitHub/Google OAuth 未配置（preflight 2 个警告）；受控 OIDC 已测试。
+- 真实 AI provider 未联调；当前使用注入传输。
+- 真实 RSS/npm 外网源未联调；当前使用受控 fixture。
+- Passkey 只用 Chromium 虚拟认证器，未做真实设备/平台同步验收。
+- GitHub 仍是独立专用同步链路，未迁移到统一 collector 表。
+- PostgreSQL `pg_trgm` 需要数据库权限或托管服务预装。
+- 媒体绑定目录必须让容器 UID 1000 可写，并纳入备份。
+- 没有生产容量/SLA、真实 SMTP 退信演练或主机级灾难切换认证。
+
+### Upgrade
+
+- 应用迁移 `006-search.sql`…`009-collectors.sql`；`pg_trgm` 需要扩展权限。
+- 已有 auth instance 需执行 `pnpm cli auth-upgrade <site>` 建立 Passkey 表。
+- Compose 需设置可写的 `MEDIA_HOST_PATH`（默认 `./data/media`），并备份媒体目录。
+- 共享账号中心仅作为既有部署兼容，不再新增。
 
 ## v0.1.0 — 2026-10-21 (source preview)
 

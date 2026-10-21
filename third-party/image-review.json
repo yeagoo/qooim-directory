@@ -5,7 +5,7 @@
     "compose.yaml": "c1e00390f8652064219ffdb83c6544905d925e028689eefe7a43ac4d2cbdc6e4",
     "compose.demo.yaml": "b99944fbac97da67ff18a64492b42452b9cfad274852ead04eee76567220a373",
     "pnpm-lock.yaml": "6c78cd34d2039c03f65eacab5795a9cbec983b7e17882aec07b0fcbdaebdc986",
-    "package.json": "0d2a742980e684acd544d1e2f659c95fbff906c7702cacd7a67d7b371813f8ca",
+    "package.json": "a9f6eb697f40eb6c25e56397f1175e33efac13b50f52799beeda8b71e951771c",
     ".dockerignore": "cfbe4fb99779a91497d6b385517c634579e832a12710813eeaa80209981a3596"
   },
   "scopes": [
@@ -16,7 +16,7 @@
       "evidence": [
         {
           "file": "third-party/image-evidence/node-base.json",
-          "sha256": "32824311e4a45635115f3e4f5c1c9a4ba8b7b747410ebf036397d8cd16efcb4a"
+          "sha256": "6b01f0fcdedcec04f956322abc83de5e8ef39020a777ca7c848d94d09f9a3809"
         }
       ],
       "reviewer": "QooIM",
@@ -29,7 +29,7 @@
       "evidence": [
         {
           "file": "third-party/image-evidence/global-pnpm.json",
-          "sha256": "d6ce143aca05d57d1d19660b5fb4f7be3805e87aeb656b411e3d9d6ad70d9a36"
+          "sha256": "d1d0a520d9a3284bdd7498591af7629a6d699de1ec93381b76e1f6ec2cf6f4c1"
         }
       ],
       "reviewer": "QooIM",
@@ -42,7 +42,7 @@
       "evidence": [
         {
           "file": "third-party/image-evidence/next-swc.json",
-          "sha256": "a986b5fc7df398f57d692e44284cd060428d8d1b5d35c51c9c8d7dbfcc15a33b"
+          "sha256": "4836a0030c700616af7fa173a40bd0f1ce59082ef3fd4abe145bdaf7b2ed6948"
         }
       ],
       "reviewer": "QooIM",
@@ -55,7 +55,7 @@
       "evidence": [
         {
           "file": "third-party/image-evidence/esbuild.json",
-          "sha256": "6f334afa63f91ae6c4b6c0e349958a0757a2b87e9427c7377afa1115f869a69f"
+          "sha256": "ebd5e459c9c46f7fd8c5d0e26ae571ac8a1e714ff799a0768972e048b4255724"
         }
       ],
       "reviewer": "QooIM",
@@ -68,7 +68,7 @@
       "evidence": [
         {
           "file": "third-party/image-evidence/postgres-image.json",
-          "sha256": "7cf18b014494fecf70df729d82e02d4b8fd23511f1209542e8f6fbc317641233"
+          "sha256": "a7857d495b4744fdf6e638bb3ba9c604cf198b4c9f0ad014bad08941a47f7970"
         }
       ],
       "reviewer": "QooIM",
@@ -81,7 +81,7 @@
       "evidence": [
         {
           "file": "third-party/image-evidence/demo-proxy-image.json",
-          "sha256": "a7ae89fe77a2b29ef48ead9a9d69758d3ad16bfadf412bd2be7c33d9fc8bddd6"
+          "sha256": "e2eff81acad9d7ee92d53c269e4aa70970213895893288eba23958fb4042f2b5"
         }
       ],
       "reviewer": "QooIM",
@@ -92,10 +92,10 @@
   "confirmation": {
     "reviewer": "QooIM",
     "confirmedAt": "2026-10-21",
-    "candidateRevision": "a72c16e",
-    "applicationImage": "sha256:6f4c4af3891d3c50bf116049061c0ccf56829f6c9549f1742dbd5f66ac0769a2",
+    "targetTag": "v0.2.0-rc.1",
+    "applicationImage": "sha256:8d213bed11cf2b8b80d45566f452094aa8ede39b546397705a884ae9a368af09",
     "basis": "docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261021.md",
-    "scope": "Current six inventory/identity evidence sets; limitations accepted for internal RC.",
+    "scope": "Current six inventory/identity evidence sets for v0.2.0-rc.1; limitations accepted for internal RC.",
     "legalAdvice": false
   }
 }
