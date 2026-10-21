@@ -25,6 +25,8 @@ import { GithubSources } from "./github.js";
 import { githubHttp } from "./github-http.js";
 import { Content } from "./content.js";
 import { contentHttp } from "./content-http.js";
+import { AiService } from "./ai.js";
+import { aiHttp } from "./ai-http.js";
 import { Media } from "./media.js";
 import { mediaHttp } from "./media-http.js";
 import { Personal } from "./personal.js";
@@ -46,6 +48,7 @@ export class Application {
   readonly github: GithubSources;
   readonly audit: AuditLog;
   readonly media: Media;
+  readonly ai: AiService;
   private assets = new Map<string, { body: string; etag: string }>();
   constructor(
     readonly pool: Pool,
@@ -76,6 +79,7 @@ export class Application {
     this.github = new GithubSources(pool, this.content);
     this.audit = new AuditLog(pool);
     this.media = new Media(pool, config.mediaRoot ?? ".local/media");
+    this.ai = new AiService(pool, config.key);
   }
   async close() {
     await this.auth.close();
@@ -309,6 +313,8 @@ export class Application {
                 ? "vendor/simplewebauthn.js"
                 : path === "/assets/media-admin.js" && admin
                   ? "media-admin.js"
+                  : path === "/assets/ai-admin.js" && admin
+                    ? "ai-admin.js"
                   : path === "/assets/github-admin.js" && admin
               ? "github-admin.js"
               : path === "/assets/content-admin.js" && admin
@@ -413,6 +419,14 @@ export class Application {
         () => this.body(request),
       );
       if (contentResponse) return contentResponse;
+      const aiResponse = await aiHttp(
+        this.ai,
+        operator,
+        action,
+        request,
+        () => this.body(request),
+      );
+      if (aiResponse) return aiResponse;
       const mediaResponse = await mediaHttp(
         this.media,
         this.content,

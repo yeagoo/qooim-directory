@@ -16,6 +16,7 @@ import { migrate } from "../../src/server/migrate.js";
 import { Application } from "../../src/server/http.js";
 import { AuthRegistry, prefix } from "../../src/server/auth.js";
 import { runJobs } from "../../src/server/jobs.js";
+import { AiWorker } from "../../src/server/ai.js";
 import { configSchema } from "../../src/domain/config.js";
 import { HttpError, type Operator } from "../../src/server/operators.js";
 import { personalPage, directoryPage } from "../../src/ui/directory.js";
@@ -161,7 +162,7 @@ const request = (index: number, path: string) =>
 test("P2 upgrade preserves legacy publications, notes and original migration checksums", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "7",
+    "8",
   );
   const context = await app.catalog.resolve("legacy.test");
   assert.equal((await app.catalog.list(context, "zh"))[0].title, "Old content");
@@ -544,6 +545,92 @@ test("P2 media upload, publication reference, public serving and delete guards",
     "image/png",
   );
   assert.equal(svg.status, 415);
+});
+
+test("P2 AI config seals the key and worker output stays a manual suggestion", async () => {
+  await assert.rejects(
+    app.ai.saveConfig(admin, {
+      site: "atlas",
+      endpoint: "https://localhost/v1/chat/completions",
+      model: "test-model",
+      key: "test-key-123456",
+      enabled: true,
+      monthlyTokens: 1000,
+    }),
+  );
+  const config = await app.ai.saveConfig(admin, {
+    site: "atlas",
+    endpoint: "https://provider.example.test/v1/chat/completions",
+    model: "test-model",
+    key: "test-key-123456",
+    enabled: true,
+    monthlyTokens: 1000,
+  });
+  assert.equal(config.hasKey, true);
+  assert.equal(JSON.stringify(config).includes("test-key-123456"), false);
+  const sealed = (
+    await pool.query("SELECT sealed_key FROM ai_config WHERE site_id='atlas'")
+  ).rows[0].sealed_key as string;
+  assert.equal(sealed.includes("test-key-123456"), false);
+
+  const job = await app.ai.create(admin, {
+    site: "atlas",
+    kind: "generate",
+    locale: "zh",
+    title: "原题",
+    description: "原说明",
+    brief: "更简洁",
+  });
+  const worker = new AiWorker(pool, key, async (input) => {
+    assert.equal(input.model, "test-model");
+    assert.match(input.messages[1].content, /原说明/);
+    return {
+      output: { title: "AI 标题", description: "AI 说明" },
+      tokensIn: 12,
+      tokensOut: 7,
+      model: "test-model",
+    };
+  });
+  assert.equal(await worker.runOnce(), true);
+  const done = await app.ai.job(admin, "atlas", job.id);
+  assert.equal(done.status, "done");
+  assert.deepEqual(done.output, { title: "AI 标题", description: "AI 说明" });
+  assert.equal(done.tokens.input, 12);
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT count(*)::int AS count FROM publication WHERE resource_id='ai-resource'",
+      )
+    ).rows[0].count,
+    0,
+  );
+
+  await pool.query("UPDATE ai_job SET tokens_in=1000 WHERE id=$1", [job.id]);
+  await assert.rejects(
+    app.ai.create(admin, {
+      site: "atlas",
+      kind: "generate",
+      locale: "zh",
+      title: "预算",
+    }),
+    /预算/,
+  );
+  await app.ai.saveConfig(admin, {
+    site: "atlas",
+    endpoint: "https://provider.example.test/v1/chat/completions",
+    model: "test-model",
+    enabled: false,
+    monthlyTokens: 1000,
+  });
+  await assert.rejects(
+    app.ai.create(admin, {
+      site: "atlas",
+      kind: "generate",
+      locale: "zh",
+      title: "原题",
+    }),
+    /未启用/,
+  );
 });
 
 test("P2 missing translations are rejected; canonical, hreflang, sitemap use trusted origin", async () => {

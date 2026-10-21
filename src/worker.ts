@@ -13,7 +13,7 @@ for (const signal of ["SIGINT", "SIGTERM"])
 try {
   while (!stopping) {
     try {
-      await runJobs(pool, auth);
+      await runJobs(pool, auth, config.key);
     } catch {
       console.error("Worker iteration failed; durable tasks will retry");
     }

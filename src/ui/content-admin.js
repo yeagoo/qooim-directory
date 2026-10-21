@@ -575,7 +575,7 @@ export async function renderContent(
     baselineText = "",
     category = null,
     operation = crypto.randomUUID();
-  root.innerHTML = `<a href="#site/${escape(site)}">← 站点配置</a><span class="eyebrow"> / CONTENT DESK</span><h1>本站内容 · ${escape(site)}</h1><section class="panel"><h2>发布记录</h2>${bulk ? `<div class="actions"><button class="secondary" id="bulk-select-drafts">选择有草稿</button><button id="bulk-publish">批量发布选中</button><span class="muted" id="bulk-status">选择有草稿的记录</span></div>` : ""}<div class="table-wrap"><table id="publication-list"><thead><tr>${bulk ? "<th>选择</th>" : ""}<th>资源 / 语言</th><th>线上状态</th><th>主档</th><th>操作</th></tr></thead><tbody>${publicationRows(publications, bulk)}</tbody></table></div></section><section class="panel"><h2>内容草稿</h2><div class="split"><div><label for="publication-resource">资源标识</label><input id="publication-resource"><label for="publication-locale">语言</label><select id="publication-locale"><option value="zh">中文</option><option value="en">English</option></select></div><div><label for="publication-candidate">完整候选 JSON</label><textarea id="publication-candidate"></textarea></div></div><div class="actions"><button id="stage-content">保存草稿</button><button id="publish-content">发布草稿</button><button id="preview-content" class="secondary">预览</button><button id="diff-content" class="secondary">载入并比较主档新版</button><button id="diagnose-content" class="secondary">检查可见性</button><button id="unpublish-content" class="secondary">下架</button><button id="new-content" class="secondary">分发新资源</button></div><p class="muted">overrides 只覆盖本站文案；比较新版优先保留已保存草稿，没有草稿时采用线上记录。请先保存本页编辑再比较。保存草稿不更改线上内容。</p><pre id="content-result"></pre></section><section class="panel"><h2>本站分类</h2><div class="actions" id="category-choices">${categoryButtons(categories)}</div><div class="split"><div><label for="category-id">标识</label><input id="category-id"><label for="category-labels">名称 JSON</label><input id="category-labels" value='{"zh":"新分类"}'></div><div><label for="category-rank">排序（较小的在前）</label><input id="category-rank" type="number" value="0"><label><input type="checkbox" id="category-active" checked>启用分类</label></div></div><div class="actions"><button id="save-category">保存分类</button><button id="new-category" class="secondary">新增分类</button></div></section><section class="panel"><h2>投稿审核</h2>${submissions.map((s, i) => `<article class="resource"><strong>${escape(s.data.title)}</strong><p>${escape(s.data.url)}</p><p>${escape(s.data.description)}</p><p class="muted review-status">${escape(s.status)} · ${escape(s.note)}</p>${s.resource_id ? `<p class="project-facts review-resource">生成草稿资源：${escape(s.resource_id)}</p>` : ""}${s.status === "pending" ? `<label for="review-note-${i}">审核说明</label><input id="review-note-${i}" maxlength="500"><div class="actions"><button class="review" data-index="${i}" data-decision="accepted">接受为资源草稿</button><button class="review secondary" data-index="${i}" data-decision="rejected">拒绝</button></div>` : ""}</article>`).join("") || '<p class="muted">暂无投稿。</p>'}</section>`;
+  root.innerHTML = `<a href="#site/${escape(site)}">← 站点配置</a><span class="eyebrow"> / CONTENT DESK</span><h1>本站内容 · ${escape(site)}</h1><section class="panel"><h2>发布记录</h2>${bulk ? `<div class="actions"><button class="secondary" id="bulk-select-drafts">选择有草稿</button><button id="bulk-publish">批量发布选中</button><span class="muted" id="bulk-status">选择有草稿的记录</span></div>` : ""}<div class="table-wrap"><table id="publication-list"><thead><tr>${bulk ? "<th>选择</th>" : ""}<th>资源 / 语言</th><th>线上状态</th><th>主档</th><th>操作</th></tr></thead><tbody>${publicationRows(publications, bulk)}</tbody></table></div></section><section class="panel"><h2>内容草稿</h2><div class="split"><div><label for="publication-resource">资源标识</label><input id="publication-resource"><label for="publication-locale">语言</label><select id="publication-locale"><option value="zh">中文</option><option value="en">English</option></select></div><div><label for="publication-candidate">完整候选 JSON</label><textarea id="publication-candidate"></textarea></div></div><div class="actions"><button id="stage-content">保存草稿</button><button id="publish-content">发布草稿</button><button id="preview-content" class="secondary">预览</button><button id="diff-content" class="secondary">载入并比较主档新版</button><button id="diagnose-content" class="secondary">检查可见性</button><button id="unpublish-content" class="secondary">下架</button><button id="new-content" class="secondary">分发新资源</button></div><p class="muted">overrides 只覆盖本站文案；比较新版优先保留已保存草稿，没有草稿时采用线上记录。请先保存本页编辑再比较。保存草稿不更改线上内容。</p><pre id="content-result"></pre></section><section class="panel"><h2>AI 辅助</h2><p class="muted">只生成候选文案，不会自动保存或发布。需要先在站点页“AI 设置”启用并配置供应商。</p><div class="split"><div><label for="ai-kind">操作</label><select id="ai-kind"><option value="generate">生成/改写标题与说明</option><option value="translate">翻译标题与说明</option><option value="seo">生成 SEO 标题与说明</option></select><label for="ai-brief">额外要求（可选）</label><input id="ai-brief" maxlength="500" placeholder="例如：更简洁，面向开发者"></div></div><div class="actions"><button id="ai-run">生成建议</button><button id="ai-apply" class="secondary" disabled>应用到候选 JSON</button></div><pre id="ai-result"></pre></section><section class="panel"><h2>本站分类</h2><div class="actions" id="category-choices">${categoryButtons(categories)}</div><div class="split"><div><label for="category-id">标识</label><input id="category-id"><label for="category-labels">名称 JSON</label><input id="category-labels" value='{"zh":"新分类"}'></div><div><label for="category-rank">排序（较小的在前）</label><input id="category-rank" type="number" value="0"><label><input type="checkbox" id="category-active" checked>启用分类</label></div></div><div class="actions"><button id="save-category">保存分类</button><button id="new-category" class="secondary">新增分类</button></div></section><section class="panel"><h2>投稿审核</h2>${submissions.map((s, i) => `<article class="resource"><strong>${escape(s.data.title)}</strong><p>${escape(s.data.url)}</p><p>${escape(s.data.description)}</p><p class="muted review-status">${escape(s.status)} · ${escape(s.note)}</p>${s.resource_id ? `<p class="project-facts review-resource">生成草稿资源：${escape(s.resource_id)}</p>` : ""}${s.status === "pending" ? `<label for="review-note-${i}">审核说明</label><input id="review-note-${i}" maxlength="500"><div class="actions"><button class="review" data-index="${i}" data-decision="accepted">接受为资源草稿</button><button class="review secondary" data-index="${i}" data-decision="rejected">拒绝</button></div>` : ""}</article>`).join("") || '<p class="muted">暂无投稿。</p>'}</section>`;
   root
     .querySelector(".table-wrap")
     .insertAdjacentHTML(
@@ -919,6 +919,78 @@ export async function renderContent(
       { expectedVersion: expected().published },
       "本站内容已下架。",
     );
+  });
+  let aiOutput = null,
+    aiBusy = false;
+  const aiResult = root.querySelector("#ai-result"),
+    aiApply = root.querySelector("#ai-apply");
+  aiApply.addEventListener("click", () => {
+    if (!aiOutput) return;
+    try {
+      const candidate = JSON.parse(
+        root.querySelector("#publication-candidate").value,
+      );
+      candidate.overrides = candidate.overrides ?? {};
+      for (const key of ["title", "description", "seoTitle", "seoDescription"])
+        if (aiOutput[key]) candidate.overrides[key] = aiOutput[key];
+      root.querySelector("#publication-candidate").value = JSON.stringify(
+        candidate,
+        null,
+        2,
+      );
+      editor.change();
+      aiResult.textContent = "已写入候选 JSON，仍需保存草稿并人工发布。";
+    } catch (error) {
+      notice("候选 JSON 无法解析：" + error.message, true);
+    }
+  });
+  bind(root, "ai-run", notice, async () => {
+    if (aiBusy) return;
+    const candidate = JSON.parse(
+      root.querySelector("#publication-candidate").value,
+    );
+    const title =
+      candidate.overrides?.title ??
+      selected?.title ??
+      "";
+    const description =
+      candidate.overrides?.description ??
+      selected?.description ??
+      "";
+    if (!title && !description)
+      throw new Error("当前候选没有标题或说明可供 AI 参考");
+    aiBusy = true;
+    aiApply.disabled = true;
+    aiOutput = null;
+    aiResult.textContent = "已提交，等待 Worker…";
+    try {
+      const created = await api("/ai/jobs", {
+        site,
+        kind: root.querySelector("#ai-kind").value,
+        locale: root.querySelector("#publication-locale").value,
+        title: title || undefined,
+        description: description || undefined,
+        brief: root.querySelector("#ai-brief").value.trim(),
+      });
+      for (let i = 0; i < 40; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 750));
+        const job = await api(
+          "/ai/jobs/" + encodeURIComponent(created.id) + "?site=" + encodeURIComponent(site),
+        );
+        if (job.status === "failed") throw new Error(job.error || "AI 生成失败");
+        if (job.status === "done") {
+          aiOutput = job.output;
+          aiResult.textContent = JSON.stringify(job.output, null, 2);
+          aiApply.disabled = false;
+          notice("AI 建议已生成，请人工检查后应用。");
+          return;
+        }
+        aiResult.textContent = "处理中…";
+      }
+      throw new Error("AI 任务超时，请稍后在任务记录中检查");
+    } finally {
+      aiBusy = false;
+    }
   });
   let categorySelection = 0;
   const categoryNode = root.querySelector("#category-id");

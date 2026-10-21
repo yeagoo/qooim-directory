@@ -2,7 +2,12 @@ import type { Pool } from "pg";
 import { OutboxWorker } from "../domain/outbox.js";
 import { GithubWorker } from "./github.js";
 import { AuthRegistry } from "./auth.js";
-export async function runJobs(pool: Pool, auth: AuthRegistry) {
+import { AiWorker } from "./ai.js";
+export async function runJobs(
+  pool: Pool,
+  auth: AuthRegistry,
+  key?: string,
+) {
   const errors: unknown[] = [];
   const attempt = async (task: () => Promise<unknown>) => {
     try {
@@ -34,6 +39,7 @@ export async function runJobs(pool: Pool, auth: AuthRegistry) {
     await github.runOnce();
   });
   // Bound SMTP work per iteration so a failing transport cannot starve maintenance.
+  if (key) await attempt(() => new AiWorker(pool, key).runOnce());
   await attempt(() => auth.mail.runOnce());
   await attempt(() => auth.maintain());
   // Keep the last successful heartbeat: partial progress must not hide a failure.

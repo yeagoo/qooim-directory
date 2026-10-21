@@ -1,7 +1,7 @@
 {
   "format": 1,
   "scope": "postgres-image",
-  "collectedAt": "2026-10-21T05:30:53.275Z",
+  "collectedAt": "2026-10-21T06:08:02.131Z",
   "collectorSha256": "3dddccb155f34bad6cdc203737fab04d6ce8cfffc152fddc581d59ef7b3bbb37",
   "image": {
     "reference": "postgres@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873",

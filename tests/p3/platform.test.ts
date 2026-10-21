@@ -858,6 +858,44 @@ test("P3 admin media library uploads an image and renders its preview", async ()
   }
 });
 
+test("P3 admin AI settings save a key without echoing it and expose the content AI panel", async () => {
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  await context.addCookies([
+    {
+      name: "network_operator",
+      value: await app.sites.operators.login(admin.email, password),
+      url: origins[3],
+    },
+  ]);
+  const page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  try {
+    await page.goto(origins[3] + "/admin#ai/atlas");
+    await page.locator("#ai-endpoint").waitFor();
+    await page.locator("#ai-endpoint").fill(
+      "https://provider.example.test/v1/chat/completions",
+    );
+    await page.locator("#ai-model").fill("test-model");
+    await page.locator("#ai-key").fill("test-key-123456");
+    await page.locator("#ai-enabled").check();
+    await page.locator("#save-ai").click();
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector("#ai-state")
+          ?.textContent?.includes("已保存 API Key"),
+    );
+    assert.equal(await page.locator("#ai-key").inputValue(), "");
+    await page.goto(origins[3] + "/admin#content/atlas");
+    await page.locator("#ai-run").waitFor();
+    assert.equal(await page.locator("#ai-kind").count(), 1);
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+});
+
 test("P3 explicit provider linking and unlinking works end to end", async () => {
   await app.auth.providers.set(admin, "atlas", {
     id: "oidc-lab",
