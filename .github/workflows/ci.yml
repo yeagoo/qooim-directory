@@ -29,7 +29,9 @@ jobs:
       - run: pnpm check
       - run: pnpm build
       - run: pnpm test:release
+      # The source gate is pinned to the linux/arm64 dependency set.
       - run: pnpm release:check
+        if: runner.arch == 'ARM64'
 
   # Full P0-P5 and Docker acceptance currently require the pinned linux/arm64
   # image evidence and passwordless Docker/sudo. Keep it as a manual arm64
