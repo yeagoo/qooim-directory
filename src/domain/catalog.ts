@@ -104,18 +104,24 @@ export class Catalog {
         limit: z.coerce.number().int().min(1).max(100).default(24),
       })
       .parse(input);
+    const q = options.q.trim().replace(/[%_]/g, " ").slice(0, 200);
     const { rows } = await this.pool.query(
       `WITH filtered AS (
-      SELECT p.resource_id,p.slug,p.title,p.description,p.url,p.locale,p.category_id,p.rank,p.version,p.seo_title,p.seo_description,p.project FROM public_listing p
-      WHERE p.site_id=$1 AND p.locale=$2 AND strpos(lower(p.title||' '||p.description),lower($3))>0
+      SELECT p.resource_id,p.slug,p.title,p.description,p.url,p.locale,p.category_id,p.rank,p.version,p.seo_title,p.seo_description,p.project,
+        CASE WHEN $3='' THEN 0
+          ELSE similarity(lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description),lower($3))
+        END AS score
+      FROM public_listing p
+      WHERE p.site_id=$1 AND p.locale=$2
+      AND ($3='' OR lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description) LIKE '%'||lower($3)||'%')
       AND ($4::text IS NULL OR p.category_id=$4)
       AND ($5::uuid IS NULL OR EXISTS(SELECT 1 FROM favorite f WHERE f.site_id=p.site_id AND f.resource_id=p.resource_id AND f.user_id=$5))
-    ), paged AS(SELECT * FROM filtered ORDER BY rank,slug LIMIT $6 OFFSET $7)
-    SELECT (SELECT count(*)::int FROM filtered) AS total,COALESCE((SELECT jsonb_agg(to_jsonb(paged) ORDER BY rank,slug) FROM paged),'[]'::jsonb) AS items`,
+    ), paged AS(SELECT * FROM filtered ORDER BY score DESC,rank,slug LIMIT $6 OFFSET $7)
+    SELECT (SELECT count(*)::int FROM filtered) AS total,COALESCE((SELECT jsonb_agg(to_jsonb(paged)-'score' ORDER BY score DESC,rank,slug) FROM paged),'[]'::jsonb) AS items`,
       [
         ctx.siteId,
         options.locale,
-        options.q,
+        q,
         options.category ?? null,
         favoriteUser ?? null,
         options.limit,

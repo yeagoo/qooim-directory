@@ -83,6 +83,7 @@ before(async () => {
       name: ["灵感地图", "开发札记", "资源书房"][index],
       origin: origins[index],
       centerSite: index === 1 ? "atlas" : null,
+      legacyShared: index === 1,
     });
 });
 after(async () => {
@@ -92,10 +93,22 @@ after(async () => {
   await pool?.end();
 });
 
+test("P1 new sites require an independent account space unless legacy is explicit", async () => {
+  await assert.rejects(
+    app.sites.create(admin, {
+      id: "new-shared-rejected",
+      name: "Rejected shared",
+      origin: "https://new-shared-rejected.example.test",
+      centerSite: "atlas",
+    }),
+    /独立账号空间/,
+  );
+});
+
 test("P1 migrations are repeatable, reject checksum drift, and rollback a failed upgrade", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "5",
+    "6",
   );
   const dir = await mkdtemp(join(tmpdir(), "network-migrations-"));
   try {
@@ -864,6 +877,7 @@ test("P1 localized page and module disable use authoritative public visibility",
       name: "Invalid",
       origin: "http://insecure.example.test",
       centerSite: "atlas",
+      legacyShared: true,
     }),
   );
 });
@@ -1498,6 +1512,7 @@ test("control permission review: shared site creation waits then rejects disable
         name: "Shared",
         origin: "https://control-shared.example.test",
         centerSite: "atlas",
+        legacyShared: true,
       })
       .then(
         () => null,
@@ -2625,7 +2640,7 @@ async function overviewPageFixture() {
     id: "new-site",
     name: "新站点",
     origin: "https://new-site.example.test",
-    centerSite: "atlas",
+    centerSite: null,
   };
   await page.route("**/admin/api/me", (r) => r.fulfill({ json: admin }));
   await page.route("**/admin/api/sites", (r) => r.fulfill({ json: listing }));
@@ -2641,7 +2656,6 @@ async function overviewPageFixture() {
     await page.locator("#site-id").fill(payload.id);
     await page.locator("#site-name").fill(payload.name);
     await page.locator("#site-origin").fill(payload.origin);
-    await page.locator("#center").selectOption("atlas");
   };
   const settle = () =>
     page.evaluate(
@@ -2681,7 +2695,7 @@ test("overview review: pending creation freezes its payload and rejects duplicat
     await entered;
     await f.settle();
     assert.equal(posts, 1);
-    for (const id of ["site-id", "site-name", "site-origin", "center"])
+    for (const id of ["site-id", "site-name", "site-origin"])
       assert.equal(await f.page.locator("#" + id).isDisabled(), true);
     release();
   } finally {
@@ -2832,7 +2846,6 @@ test("overview review: rejected creation preserves values and restores editing",
         "SITE-ALREADY-EXISTS",
     );
     assert.equal(await f.page.locator("#site-id").inputValue(), f.payload.id);
-    assert.equal(await f.page.locator("#center").inputValue(), "atlas");
     assert.equal(await f.page.locator("#site-name").isEnabled(), true);
     assert.equal(await f.page.locator("#create").isEnabled(), true);
   } finally {
@@ -2941,7 +2954,6 @@ test("overview review: manual refresh is exclusive, recovers and preserves the c
       await f.page.locator("#site-origin").inputValue(),
       f.payload.origin,
     );
-    assert.equal(await f.page.locator("#center").inputValue(), "atlas");
   } finally {
     release();
     await f.context.close();
@@ -2949,25 +2961,16 @@ test("overview review: manual refresh is exclusive, recovers and preserves the c
   }
 });
 
-test("overview review: missing shared center requires a new explicit choice", async () => {
+test("overview review: creation defaults to an independent account space", async () => {
   const f = await overviewPageFixture();
   try {
     await f.open();
-    await f.prepare();
-    f.listing.splice(0);
-    const response = f.page.waitForResponse((r) => r.url().endsWith("/sites"));
-    await f.page.locator("#refresh-sites").click();
-    await (await response).finished();
-    await f.settle();
-    assert.equal(await f.page.locator("#center").inputValue(), "atlas");
-    assert.equal(await f.page.locator("#create").isDisabled(), true);
-    assert.match(
-      await f.page.locator("#center option:checked").innerText(),
-      /请重新选择/,
-    );
-    await f.page.locator("#center").selectOption("");
+    assert.equal(await f.page.locator("#center").count(), 0);
     assert.equal(await f.page.locator("#create").isEnabled(), true);
-    assert.equal(await f.page.locator("#site-id").inputValue(), f.payload.id);
+    assert.match(
+      await f.page.locator("section.panel", { hasText: "创建新站点" }).innerText(),
+      /独立账号空间/,
+    );
   } finally {
     await f.context.close();
     await f.browser.close();

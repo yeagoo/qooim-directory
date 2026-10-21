@@ -12,7 +12,7 @@ pnpm init:env
 docker compose -f compose.yaml -f compose.demo.yaml up -d --build
 ```
 
-后台：`https://admin.localhost:8443/admin`。三个示例站为 `https://atlas.localhost:8443`、`https://notes.localhost:8443`、`https://library.localhost:8443`。Atlas 与 Notes 共享账号，Library 独立；同一邮箱在 Library 需要单独注册。后台账号独立于公众账号，初始邮箱和密码从本机 `.env` 的 `OPERATOR_EMAIL`、`OPERATOR_PASSWORD` 读取。
+后台：`https://admin.localhost:8443/admin`。三个示例站为 `https://atlas.localhost:8443`、`https://notes.localhost:8443`、`https://library.localhost:8443`。演示数据中 Atlas 与 Notes 仍使用既有共享账号，Library 独立；**新站点只创建独立账号空间**，共享中心仅作为既有部署兼容保留。后台账号独立于公众账号，初始邮箱和密码从本机 `.env` 的 `OPERATOR_EMAIL`、`OPERATOR_PASSWORD` 读取。
 
 代理只绑定本机回环地址。远程服务器可通过 SSH 转发本机 8443 端口访问，勿把 `.localhost` 当成公网域名。若修改演示端口，同时修改 `DEMO_TLS_PORT`、`ADMIN_ORIGIN` 和三项 `DEMO_ORIGINS`；已初始化实例的 origin 不支持直接修改，须使用另一个全新演示项目。
 
@@ -50,7 +50,7 @@ docker compose -f compose.yaml -f compose.demo.yaml logs --tail 100 init web wor
 
 ## 后台操作
 
-1. 总览创建站点：填写独立域名、名称和稳定标识，选择独立账号或共享一个独立账号中心。DNS、TLS 和代理域名仍由部署者配置；本地演示代理仅含四个演示域名。
+1. 总览创建站点：填写独立域名、名称和稳定标识。**新站点固定使用独立账号空间**；共享账号中心不再出现在新建表单中，既有共享站点仍可编辑。通过 API 创建共享站点必须显式传 `legacyShared: true`，否则返回 400；该开关只用于兼容既有部署。DNS、TLS 和代理域名仍由部署者配置；本地演示代理仅含四个演示域名。
 2. 等待账号服务就绪；失败可在“运行任务”查看阶段错误并重试。域名、账号中心和密钥不进入普通配置文件。
 3. 配置页编辑名称、介绍、语言、模块和完整 JSON；导入文件先校验并显示差异。已有共享草稿需要显式勾选替换，过期版本返回冲突并保留输入。
 4. 保存草稿后可通过受保护窗口预览。发布产生更高修订；恢复历史只生成新草稿，再发布才能上线。
@@ -60,7 +60,7 @@ docker compose -f compose.yaml -f compose.demo.yaml logs --tail 100 init web wor
 
 配置页写入成功但刷新失败时保留确认，用“刷新并保留编辑”确认状态；“放弃本页编辑并载入服务器配置”才会主动替换本地内容。发布、启停和历史恢复保留未提交配置并提示；读取到新版本时旧替换勾选失效，需要重新比较确认，详见[配置编辑 Review](history/CONFIG-EDITOR-REVIEW.md)。
 
-总览创建和列表刷新互斥。创建已确认而列表读取失败时，使用“刷新列表”恢复；只读刷新保留未提交建站输入。原共享中心不再列出时必须重新选择，不会自动改为独立模式，详见[建站与总览流程 Review](history/OVERVIEW-REVIEW.md)。
+总览创建和列表刷新互斥。创建已确认而列表读取失败时，使用“刷新列表”恢复；只读刷新保留未提交建站输入。新建表单不再提供共享中心选项；既有共享站点仍显示 legacy 标记。
 
 成员页操作与列表刷新互斥；提交成功但读取失败时保留确认，使用“刷新列表”恢复。权限操作和只读刷新保留未提交添加输入及权限选择，明确添加成功后清除本次邮箱和初始密码。输入只在当前视图内保留，详见[成员与权限页面 Review](history/TEAM-PAGE-REVIEW.md)。
 
@@ -89,7 +89,7 @@ pnpm --silent cli export atlas draft > atlas-draft.json
 
 ## 迁移、升级与故障恢复
 
-应用迁移记录在 `schema_migration`，按名称、SHA-256 校验和核对，事务和全局 advisory lock 防止并发初始化。已执行 SQL 不再改写，升级增加新迁移；失败回滚，同一命令可重试。禁止将 P0 测试数据库当成正式产品数据库；P0 的清库夹具不会在产品启动路径执行。
+应用迁移记录在 `schema_migration`，按名称、SHA-256 校验和核对，事务和全局 advisory lock 防止并发初始化。已执行 SQL 不再改写，升级增加新迁移；失败回滚，同一命令可重试。`006-search.sql` 会创建 `pg_trgm` 扩展；数据库用户需要相应权限，托管 PostgreSQL 需确认扩展已预装/允许创建。禁止将 P0 测试数据库当成正式产品数据库；P0 的清库夹具不会在产品启动路径执行。
 
 认证表由锁定版本 Better Auth 按实例前缀建立，持久化实例 ID、issuer、密钥和 schema 版本。升级前备份并审查认证依赖变更；使用对应镜像运行：
 

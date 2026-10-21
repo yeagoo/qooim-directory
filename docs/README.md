@@ -34,6 +34,7 @@
 | --- | --- |
 | [发行前检查清单](RELEASE-CHECKLIST.md) | 预检、全量回归、Docker、OAuth、门禁 |
 | [本地验收记录](ACCEPTANCE-20261020.md) | P0–P5、发行与 Docker 实际结果 |
+| [M1 验收记录](ACCEPTANCE-M1-20261021.md) | 独立账号收口、pg_trgm 搜索、测试与 Docker |
 | [代码 Review 修复记录](CODE-REVIEW-20261021.md) | 2026-10-21 的问题、修复与保留项 |
 | [源码许可与镜像证据](SOURCE-LICENSE-DECISIONS.md) | MIT 归属、sharp 移除、六组证据 |
 | [镜像审查指南](IMAGE-REVIEW-GUIDE.md) | 逐项核对、署名格式与 AGPL 提示 |

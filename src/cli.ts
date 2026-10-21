@@ -52,6 +52,7 @@ try {
             name: ["灵感地图", "开发札记", "资源书房"][index],
             origin: origins[index],
             centerSite: index === 1 ? "atlas" : null,
+            legacyShared: index === 1,
           });
         if (!(await app.auth.provision(id)))
           throw new Error(

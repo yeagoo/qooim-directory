@@ -107,6 +107,7 @@ before(async () => {
       name: ["灵感地图", "开发札记", "资源书房"][index],
       origin: origins[index],
       centerSite: index === 1 ? "atlas" : null,
+      legacyShared: index === 1,
     });
   for (const id of ["atlas", "notes", "library"])
     assert.equal(await app.auth.provision(id), true);
@@ -160,7 +161,7 @@ const request = (index: number, path: string) =>
 test("P2 upgrade preserves legacy publications, notes and original migration checksums", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "5",
+    "6",
   );
   const context = await app.catalog.resolve("legacy.test");
   assert.equal((await app.catalog.list(context, "zh"))[0].title, "Old content");
@@ -373,6 +374,62 @@ test("P2 list/search/detail/category/count/sitemap share the same visibility and
   );
   await assert.rejects(
     stage("notes", "categorized", "zh", { categoryId: "design" }),
+  );
+});
+
+test("P2 trigram search ranks title matches and keeps the trigram index installed", async () => {
+  await app.content.saveResource(admin, {
+    id: "rank-title",
+    expectedVersion: 0,
+    data: {
+      ...master("Alpha Tools"),
+      translations: {
+        zh: { title: "Alpha Tools", description: "标题直接命中" },
+        en: { title: "Alpha Tools", description: "title match" },
+      },
+    },
+    public: true,
+    internalNote: "rank fixture",
+  });
+  await app.content.saveResource(admin, {
+    id: "rank-description",
+    expectedVersion: 0,
+    data: {
+      ...master("Other Tool"),
+      translations: {
+        zh: { title: "Other Tool", description: "说明里提到 alpha" },
+        en: { title: "Other Tool", description: "description mentions alpha" },
+      },
+    },
+    public: true,
+    internalNote: "rank fixture",
+  });
+  for (const id of ["rank-title", "rank-description"]) {
+    await stage("atlas", id);
+    await publish("atlas", id);
+  }
+  const result = await app.catalog.browse(
+    await app.catalog.resolve(new URL(origins[0]).host),
+    { locale: "zh", q: "ALPHA" },
+  );
+  assert.equal(result.total, 2);
+  assert.equal(result.items[0].slug, "rank-title");
+  assert.ok(result.items.some((item) => item.slug === "rank-description"));
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT extname FROM pg_extension WHERE extname='pg_trgm'",
+      )
+    ).rowCount,
+    1,
+  );
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT 1 FROM pg_indexes WHERE tablename='publication' AND indexname='publication_search_trgm'",
+      )
+    ).rowCount,
+    1,
   );
 });
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- M1：独立账号收口（`legacyShared` API 开关）和 `pg_trgm` 搜索增强；P0–P5、发行测试和 Docker 通过。
+
+- 新站点创建固定使用独立账号；API 新共享站点需要显式 `legacyShared: true`；共享账号中心标记为 legacy，仅保留既有部署兼容。
+- 搜索迁移到 PostgreSQL `pg_trgm` GIN 索引，增加相关度排序；短查询允许回退。
+- 新增迁移 `006-search.sql`；升级需要数据库允许 `CREATE EXTENSION pg_trgm`。
+
 ## v0.1.0 — 2026-10-21 (source preview)
 
 首个公开源码预览版。AGPL-3.0-only。

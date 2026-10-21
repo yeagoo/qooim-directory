@@ -11,6 +11,7 @@ const siteInput = z.strictObject({
   name: z.string().min(1).max(100),
   origin: z.url(),
   centerSite: z.string().nullable().default(null),
+  legacyShared: z.boolean().default(false),
 });
 export class Sites {
   readonly operators: Operators;
@@ -33,6 +34,11 @@ export class Sites {
   async create(actor: Operator, input: unknown) {
     await this.operators.require(actor);
     const value = siteInput.parse(input);
+    if (value.centerSite && !value.legacyShared)
+      throw new HttpError(
+        400,
+        "共享账号中心仅用于既有部署；新站点必须使用独立账号空间",
+      );
     const origin = new URL(value.origin);
     if (
       origin.origin !== value.origin ||

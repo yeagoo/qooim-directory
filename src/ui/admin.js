@@ -163,44 +163,20 @@ async function renderView(scope) {
 }
 async function overview(scope, draft) {
   const { api, notice } = scope;
-  workspace.innerHTML = `<span class="eyebrow">YOUR NETWORK / ${sites.length} SITES</span><h1>每个站点，都有自己的方向。</h1><p class="muted">在同一个工作台里，保持各站的品牌、配置与发布节奏。</p><button class="secondary" id="refresh-sites">刷新列表</button><div class="grid">${sites.map((site) => `<a class="site-card" href="#site/${encodeURIComponent(site.id)}"><span class="badge">${site.active ? "运行中" : "已停用"} · ${escape(site.state)}</span><h2>${escape(site.config.name)}</h2><p class="muted">${escape(site.host)}</p><small>修订 ${site.revision} · ${site.center_site ? "共享账号" : "独立账号"}</small></a>`).join("")}</div>${
+  workspace.innerHTML = `<span class="eyebrow">YOUR NETWORK / ${sites.length} SITES</span><h1>每个站点，都有自己的方向。</h1><p class="muted">在同一个工作台里，保持各站的品牌、配置与发布节奏。</p><button class="secondary" id="refresh-sites">刷新列表</button><div class="grid">${sites.map((site) => `<a class="site-card" href="#site/${encodeURIComponent(site.id)}"><span class="badge">${site.active ? "运行中" : "已停用"} · ${escape(site.state)}</span><h2>${escape(site.config.name)}</h2><p class="muted">${escape(site.host)}</p><small>修订 ${site.revision} · ${site.center_site ? "共享账号（legacy）" : "独立账号"}</small></a>`).join("")}</div>${
     me.global_admin
-      ? `<section class="panel"><h2>创建新站点</h2><div class="split"><div><label for="site-id">站点标识</label><input id="site-id" placeholder="design-notes"><label for="site-name">站点名称</label><input id="site-name" placeholder="设计札记"></div><div><label for="site-origin">站点地址</label><input id="site-origin" placeholder="https://design.example.com"><label for="center">账号模式</label><select id="center"><option value="">独立账号空间</option>${sites
-          .filter((s) => !s.center_site)
-          .map(
-            (s) =>
-              `<option value="${escape(s.id)}">共享 ${escape(s.config.name)} 的账号</option>`,
-          )
-          .join(
-            "",
-          )}</select></div></div><div class="actions"><button id="create">创建站点</button></div></section>`
+      ? `<section class="panel"><h2>创建新站点</h2><p class="muted">新站点使用独立账号空间；共享账号中心只保留给既有部署兼容，不再新增。</p><div class="split"><div><label for="site-id">站点标识</label><input id="site-id" placeholder="design-notes"><label for="site-name">站点名称</label><input id="site-name" placeholder="设计札记"></div><div><label for="site-origin">站点地址</label><input id="site-origin" placeholder="https://design.example.com"></div></div><div class="actions"><button id="create">创建站点</button></div></section>`
       : ""
   }`;
   const refresh = workspace.querySelector("#refresh-sites");
   const create = workspace.querySelector("#create");
   const fields = Object.fromEntries(
-    (create ? ["site-id", "site-name", "site-origin", "center"] : []).map(
+    (create ? ["site-id", "site-name", "site-origin"] : []).map(
       (id) => [id, workspace.querySelector("#" + id)],
     ),
   );
-  if (draft) {
-    for (const [id, field] of Object.entries(fields)) {
-      if (
-        id === "center" &&
-        draft[id] &&
-        ![...field.options].some((option) => option.value === draft[id])
-      ) {
-        // Never silently convert a no-longer-listed shared center to isolation.
-        const option = new Option(
-          "原账号中心已不在列表中，请重新选择",
-          draft[id],
-        );
-        option.disabled = true;
-        field.add(option);
-      }
-      field.value = draft[id];
-    }
-  }
+  if (draft)
+    for (const [id, field] of Object.entries(fields)) field.value = draft[id];
   const capture = () =>
     Object.fromEntries(
       Object.entries(fields).map(([id, field]) => [id, field.value]),
@@ -213,11 +189,7 @@ async function overview(scope, draft) {
     if (!active()) return;
     for (const field of Object.values(fields))
       field.disabled = pending || committed;
-    if (create)
-      create.disabled =
-        pending ||
-        committed ||
-        fields.center.selectedOptions[0]?.disabled === true;
+    if (create) create.disabled = pending || committed;
     refresh.disabled = pending;
   };
   const reload = async () => {
@@ -247,15 +219,8 @@ async function overview(scope, draft) {
     }
   });
   if (create) {
-    fields.center.addEventListener("change", update);
     create.addEventListener("click", async () => {
-      if (
-        pending ||
-        committed ||
-        !active() ||
-        fields.center.selectedOptions[0]?.disabled === true
-      )
-        return;
+      if (pending || committed || !active()) return;
       const value = capture();
       pending = true;
       update();
@@ -265,7 +230,7 @@ async function overview(scope, draft) {
           id: value["site-id"],
           name: value["site-name"],
           origin: value["site-origin"],
-          centerSite: value.center || null,
+          centerSite: null,
         });
       } catch (error) {
         notice(error.message, true);
