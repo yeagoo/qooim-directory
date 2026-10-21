@@ -10,6 +10,7 @@
 | [模型交接提示词](MODEL-HANDOFF-PROMPT.md) | 给后续模型的最小上下文 |
 | [开发方案](DEVELOPMENT-PLAN.md) | 首版范围、阶段和投入 |
 | [认证实施决策](ADR-001-AUTH.md) | 身份适配基线与边界 |
+| [2026 Q4 功能规划与 Review](FEATURE-PLAN-2026Q4.md) | 独立账号方向、搜索/Passkey/媒体/AI/采集的范围、风险与顺序 |
 
 ## 操作与协议
 
