@@ -88,5 +88,14 @@
       "reviewedAt": "2026-10-21"
     }
   ],
-  "targetPlatform": "linux/arm64"
+  "targetPlatform": "linux/arm64",
+  "confirmation": {
+    "reviewer": "QooIM",
+    "confirmedAt": "2026-10-21",
+    "candidateRevision": "a72c16e",
+    "applicationImage": "sha256:6f4c4af3891d3c50bf116049061c0ccf56829f6c9549f1742dbd5f66ac0769a2",
+    "basis": "docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261021.md",
+    "scope": "Current six inventory/identity evidence sets; limitations accepted for internal RC.",
+    "legalAdvice": false
+  }
 }

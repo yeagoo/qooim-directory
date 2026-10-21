@@ -73,7 +73,7 @@ M4 已完成：站点级 AI 配置/异步任务/预算/SSRF 防护，后台 AI �
 
 M5 已完成：RSS/npm/通用 JSON 采集器、统一候选审核、接受只建草稿；迁移 `009-collectors.sql`。GitHub 专用同步保留，未做 full adapter 迁移。详见 [M5 验收](ACCEPTANCE-M5-20261021.md)。
 
-发布前整合验收已完成内部 RC 通过，但公开发布 NO-GO：真实 OAuth、AI、RSS/npm、Passkey 设备、审查人 evidence 复核和版本/tag 尚未完成。详见 [整合验收](ACCEPTANCE-INTEGRATION-20261021.md)。
+发布前整合验收已完成内部 RC 通过，但公开发布 NO-GO：真实 OAuth、AI、RSS/npm、Passkey 设备和版本/tag 尚未完成；QooIM 已确认当前镜像 evidence。详见 [整合验收](ACCEPTANCE-INTEGRATION-20261021.md)。
 
 产品方向已调整为**新站点独立账号，不再打通跨站身份**；共享账号中心冻结为 legacy。下一批功能为搜索增强、Passkey（不做 MFA）、媒体/图片管理、AI 生成/翻译、更多垂直采集器。完整范围、架构、风险、顺序和 Review 见 [2026 Q4 功能规划](FEATURE-PLAN-2026Q4.md)。
 

@@ -17,7 +17,7 @@
 2. 真实 AI 供应商未联调；测试使用注入传输。
 3. 真实 RSS/npm 外网源未联调；测试使用受控 fixture。
 4. Passkey 仅用 Chromium 虚拟认证器，未做真实设备/平台同步验收。
-5. 新增依赖和刷新后的镜像 evidence 尚未由审查人 QooIM 重新确认。
+5. ~~新增依赖和刷新后的镜像 evidence 尚未由审查人 QooIM 重新确认。~~ 已完成：QooIM 于 2026-10-21 确认当前六组 evidence（见复核包）。
 6. `v0.1.0` tag 不包含 M1–M5；版本号、tag 和发布说明尚未最终决定。
 
 ## 环境
@@ -88,8 +88,8 @@ preflight                  18 项：0 硬失败，2 警告
    容器创建的媒体文件属于容器 UID；宿主机清理前用一次性 root 容器 `chmod -R 777`，避免测试残留。
 3. **GitHub 仍是独立专用链路**  
    新采集器没有复用 `github_source`；两套来源入口并存，需在后续版本统一或明确长期边界。
-4. **镜像 evidence 是机械刷新**  
-   新依赖和最终镜像已重新取证，但审查人尚未对刷新后的六组 evidence 做新的确认。
+4. **镜像 evidence 已由审查人确认**  
+   新依赖和最终镜像已重新取证；QooIM 于 2026-10-21 确认当前六组 evidence 与候选镜像一致，并接受其 limitations。确认不是法律意见。
 
 ## 发布前剩余条件
 
@@ -99,7 +99,7 @@ preflight                  18 项：0 硬失败，2 警告
 - 用真实 AI 供应商完成一次生成、一次翻译、一次失败/超时、预算耗尽的验收，并确认数据出境/ToS。
 - 用真实 RSS 与 npm 源完成一次采集、候选审核、草稿发布；确认来源条款与限流。
 - 真实 Passkey 设备（至少两个平台/一个密码管理器）注册、登录、删除、恢复演练。
-- 由审查人重新确认刷新后的源码/镜像 evidence（尤其 `@better-auth/passkey`、SimpleWebAuthn、vendored UMD）。
+- ~~由审查人重新确认刷新后的源码/镜像 evidence。~~ 已完成，见 [evidence 复核包](IMAGE-EVIDENCE-REVIEW-PACKET-20261021.md)。
 - 决定版本号/tag（建议 `v0.2.0`）并更新 CHANGELOG/Release notes。
 
 ### 建议完成（不阻断内部 RC）

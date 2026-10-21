@@ -43,6 +43,7 @@
 | [M4 验收记录](ACCEPTANCE-M4-20261021.md) | AI 配置/任务/预算、人工确认与测试 |
 | [M5 验收记录](ACCEPTANCE-M5-20261021.md) | 三类采集器、候选接受为草稿、SSRF 与限制 |
 | [发布前整合验收](ACCEPTANCE-INTEGRATION-20261021.md) | M1–M5 合并、Docker 整合、发布阻断项与结论 |
+| [镜像 evidence 复核包](IMAGE-EVIDENCE-REVIEW-PACKET-20261021.md) | QooIM 对六组镜像 evidence 的确认与保留项 |
 | [代码 Review 修复记录](CODE-REVIEW-20261021.md) | 2026-10-21 的问题、修复与保留项 |
 | [源码许可与镜像证据](SOURCE-LICENSE-DECISIONS.md) | MIT 归属、sharp 移除、六组证据 |
 | [镜像审查指南](IMAGE-REVIEW-GUIDE.md) | 逐项核对、署名格式与 AGPL 提示 |
