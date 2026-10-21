@@ -1,12 +1,13 @@
 import { spawn, execFileSync } from "node:child_process";
 import { request } from "node:https";
 import { randomBytes, randomUUID } from "node:crypto";
-import { mkdtemp, writeFile, rm, readFile, mkdir } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, readFile, mkdir, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 const id = "navigation-p1-" + randomUUID().slice(0, 8),
-  dir = await mkdtemp(join(tmpdir(), "navigation-p1-"));
+  dir = await mkdtemp(join(tmpdir(), "navigation-p1-")),
+  mediaDir = join(process.cwd(), ".local", "docker-media-" + id);
 const { createServer } = await import("node:net");
 const probe = createServer();
 await new Promise((r) => probe.listen(0, "127.0.0.1", r));
@@ -15,10 +16,11 @@ await new Promise((r) => probe.close(r));
 const { firefox } = await import("@playwright/test");
 const envFile = join(dir, "env");
 const password = randomBytes(24).toString("base64url");
-await mkdir(join(dir, "media"), { recursive: true, mode: 0o700 });
+await mkdir(mediaDir, { recursive: true, mode: 0o777 });
+await chmod(mediaDir, 0o777);
 await writeFile(
   envFile,
-  `MEDIA_HOST_PATH=${join(dir, "media")}
+  `MEDIA_HOST_PATH=${mediaDir}
 POSTGRES_PASSWORD=${randomBytes(24).toString("hex")}\nAUTH_ENCRYPTION_KEY=${randomBytes(32).toString("hex")}\nADMIN_ORIGIN=https://admin.localhost:${tlsPort}\nALLOW_INSECURE_HTTP=false\nOPERATOR_EMAIL=owner@example.test\nOPERATOR_PASSWORD=${password}\nSEED_DEMO=true\nDEMO_ORIGINS=https://atlas.localhost:${tlsPort},https://notes.localhost:${tlsPort},https://library.localhost:${tlsPort}\nAPP_PORT=0\nDEMO_TLS_PORT=${tlsPort}\nIMAGE_TAG=${process.env.P1_DOCKER_IMAGE ?? id}\nPROXY_TRUST_TOKEN=${randomBytes(32).toString("hex")}\nSMTP_HOST=mailpit\nSMTP_PORT=1025\nSMTP_ALLOW_INSECURE=true\nMAIL_FROM=accounts@example.test\nAUTH_REQUIRE_EMAIL=true\n`,
   { mode: 0o600 },
 );
@@ -252,9 +254,131 @@ try {
     ).title,
     "Docker content snapshot",
   );
+  const png =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+  const mediaResponse = await call(
+    adminHost,
+    "/admin/api/media",
+    {
+      site: "atlas",
+      filename: "docker-pixel.png",
+      mime: "image/png",
+      alt: "Docker media",
+      data: png,
+    },
+    cookie,
+  );
+  assert.equal(mediaResponse.status, 201);
+  const media = JSON.parse(mediaResponse.text);
+  assert.equal(
+    (
+      await call(
+        adminHost,
+        "/admin/api/resources",
+        {
+          id: "docker-media",
+          expectedVersion: 0,
+          data: {
+            url: "https://example.com/media",
+            translations: {
+              zh: {
+                title: "Docker media resource",
+                description: "Media integration",
+              },
+            },
+          },
+          public: true,
+        },
+        cookie,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await call(
+        adminHost,
+        "/admin/api/content/atlas/docker-media/zh/stage",
+        {
+          candidate: {
+            resourceVersion: 1,
+            slug: "docker-media",
+            overrides: { image: { mediaId: media.id, alt: "Docker media" } },
+          },
+          expected: { published: 0, draft: 0 },
+        },
+        cookie,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await call(
+        adminHost,
+        "/admin/api/content/atlas/docker-media/zh/publish",
+        { expected: { published: 0, draft: 1 }, operationId: randomUUID() },
+        cookie,
+      )
+    ).status,
+    200,
+  );
+  const publicMedia = await call(`atlas.localhost:${tlsPort}`, media.url);
+  assert.equal(publicMedia.status, 200);
+  assert.equal(publicMedia.contentLength, String(publicMedia.bytes.length));
+  assert.match(
+    (await call(`atlas.localhost:${tlsPort}`, "/api/search?q=Docker")).text,
+    /docker-media/,
+  );
+  const aiConfig = await call(
+    adminHost,
+    "/admin/api/ai/config",
+    {
+      site: "atlas",
+      endpoint: "https://provider.example.test/v1/chat/completions",
+      model: "test-model",
+      key: "test-key-123456",
+      enabled: true,
+      monthlyTokens: 1000,
+    },
+    cookie,
+  );
+  assert.equal(aiConfig.status, 200);
+  assert.equal(JSON.parse(aiConfig.text).hasKey, true);
+  assert.equal(aiConfig.text.includes("test-key-123456"), false);
+  const collector = await call(
+    adminHost,
+    "/admin/api/collectors",
+    {
+      siteId: "atlas",
+      kind: "json",
+      config: {
+        url: "https://feed.example.test/items.json",
+        itemsPath: "items",
+        idField: "id",
+        titleField: "title",
+        descriptionField: "description",
+        urlField: "url",
+        locale: "zh",
+      },
+      enabled: false,
+      intervalSeconds: 3600,
+      expectedVersion: 0,
+    },
+    cookie,
+  );
+  assert.equal(collector.status, 201);
+  assert.equal(
+    JSON.parse(
+      (await call(adminHost, "/admin/api/collectors?site=atlas", undefined, cookie))
+        .text,
+    ).length,
+    1,
+  );
   console.log(
     "Content master, frozen site publication and public detail passed",
   );
+  console.log("Media, search, AI config and collector integration passed");
   console.log(
     "Empty database, HTTPS routing and operator login passed; verifying shared browser login",
   );
@@ -611,10 +735,29 @@ try {
   );
   process.exitCode = 1;
 } finally {
-  if (created)
+  if (created) {
+    // Bind-mounted files created by the container are owned by its uid; normalize
+    // them through a throwaway service container before host-side cleanup.
+    await compose(
+      "run",
+      "--rm",
+      "--no-deps",
+      "--user",
+      "root",
+      "--entrypoint",
+      "sh",
+      "web",
+      "-c",
+      "chmod -R 777 /app/data/media",
+    ).catch(() => {
+      console.error("Owned Docker media cleanup failed: " + id);
+      process.exitCode = 1;
+    });
     await compose("down", "-v", "--remove-orphans").catch(() => {
       console.error("Owned Docker project cleanup failed: " + id);
       process.exitCode = 1;
     });
+  }
   await rm(dir, { recursive: true, force: true });
+  await rm(mediaDir, { recursive: true, force: true });
 }
