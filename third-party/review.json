@@ -1,0 +1,140 @@
+{
+  "format": 1,
+  "reviewedAt": "2026-10-20",
+  "lockfileSha256": "bb7b235c4ad0c5f0faeacd5ebd23b07c2f703dfa7b5830217eee6eebd3c646d4",
+  "notices": [
+    {
+      "name": "@esbuild/linux-arm64",
+      "version": "0.28.2",
+      "license": "MIT",
+      "packageJsonSha256": "0ee05403f9b919e3ac6108bf555ec0fa3e04c4dd493aede4c72ac9bf57e95b75",
+      "registryUrl": "https://registry.npmjs.org/%40esbuild%2Flinux-arm64/0.28.2",
+      "registryIntegrity": "sha512-pW4AC0P3it8c7do9MVM4p51FzHzdM/TZrerurgRcHJ2WTa1VQ1CIq18xncfpBJw4ojkiZZrKW2yIBWBP92j6Ug==",
+      "repository": "https://github.com/evanw/esbuild",
+      "revision": "609683d892977362a0f99026cb74b96263d728a9",
+      "sourceUrl": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md",
+      "file": "licenses/esbuild-0.28.2.txt",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "scope": "package permission notice; bundled native components are reviewed separately"
+    },
+    {
+      "name": "@next/env",
+      "version": "16.4.2",
+      "license": "MIT",
+      "packageJsonSha256": "890f8f188a008f05020375b9ed0d499244e55a3e59cebc00f76b4047c51afb88",
+      "registryUrl": "https://registry.npmjs.org/%40next%2Fenv/16.4.2",
+      "registryIntegrity": "sha512-nTUTFH7G5/J/fmpkjVLegOkqyKOP0CEsJcMsyO4UCYeN1su+YMW/MfaSErnJskL7XM+UDK6aTvslxsRCyya/sA==",
+      "repository": "https://github.com/vercel/next.js",
+      "revision": "2864b1772c37242a9b40ab4d366eb7d368c2a070",
+      "sourceUrl": "https://raw.githubusercontent.com/vercel/next.js/2864b1772c37242a9b40ab4d366eb7d368c2a070/license.md",
+      "file": "licenses/next-16.4.2.txt",
+      "sha256": "ee765244e2d59f5234d474f62e0766fa0c8b99af967fdd4c0cb8dcb0c76ea224",
+      "scope": "package permission notice; bundled native components are reviewed separately"
+    },
+    {
+      "name": "@next/swc-linux-arm64-gnu",
+      "version": "16.4.2",
+      "license": "MIT",
+      "packageJsonSha256": "00cf0e38f47186b1fb1f74cdfe1c64c6ee9c33d1b453fdc7caa66fc62ebe2cb8",
+      "registryUrl": "https://registry.npmjs.org/%40next%2Fswc-linux-arm64-gnu/16.4.2",
+      "registryIntegrity": "sha512-xhwFTAncJyaCNy5KqKKuKaIIdCy1/1ZV1s5S1G0hhT7wGMkDTlfJ6aQbfRFnIG/s3/kDrxQ8aycVe+c5QnP8ow==",
+      "repository": "https://github.com/vercel/next.js",
+      "revision": "2864b1772c37242a9b40ab4d366eb7d368c2a070",
+      "sourceUrl": "https://raw.githubusercontent.com/vercel/next.js/2864b1772c37242a9b40ab4d366eb7d368c2a070/license.md",
+      "file": "licenses/next-16.4.2.txt",
+      "sha256": "ee765244e2d59f5234d474f62e0766fa0c8b99af967fdd4c0cb8dcb0c76ea224",
+      "scope": "package permission notice; bundled native components are reviewed separately"
+    },
+    {
+      "name": "@next/swc-linux-arm64-musl",
+      "version": "16.4.2",
+      "license": "MIT",
+      "packageJsonSha256": "319a1b2c54f84e67dc80d00b0c879a39f6bf5a4c581329325d406fd0d1cca2bf",
+      "registryUrl": "https://registry.npmjs.org/%40next%2Fswc-linux-arm64-musl/16.4.2",
+      "registryIntegrity": "sha512-T1PNmfbPcxr5ndtWUL/3wQtLXsz808lq6sc2GrNT5k2oquF7UyqZddHSuAewHVsWsGXe6nsl9HoN1YNriVjuSg==",
+      "repository": "https://github.com/vercel/next.js",
+      "revision": "2864b1772c37242a9b40ab4d366eb7d368c2a070",
+      "sourceUrl": "https://raw.githubusercontent.com/vercel/next.js/2864b1772c37242a9b40ab4d366eb7d368c2a070/license.md",
+      "file": "licenses/next-16.4.2.txt",
+      "sha256": "ee765244e2d59f5234d474f62e0766fa0c8b99af967fdd4c0cb8dcb0c76ea224",
+      "scope": "package permission notice; bundled native components are reviewed separately"
+    },
+    {
+      "name": "@better-auth/utils",
+      "version": "0.5.0",
+      "license": "MIT",
+      "packageJsonSha256": "79113ffa86ff97e35c95c96ca93119b3ac22112bcf52c494e0d27ee6bb296b84",
+      "registryUrl": "https://registry.npmjs.org/%40better-auth%2Futils/0.5.0",
+      "registryIntegrity": "sha512-BL8W4EfIZFwlu0r54m3v1ztjDhu6dDe/amLTm0xybmbZaNgYUqhD3SjpAsnq0q8YD6/ki4iwIgxJNLP/N3TxiA==",
+      "repository": "https://github.com/better-auth/utils",
+      "revision": "ef522888b7b2ff77ca13f0afb476dfae8f297862",
+      "sourceUrl": "https://raw.githubusercontent.com/better-auth/utils/ef522888b7b2/LICENSE",
+      "file": "licenses/better-auth-utils-0.5.0.txt",
+      "sha256": "b5052b5db9a8720634e5243aaf019269ddd93c2e43f46a09f72b99e0004c8680",
+      "scope": "Maintainer decision 2026-10-20: npm metadata declares MIT for 0.5.0 and the author later published the MIT text; accepted for distribution with attribution. Not an exact-release LICENSE file."
+    },
+    {
+      "name": "client-only",
+      "version": "0.0.1",
+      "license": "MIT",
+      "packageJsonSha256": "4d6342705767832f299b9a59c28e4275bcf02db19472732f93f67d979441df8f",
+      "registryUrl": "https://registry.npmjs.org/client-only/0.0.1",
+      "registryIntegrity": "sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==",
+      "repository": "https://github.com/facebook/react",
+      "revision": "v18.2.0",
+      "sourceUrl": "https://raw.githubusercontent.com/facebook/react/v18.2.0/LICENSE",
+      "file": "licenses/client-only-0.0.1.txt",
+      "sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85",
+      "scope": "Maintainer decision 2026-10-20: package declares MIT and was published by a React maintainer; distributed with the React/Meta MIT text as attribution. The artifact itself has no package-specific copyright line."
+    }
+  ],
+  "pending": [],
+  "binaryDistributionReview": {
+    "record": "image-review.json"
+  },
+  "directDependencies": {
+    "dependencies": {
+      "@better-auth/oauth-provider": "1.7.10",
+      "better-auth": "1.7.10",
+      "next": "16.4.2",
+      "nodemailer": "10.1.2",
+      "pg": "8.23.1",
+      "react": "19.3.1",
+      "react-dom": "19.3.1",
+      "zod": "4.6.7"
+    },
+    "devDependencies": {
+      "@playwright/test": "1.64.1",
+      "@types/node": "24.19.2",
+      "@types/nodemailer": "8.0.2",
+      "@types/pg": "8.23.1",
+      "@types/react": "19.3.0",
+      "tsx": "4.23.15",
+      "typescript": "5.9.3"
+    },
+    "optionalDependencies": {}
+  },
+  "libvipsSourceReview": "libvips-source-review.json",
+  "removed": [
+    {
+      "name": "@img/sharp-libvips-linux-arm64",
+      "version": "1.3.4",
+      "resolution": "Removed from distribution: sharp is an optional Next dependency, the application has no next/image usage, pnpm.ignoredOptionalDependencies excludes sharp, and a clean install plus prune removed sharp and both platform packages. See docs/SOURCE-LICENSE-DECISIONS.md.",
+      "evidence": "third-party/source-license-evidence.json#sharpLibvips"
+    },
+    {
+      "name": "@img/sharp-libvips-linuxmusl-arm64",
+      "version": "1.3.4",
+      "resolution": "Removed from distribution: sharp is an optional Next dependency, the application has no next/image usage, pnpm.ignoredOptionalDependencies excludes sharp, and a clean install plus prune removed sharp and both platform packages. See docs/SOURCE-LICENSE-DECISIONS.md.",
+      "evidence": "third-party/source-license-evidence.json#sharpLibvips"
+    }
+  ],
+  "decisions": [
+    {
+      "date": "2026-10-20",
+      "by": "project maintainer",
+      "decision": "Accept both remaining MIT declarations for distribution and record the attribution basis explicitly; do not claim the exact artifacts contained the texts.",
+      "evidence": "third-party/source-license-evidence.json and third-party/licenses/*.txt"
+    }
+  ]
+}

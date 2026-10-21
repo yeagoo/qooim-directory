@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "scope": "esbuild",
+  "collectedAt": "2026-10-21T02:16:57.467Z",
+  "collectorSha256": "3dddccb155f34bad6cdc203737fab04d6ce8cfffc152fddc581d59ef7b3bbb37",
+  "image": {
+    "reference": "navigation-network:final3-20261021",
+    "id": "sha256:97d12c83a9627abfd5741aafc14f5e2adae493dc2c2c7805357afea4e95ac2f1",
+    "repoDigests": [
+      "navigation-network@sha256:97d12c83a9627abfd5741aafc14f5e2adae493dc2c2c7805357afea4e95ac2f1"
+    ],
+    "architecture": "arm64",
+    "os": "linux"
+  },
+  "basis": {
+    "inventory": ".local/license-evidence/app-inventory.json",
+    "inventorySha256": "95c14cf6864f164117d6b992974629e15b774c98165c165f4d177e88ff545e1a",
+    "collector": "scripts/distribution.mjs inventoryImage (format 2)"
+  },
+  "observations": {
+    "packages": [
+      {
+        "name": "@esbuild/linux-arm64",
+        "version": "0.28.2",
+        "license": "MIT",
+        "packageJsonSha256": "0ee05403f9b919e3ac6108bf555ec0fa3e04c4dd493aede4c72ac9bf57e95b75"
+      },
+      {
+        "name": "esbuild",
+        "version": "0.28.2",
+        "license": "MIT",
+        "packageJsonSha256": "9d0bc453f4e791553c4cc2298ba023b409241fd9801e494741666eb0f6051490"
+      }
+    ],
+    "nativeBinaries": [
+      {
+        "package": "@esbuild/linux-arm64",
+        "version": "0.28.2",
+        "path": "bin/esbuild",
+        "sha256": "90bd269553d258e80b19e3ccab4f98f0831f87442a2f056510ce24fd1b425fc2"
+      }
+    ],
+    "packageLicenseFiles": [
+      {
+        "path": "/app/node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/LICENSE.md",
+        "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+        "text": "MIT License\n\nCopyright (c) 2020 Evan Wallace\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
+      }
+    ],
+    "embeddedGoDependencies": "Not enumerated by this inventory; the executable is distributed as a compiled Go binary."
+  },
+  "limitations": "Inventory and identity evidence only. No license clearance, linking analysis, corresponding-source delivery or vulnerability assessment."
+}

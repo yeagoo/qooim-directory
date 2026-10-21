@@ -1,0 +1,340 @@
+{
+  "format": 1,
+  "scope": "Exact npm artifacts for pnpm bundled packages missing a license file in the image. Files are copied verbatim; no license conclusion.",
+  "packages": [
+    {
+      "name": "@npmcli/agent",
+      "version": "3.0.0",
+      "license": "ISC",
+      "registryUrl": "https://registry.npmjs.org/%40npmcli%2Fagent/3.0.0",
+      "integrity": "sha512-S79NdEgDQd/NGCay6TCoVzXSj74skRZIKJcpJjC5lOq34SZzyI6MqtiiWoiVWoVrTcGjNeC4ipbh1VIHlpfF5Q==",
+      "tarballSha256": "fc9996041d3760e5cff0a5121d4cf0fc853898ceebd5d854e622e52ec11a5cb9",
+      "gitHead": "94f346d882458ac9481d015c55057d15f5899bf1",
+      "repository": {
+        "url": "git+https://github.com/npm/agent.git",
+        "type": "git"
+      },
+      "noticeFiles": [],
+      "status": "no-standalone-notice",
+      "derivedAttribution": {
+        "file": "third-party/image-notices/global-pnpm/npmcli-agent-3.0.0-derived-attribution.txt",
+        "sha256": "b89e3e25040333b6a432c5de8e40800225ae65cbda24bb7e9f423d49f2b8e958",
+        "basis": "package.json declares the license and author; artifact and publish revision contain no standalone notice text",
+        "status": "candidate-only; maintainer confirmation required"
+      }
+    },
+    {
+      "name": "@npmcli/fs",
+      "version": "4.0.0",
+      "license": "ISC",
+      "registryUrl": "https://registry.npmjs.org/%40npmcli%2Ffs/4.0.0",
+      "integrity": "sha512-/xGlezI6xfGO9NwuJlnwz/K14qD1kCSAGtacBHnGzeAIuJGazcp45KP5NuyARXoKb7cwulAGWVsbeSxdG/cb0Q==",
+      "tarballSha256": "baafde0770c3fb059c002cdbf9c02aaaa55deb262543948bfd8c8bfdb17dd2ff",
+      "gitHead": "70bf80857da6c8c79b927e53027fa9e38504ed70",
+      "repository": {
+        "url": "git+https://github.com/npm/fs.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/npmcli-fs-4.0.0.txt",
+          "sourcePath": "package/lib/cp/LICENSE",
+          "sha256": "1e76029602ae9b21cc4e612db2496d92febed882ba13ba745f8b3309e85f9d39",
+          "bytes": 1084
+        },
+        {
+          "file": "third-party/image-notices/global-pnpm/npmcli-fs-4.0.0-1.txt",
+          "sourcePath": "package/LICENSE.md",
+          "sha256": "27d998b503b18cdb16c49e93da04069a99ba8a1d7e18d67146de8e242f9a6d21",
+          "bytes": 798
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "balanced-match",
+      "version": "1.0.2",
+      "license": "MIT",
+      "registryUrl": "https://registry.npmjs.org/balanced-match/1.0.2",
+      "integrity": "sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==",
+      "tarballSha256": "d854f7abdd0c7a8120cf381e0ad5f972cbd0255f5d987424bd672c8c4fcebcc1",
+      "gitHead": "c7412e09b95d6ad97fd1e2996f6adca7626a9ae8",
+      "repository": {
+        "url": "git://github.com/juliangruber/balanced-match.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/balanced-match-1.0.2.txt",
+          "sourcePath": "package/LICENSE.md",
+          "sha256": "a1bd5deadb6a06dd74efa852c1b8b23f63b67f2214fbe9c8bd591da51da69268",
+          "bytes": 1096
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "cacache",
+      "version": "19.0.1",
+      "license": "ISC",
+      "registryUrl": "https://registry.npmjs.org/cacache/19.0.1",
+      "integrity": "sha512-hdsUxulXCi5STId78vRVYEtDAjq99ICAUktLTeTYsLoTE6Z8dS0c8pWNCxwdrk9YfJeobDZc2Y186hD/5ZQgFQ==",
+      "tarballSha256": "0b0b0265622e5a20e701e2b87d57dc96fbc2a0452250de9a2d684f55e918c8cf",
+      "gitHead": "718216c2200ec7c51bdf4bb282fac2fd0ddc36c6",
+      "repository": {
+        "url": "git+https://github.com/npm/cacache.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/cacache-19.0.1.txt",
+          "sourcePath": "package/LICENSE.md",
+          "sha256": "720836c9bdad386485a492ab41fe08007ecf85ca278ddd8f9333494dcac4949d",
+          "bytes": 755
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "chownr",
+      "version": "3.0.0",
+      "license": "BlueOak-1.0.0",
+      "registryUrl": "https://registry.npmjs.org/chownr/3.0.0",
+      "integrity": "sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==",
+      "tarballSha256": "4c24f5daa630142252da89de655f7df090ea479450a8825897751d78321b1360",
+      "gitHead": "8b9800ac5fe4da0b58bffc9c66dd618f0721472d",
+      "repository": {
+        "url": "git://github.com/isaacs/chownr.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/chownr-3.0.0.txt",
+          "sourcePath": "package/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "eastasianwidth",
+      "version": "0.2.0",
+      "license": "MIT",
+      "registryUrl": "https://registry.npmjs.org/eastasianwidth/0.2.0",
+      "integrity": "sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==",
+      "tarballSha256": "eccfa12bbda71f9f8e09de7ad1a4e554369a6b4d43d7f86085e85055a8694c27",
+      "gitHead": "b89f04d44dc786885615e94cd6e2ba1ef7866fa4",
+      "repository": {
+        "url": "git://github.com/komagata/eastasianwidth.git",
+        "type": "git"
+      },
+      "noticeFiles": [],
+      "status": "no-standalone-notice",
+      "derivedAttribution": {
+        "file": "third-party/image-notices/global-pnpm/eastasianwidth-0.2.0-derived-attribution.txt",
+        "sha256": "ebd470d05030aee19ce6ccef1d70dce6f00f182e268a026294388e7e6b4b8bc0",
+        "basis": "package.json declares the license and author; artifact and publish revision contain no standalone notice text",
+        "status": "candidate-only; maintainer confirmation required"
+      }
+    },
+    {
+      "name": "err-code",
+      "version": "2.0.3",
+      "license": "MIT",
+      "registryUrl": "https://registry.npmjs.org/err-code/2.0.3",
+      "integrity": "sha512-2bmlRpNKBxT/CRmPOlyISQpNj+qSeYvcym/uT0Jx2bMOlKLtSy1ZmLuVxSEKKyor/N5yhvp/ZiG1oE3DEYMSFA==",
+      "tarballSha256": "a5664f4a04152f1dcfa51035879284895c5e104aa13d9e0627567ead2eb248e2",
+      "gitHead": "92511d41a6a926c94c9d11493404867b1e92a77a",
+      "repository": {
+        "url": "git://github.com/IndigoUnited/js-err-code.git",
+        "type": "git"
+      },
+      "noticeFiles": [],
+      "status": "no-standalone-notice",
+      "derivedAttribution": {
+        "file": "third-party/image-notices/global-pnpm/err-code-2.0.3-derived-attribution.txt",
+        "sha256": "5cfd203775f0b7ba0bd84e059d37b224c161497bf2a2d649a13fabce46c1c452",
+        "basis": "package.json declares the license and author; artifact and publish revision contain no standalone notice text",
+        "status": "candidate-only; maintainer confirmation required"
+      }
+    },
+    {
+      "name": "imurmurhash",
+      "version": "0.1.4",
+      "license": "MIT",
+      "registryUrl": "https://registry.npmjs.org/imurmurhash/0.1.4",
+      "integrity": "sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==",
+      "tarballSha256": "ac23a031966a7371d192e35c7852ab31c772b7d4e468ddd886ad3c014372cb60",
+      "gitHead": null,
+      "repository": {
+        "url": "https://github.com/jensyt/imurmurhash-js",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/imurmurhash-0.1.4-upstream-master.txt",
+          "sourcePath": "LICENSE (upstream master; artifact has no gitHead)",
+          "sha256": "fa0943ddcaa857d901a9eb92254d89876297ecdfbc884d294a927df08ebcbbe8",
+          "bytes": 1090
+        }
+      ],
+      "status": "upstream-notice-not-exact-release"
+    },
+    {
+      "name": "jackspeak",
+      "version": "3.4.3",
+      "license": "BlueOak-1.0.0",
+      "registryUrl": "https://registry.npmjs.org/jackspeak/3.4.3",
+      "integrity": "sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==",
+      "tarballSha256": "ddade8215fc0433854670b8eb38fa421a159725e169edeed055b349ba4442e4c",
+      "gitHead": "cf0753629f71a6e34a7c6550e00fa1575dfe05b8",
+      "repository": {
+        "url": "git+https://github.com/isaacs/jackspeak.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/jackspeak-3.4.3.txt",
+          "sourcePath": "package/LICENSE.md",
+          "sha256": "2c7c5d22ed5a8ee968c64757710979afcd77438c48b4a265b94e615babd8a901",
+          "bytes": 1550
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "mkdirp",
+      "version": "3.0.1",
+      "license": "MIT",
+      "registryUrl": "https://registry.npmjs.org/mkdirp/3.0.1",
+      "integrity": "sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==",
+      "tarballSha256": "fc7a7c3d357bb9f265e78ef38d108f1aa2bd86e9e781d5bcc28250b3dcdc8ebf",
+      "gitHead": "6fc29774a008f41d96b34523d6aae543ecb46cd1",
+      "repository": {
+        "url": "git+https://github.com/isaacs/node-mkdirp.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/mkdirp-3.0.1.txt",
+          "sourcePath": "package/LICENSE",
+          "sha256": "9781d22b8ca2072edecea2107d8bf8da2b7d4dbe28c88017f772d0de032920df",
+          "bytes": 1180
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "ms",
+      "version": "2.1.3",
+      "license": "MIT",
+      "registryUrl": "https://registry.npmjs.org/ms/2.1.3",
+      "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
+      "tarballSha256": "f6616e15e530ed552f9daa2d3ce71963947c6bc7c98c9b64fd3e673fd02622c6",
+      "gitHead": "1c6264b795492e8fdecbc82cb8802fcfbfc08d26",
+      "repository": {
+        "url": "git+https://github.com/vercel/ms.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/ms-2.1.3.txt",
+          "sourcePath": "package/license.md",
+          "sha256": "1662fae9b5314d11cf51284e2dcd1f006a354f7343f08712a730fcff9a359801",
+          "bytes": 1079
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "package-json-from-dist",
+      "version": "1.0.1",
+      "license": "BlueOak-1.0.0",
+      "registryUrl": "https://registry.npmjs.org/package-json-from-dist/1.0.1",
+      "integrity": "sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==",
+      "tarballSha256": "135c483e43689d0e17b1c56dd5e2dfea63a4d4afc749dc7ed6b66b97f7bc4e20",
+      "gitHead": "5a84db04548091c086c514d3bac5c3141e790b6f",
+      "repository": {
+        "url": "git+https://github.com/isaacs/package-json-from-dist.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/package-json-from-dist-1.0.1.txt",
+          "sourcePath": "package/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "path-scurry",
+      "version": "1.11.1",
+      "license": "BlueOak-1.0.0",
+      "registryUrl": "https://registry.npmjs.org/path-scurry/1.11.1",
+      "integrity": "sha512-Xa4Nw17FS9ApQFJ9umLiJS4orGjm7ZzwUrwamcGQuHSzDyth9boKDaycYdDcZDuqYATXw4HFXgaqWTctW/v1HA==",
+      "tarballSha256": "fdce381cd08b307896f76fc2a915e39acbbe8669e9c2526a33c04c2379243409",
+      "gitHead": "766c9b06aacef86b43c9999cabc5eb824b5958d6",
+      "repository": {
+        "url": "git+https://github.com/isaacs/path-scurry.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/path-scurry-1.11.1.txt",
+          "sourcePath": "package/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "ssri",
+      "version": "12.0.0",
+      "license": "ISC",
+      "registryUrl": "https://registry.npmjs.org/ssri/12.0.0",
+      "integrity": "sha512-S7iGNosepx9RadX82oimUkvr0Ct7IjJbEbs4mJcTxst8um95J3sDYU1RBEOvdu6oL1Wek2ODI5i4MAw+dZ6cAQ==",
+      "tarballSha256": "297827efbadb2fe81794ae8bdf4b29d5ab05e62bb0c9f49cdedd6304dfb2ada7",
+      "gitHead": "35c1f962f76ea3e198efe42408249c9738369a35",
+      "repository": {
+        "url": "git+https://github.com/npm/ssri.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/ssri-12.0.0.txt",
+          "sourcePath": "package/LICENSE.md",
+          "sha256": "3749709146345fa15546aaba4e3ab1b3b92a4d930077b5bc32d90815cb63afaf",
+          "bytes": 760
+        }
+      ],
+      "status": "notice-file"
+    },
+    {
+      "name": "yallist",
+      "version": "5.0.0",
+      "license": "BlueOak-1.0.0",
+      "registryUrl": "https://registry.npmjs.org/yallist/5.0.0",
+      "integrity": "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==",
+      "tarballSha256": "7c9d43dbab7cab3b3133b0e6a5af14014482285316b39ec9f508efadd9ebce95",
+      "gitHead": "a082c2dd872bb3cd8fb92359ed66605064957cd4",
+      "repository": {
+        "url": "git+https://github.com/isaacs/yallist.git",
+        "type": "git"
+      },
+      "noticeFiles": [
+        {
+          "file": "third-party/image-notices/global-pnpm/yallist-5.0.0.txt",
+          "sourcePath": "package/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "notice-file"
+    }
+  ],
+  "notes": "Derived-attribution files are candidates, not verbatim artifact notices. They must not be treated as exact-release license files."
+}

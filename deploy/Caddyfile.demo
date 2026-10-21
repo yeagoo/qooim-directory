@@ -1,0 +1,19 @@
+{
+	auto_https disable_redirects
+	skip_install_trust
+	servers {
+		protocols h1 h2
+	}
+}
+https://admin.localhost:{$DEMO_TLS_PORT}, https://atlas.localhost:{$DEMO_TLS_PORT}, https://notes.localhost:{$DEMO_TLS_PORT}, https://library.localhost:{$DEMO_TLS_PORT} {
+	tls internal
+	reverse_proxy web:3000 {
+        header_up -X-Network-Proxy-Key
+        header_up -X-Network-Client-IP
+        header_up X-Network-Proxy-Key "{$PROXY_TRUST_TOKEN}"
+        header_up X-Network-Client-IP {remote_host}
+    }
+}
+https://:{$DEMO_TLS_PORT} {
+	respond "Not found" 404
+}

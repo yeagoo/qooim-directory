@@ -1,0 +1,119 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+use crate::attr::{AttrSelectorOperator, AttrSelectorWithOptionalNamespace};
+use crate::attr::{NamespaceConstraint, ParsedAttrSelectorOperation, ParsedCaseSensitivity};
+use crate::bloom::BLOOM_HASH_MASK;
+use crate::builder::{
+    relative_selector_list_specificity_and_flags, selector_list_specificity_and_flags,
+    SelectorBuilder, SelectorFlags, Specificity, SpecificityAndFlags,
+};
+use crate::context::QuirksMode;
+use crate::sink::Push;
+use crate::visitor::SelectorListKind;
+pub use crate::visitor::SelectorVisitor;
+use bitflags::bitflags;
+use cssparser::match_ignore_ascii_case;
+use cssparser::parse_nth;
+use cssparser::{BasicParseError, BasicParseErrorKind, ParseError, ParseErrorKind};
+use cssparser::{CowRcStr, Delimiter, SourceLocation};
+use cssparser::{Parser as CssParser, ToCss, Token};
+use debug_unreachable::debug_unreachable;
+use precomputed_hash::PrecomputedHash;
+use servo_arc::{Arc, ArcUnionBorrow, ThinArc, ThinArcUnion, UniqueArc};
+use smallvec::SmallVec;
+use std::borrow::{Borrow, Cow};
+use std::fmt::{self, Debug};
+use std::iter::Rev;
+use std::slice;
+
+#[cfg(feature = "to_shmem")]
+use to_shmem_derive::ToShmem;
+
+/// A trait that represents a pseudo-element.
+pub trait PseudoElement: Sized + ToCss {
+    /// The `SelectorImpl` this pseudo-element is used for.
+    type Impl: SelectorImpl;
+
+    /// Whether the pseudo-element supports a given state selector to the right
+    /// of it.
+    fn accepts_state_pseudo_classes(&self) -> bool {
+        false
+    }
+
+    /// Whether this pseudo-element is valid after a ::slotted(..) pseudo.
+    fn valid_after_slotted(&self) -> bool {
+        false
+    }
+
+    /// Whether this pseudo-element is valid when directly after a ::before/::after pseudo.
+    fn valid_after_before_or_after(&self) -> bool {
+        false
+    }
+
+    /// Whether this pseudo-element is element-backed.
+    /// https://drafts.csswg.org/css-pseudo-4/#element-like
+    fn parses_as_element_backed(&self) -> bool {
+        false
+    }
+
+    /// Whether this pseudo-element is ::before or ::after pseudo element,
+    /// which are treated specially when deciding what can come after them.
+    /// https://drafts.csswg.org/css-pseudo-4/#generated-content
+    fn is_before_or_after(&self) -> bool {
+        false
+    }
+
+    /// The count we contribute to the specificity from this pseudo-element.
+    fn specificity_count(&self) -> u32 {
+        1
+    }
+
+    /// Whether this pseudo-element is in a pseudo-element tree (excluding the pseudo-element
+    /// root).
+    /// https://drafts.csswg.org/css-view-transitions-1/#pseudo-root
+    fn is_in_pseudo_element_tree(&self) -> bool {
+        false
+    }
+}
+
+/// A trait that represents a pseudo-class.
+pub trait NonTSPseudoClass: Sized + ToCss {
+    /// The `SelectorImpl` this pseudo-element is used for.
+    type Impl: SelectorImpl;
+
+    /// Whether this pseudo-class is :active or :hover.
+    fn is_active_or_hover(&self) -> bool;
+
+    /// Whether this pseudo-class belongs to:
+    ///
+    /// https://drafts.csswg.org/selectors-4/#useraction-pseudos
+    fn is_user_action_state(&self) -> bool;
+
+    fn visit<V>(&self, _visitor: &mut V) -> bool
+    where
+        V: SelectorVisitor<Impl = Self::Impl>,
+    {
+        true
+    }
+}
+
+/// Returns a Cow::Borrowed if `s` is already ASCII lowercase, and a
+/// Cow::Owned if `s` had to be converted into ASCII lowercase.
+fn to_ascii_lowercase(s: &str) -> Cow<'_, str> {
+    if let Some(first_uppercase) = s.bytes().position(|byte| byte >= b'A' && byte <= b'Z') {
+        let mut string = s.to_owned();
+        string[first_uppercase..].make_ascii_lowercase();
+        string.into()
+    } else {
+        s.into()
+    }
+}
+
+bitflags! {
+    /// Flags that indicate at which point of parsing a selector are we.
+    #[derive(Copy, Clone)]
+    struct SelectorParsingState: u16 {
+        /// Whether we should avoid adding default namespaces to selectors that
+        /// are

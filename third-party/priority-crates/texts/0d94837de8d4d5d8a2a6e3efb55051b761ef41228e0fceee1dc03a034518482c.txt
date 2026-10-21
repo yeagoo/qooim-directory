@@ -1,0 +1,6 @@
+{
+  "git": {
+    "sha1": "14011d08c42a7cd368698fe28f77eb4cd0b65bf0"
+  },
+  "path_in_vcs": "mutants_attrs"
+}

@@ -1,0 +1,293 @@
+{
+  "format": 1,
+  "scope": "declared-environment-and-ci-metadata-not-historical-capture",
+  "historicalBuildVerified": false,
+  "historicalEnvironmentCaptured": false,
+  "baselineBuilt": false,
+  "licenseClearance": "not-assessed",
+  "analyzerSha256": "5de8cce5630394c1f6348436aed96ed48f6fd70e8b6234f0961dc5b47e9c3a0c",
+  "packagingCollectionSha256": "74ac67ec151d9b94a1e4faf8afc2e10fda907b10f89f52e5e0c7cc08887bb2ad",
+  "inputs": [
+    {
+      "gitPath": "build.sh",
+      "file": "third-party/packaging-source/texts/f32e344b1355b6bcf3836e7f25e2c2de7f25eefeb8c96d02711ad3fcea487488.txt",
+      "sha256": "f32e344b1355b6bcf3836e7f25e2c2de7f25eefeb8c96d02711ad3fcea487488",
+      "bytes": 2804
+    },
+    {
+      "gitPath": "platforms/linux-arm64v8/Dockerfile",
+      "file": "third-party/packaging-source/texts/1ba128aaa15a894fcecc2efbc801cd3eae4beaefbf9caecdb2ce35d1102a16c4.txt",
+      "sha256": "1ba128aaa15a894fcecc2efbc801cd3eae4beaefbf9caecdb2ce35d1102a16c4",
+      "bytes": 1503
+    },
+    {
+      "gitPath": "platforms/linuxmusl-arm64v8/Dockerfile",
+      "file": "third-party/packaging-source/texts/fc8af7add4ae5819bc5ef4130efa7fc83a4450916c767a177dbba5591bc43d27.txt",
+      "sha256": "fc8af7add4ae5819bc5ef4130efa7fc83a4450916c767a177dbba5591bc43d27",
+      "bytes": 1490
+    }
+  ],
+  "assets": [
+    {
+      "id": "runs",
+      "file": "third-party/native-environment/texts/0317a74d97d2adf446558cbe660e43fd6991dfd4b93032c0db10a48d54deca72.txt",
+      "sha256": "0317a74d97d2adf446558cbe660e43fd6991dfd4b93032c0db10a48d54deca72",
+      "bytes": 135538,
+      "sourceUrl": "https://api.github.com/repos/lovell/sharp-libvips/actions/runs?head_sha=ebb95f8add54eee8bed840e3fb587e4cbec857d7&per_page=100",
+      "immutableReference": false
+    },
+    {
+      "id": "jobs-36315645944",
+      "file": "third-party/native-environment/texts/c6a590594c9763176d9ff6c48343134b171cb8bd1642f7623243a6874268f427.txt",
+      "sha256": "c6a590594c9763176d9ff6c48343134b171cb8bd1642f7623243a6874268f427",
+      "bytes": 34870,
+      "sourceUrl": "https://api.github.com/repos/lovell/sharp-libvips/actions/runs/36315645944/jobs?per_page=100",
+      "immutableReference": false
+    },
+    {
+      "id": "jobs-36315646015",
+      "file": "third-party/native-environment/texts/1d515ee496df30295874bddb08ce53bf2d92a447414d6a29ca65714f49fc9f3c.txt",
+      "sha256": "1d515ee496df30295874bddb08ce53bf2d92a447414d6a29ca65714f49fc9f3c",
+      "bytes": 34902,
+      "sourceUrl": "https://api.github.com/repos/lovell/sharp-libvips/actions/runs/36315646015/jobs?per_page=100",
+      "immutableReference": false
+    }
+  ],
+  "analysis": {
+    "scope": "declarations-only-not-installed-versions",
+    "observations": [
+      {
+        "gitPath": "build.sh",
+        "line": 89,
+        "kind": "build-driver-pull",
+        "detail": {
+          "declaration": "docker build --pull -t vips-dev-win32 platforms/win32",
+          "historicalImageCaptured": false
+        }
+      },
+      {
+        "gitPath": "build.sh",
+        "line": 98,
+        "kind": "build-driver-pull",
+        "detail": {
+          "declaration": "docker build --pull -t vips-dev-$flavour platforms/$flavour",
+          "historicalImageCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linux-arm64v8/Dockerfile",
+        "line": 1,
+        "kind": "base-image-reference",
+        "detail": {
+          "reference": "rockylinux/rockylinux:8-ubi-init",
+          "referenceHasDigest": false,
+          "historicalImageCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linux-arm64v8/Dockerfile",
+        "line": 17,
+        "kind": "os-repository-operation",
+        "detail": {
+          "declaration": "dnf update -y && \\",
+          "repositorySnapshotCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linux-arm64v8/Dockerfile",
+        "line": 18,
+        "kind": "os-repository-operation",
+        "detail": {
+          "declaration": "dnf install -y epel-release && \\",
+          "repositorySnapshotCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linux-arm64v8/Dockerfile",
+        "line": 19,
+        "kind": "os-repository-operation",
+        "detail": {
+          "declaration": "dnf config-manager --set-enabled powertools && \\",
+          "repositorySnapshotCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linux-arm64v8/Dockerfile",
+        "line": 20,
+        "kind": "os-repository-operation",
+        "detail": {
+          "declaration": "dnf install -y --setopt=tsflags=nodocs \\",
+          "repositorySnapshotCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linux-arm64v8/Dockerfile",
+        "line": 41,
+        "kind": "rustup-network-installer",
+        "detail": {
+          "declaration": "curl https://sh.rustup.rs -sSf | sh -s -- -y \\",
+          "installerResponseCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linux-arm64v8/Dockerfile",
+        "line": 45,
+        "kind": "rust-toolchain-selection",
+        "detail": {
+          "selection": "nightly",
+          "floatingChannel": true,
+          "installedToolchainCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linux-arm64v8/Dockerfile",
+        "line": 47,
+        "kind": "cargo-c-selection",
+        "detail": {
+          "declaration": "cargo install cargo-c --locked && \\",
+          "explicitVersionArgument": false,
+          "installedVersionCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linux-arm64v8/Dockerfile",
+        "line": 48,
+        "kind": "python-tool-install",
+        "detail": {
+          "declaration": "pip3.12 install meson ninja",
+          "installedArtifactsCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linuxmusl-arm64v8/Dockerfile",
+        "line": 1,
+        "kind": "base-image-reference",
+        "detail": {
+          "reference": "alpine:3.20",
+          "referenceHasDigest": false,
+          "historicalImageCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linuxmusl-arm64v8/Dockerfile",
+        "line": 22,
+        "kind": "os-repository-operation",
+        "detail": {
+          "declaration": "apk update && apk upgrade && \\",
+          "repositorySnapshotCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linuxmusl-arm64v8/Dockerfile",
+        "line": 23,
+        "kind": "os-repository-operation",
+        "detail": {
+          "declaration": "apk --update --no-cache add \\",
+          "repositorySnapshotCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linuxmusl-arm64v8/Dockerfile",
+        "line": 44,
+        "kind": "rustup-network-installer",
+        "detail": {
+          "declaration": "curl https://sh.rustup.rs -sSf | sh -s -- -y \\",
+          "installerResponseCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linuxmusl-arm64v8/Dockerfile",
+        "line": 48,
+        "kind": "rust-toolchain-selection",
+        "detail": {
+          "selection": "nightly",
+          "floatingChannel": true,
+          "installedToolchainCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linuxmusl-arm64v8/Dockerfile",
+        "line": 50,
+        "kind": "cargo-c-selection",
+        "detail": {
+          "declaration": "cargo install cargo-c --locked && \\",
+          "explicitVersionArgument": false,
+          "installedVersionCaptured": false
+        }
+      },
+      {
+        "gitPath": "platforms/linuxmusl-arm64v8/Dockerfile",
+        "line": 51,
+        "kind": "python-tool-install",
+        "detail": {
+          "declaration": "pipx install meson",
+          "installedArtifactsCaptured": false
+        }
+      }
+    ],
+    "missingCaptures": [
+      "historical-image-digests",
+      "os-package-snapshots-and-versions",
+      "rust-toolchain-and-installer",
+      "cargo-c-version-and-dependencies",
+      "python-tool-versions-and-artifact-hashes",
+      "final-inputs-and-output-comparison"
+    ]
+  },
+  "ci": {
+    "scope": "job-metadata-not-container-toolchain",
+    "selectedRuns": [
+      {
+        "id": 36315645944,
+        "headSha": "ebb95f8add54eee8bed840e3fb587e4cbec857d7",
+        "branchReported": "main",
+        "attempt": 1,
+        "conclusionReported": "success",
+        "targetJobs": [
+          {
+            "id": 108609814774,
+            "name": "build-linux-arm64v8",
+            "conclusionReported": "success",
+            "runnerLabelsReported": [
+              "ubuntu-26.04-arm"
+            ]
+          },
+          {
+            "id": 108609814769,
+            "name": "build-linuxmusl-arm64v8",
+            "conclusionReported": "success",
+            "runnerLabelsReported": [
+              "ubuntu-26.04-arm"
+            ]
+          }
+        ]
+      },
+      {
+        "id": 36315646015,
+        "headSha": "ebb95f8add54eee8bed840e3fb587e4cbec857d7",
+        "branchReported": "v1.3.4",
+        "attempt": 1,
+        "conclusionReported": "success",
+        "targetJobs": [
+          {
+            "id": 108609814183,
+            "name": "build-linux-arm64v8",
+            "conclusionReported": "success",
+            "runnerLabelsReported": [
+              "ubuntu-26.04-arm"
+            ]
+          },
+          {
+            "id": 108609814245,
+            "name": "build-linuxmusl-arm64v8",
+            "conclusionReported": "success",
+            "runnerLabelsReported": [
+              "ubuntu-26.04-arm"
+            ]
+          }
+        ]
+      }
+    ],
+    "historicalEnvironmentCaptured": false
+  }
+}

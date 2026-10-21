@@ -1,0 +1,601 @@
+{
+  "format": 1,
+  "scope": "fixed-packaging-tree-not-historical-environment",
+  "revision": "ebb95f8add54eee8bed840e3fb587e4cbec857d7",
+  "gitTreeSha1": "fbab6e23a0fd10b108e47997f40d9d4113b4a1a4",
+  "historicalBuildVerified": false,
+  "publisherSignatureVerified": false,
+  "sourceCodeExecuted": false,
+  "licenseClearance": "not-assessed",
+  "archive": {
+    "sourceUrl": "https://codeload.github.com/lovell/sharp-libvips/tar.gz/ebb95f8add54eee8bed840e3fb587e4cbec857d7",
+    "sha256": "65fdb633c2d97626352a3771b7a0ce30b6a89af03d2a1238491c8b068e6b8dad",
+    "bytes": 24490,
+    "commitComment": "ebb95f8add54eee8bed840e3fb587e4cbec857d7"
+  },
+  "tree": {
+    "file": "third-party/packaging-source/texts/279f98d5567e72952ea4fb5a1b4ef7921a5aea9d752ca6449393530f608cc9b7.txt",
+    "sha256": "279f98d5567e72952ea4fb5a1b4ef7921a5aea9d752ca6449393530f608cc9b7",
+    "bytes": 22019,
+    "sourceUrl": "https://api.github.com/repos/lovell/sharp-libvips/git/trees/fbab6e23a0fd10b108e47997f40d9d4113b4a1a4?recursive=1"
+  },
+  "commitSnapshot": {
+    "file": "third-party/mutable-inputs/texts/952994170143af499fcb53678647d2df413db06e378bcf61b6ece59fe05f4992.txt",
+    "sha256": "952994170143af499fcb53678647d2df413db06e378bcf61b6ece59fe05f4992",
+    "bytes": 18238
+  },
+  "collectorSha256": "0e860f2d1aaaf0642b50e2f6f8670dd8190e529ccc784af1bb784997c0c65ae1",
+  "assets": [
+    {
+      "file": "third-party/packaging-source/texts/2adb1d52349378c594a8794d551086dac9eea25b406a48e4c322bdbd8f56123d.txt",
+      "sha256": "2adb1d52349378c594a8794d551086dac9eea25b406a48e4c322bdbd8f56123d",
+      "bytes": 153,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/.github/dependabot.yml",
+      "gitPath": ".github/dependabot.yml",
+      "gitMode": "100644",
+      "gitBlobSha1": "29aeab9aa13ef48b29c6b5cb433adc0cdda0eb96"
+    },
+    {
+      "file": "third-party/packaging-source/texts/0a0c730ee600f2b95298ead170a84e0b7933a8878db0664c9858321f416cda7d.txt",
+      "sha256": "0a0c730ee600f2b95298ead170a84e0b7933a8878db0664c9858321f416cda7d",
+      "bytes": 3598,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/.github/workflows/ci.yml",
+      "gitPath": ".github/workflows/ci.yml",
+      "gitMode": "100644",
+      "gitBlobSha1": "50f72e18891a8358e0f5b4b3cdf1a7d7b7387466"
+    },
+    {
+      "file": "third-party/packaging-source/texts/7fef71fd4cc0c9556f9218a707d70ad13998dd4ea272ac281cade531b2ebc12f.txt",
+      "sha256": "7fef71fd4cc0c9556f9218a707d70ad13998dd4ea272ac281cade531b2ebc12f",
+      "bytes": 937,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/.github/workflows/latest.yml",
+      "gitPath": ".github/workflows/latest.yml",
+      "gitMode": "100644",
+      "gitBlobSha1": "4a5636a11243da0c42dc1f60bbb7be44b52c1567"
+    },
+    {
+      "file": "third-party/packaging-source/texts/b75397c1dcea97ae13fec658100f9af0d4f72e6398c58009f045e9a3b5f0dbc2.txt",
+      "sha256": "b75397c1dcea97ae13fec658100f9af0d4f72e6398c58009f045e9a3b5f0dbc2",
+      "bytes": 174,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/.gitignore",
+      "gitPath": ".gitignore",
+      "gitMode": "100644",
+      "gitBlobSha1": "baaaf97dd4d8e63050be3a22cfe09380bfd69a79"
+    },
+    {
+      "file": "third-party/packaging-source/texts/b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1.txt",
+      "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+      "bytes": 11357,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/LICENSE",
+      "gitPath": "LICENSE",
+      "gitMode": "100644",
+      "gitBlobSha1": "8dada3edaf50dbc082c9a125058f25def75e625a"
+    },
+    {
+      "file": "third-party/packaging-source/texts/52f8b2931fa6d496c792a2ed808177414ac24f2f87b667bb13fbc21bf1d99758.txt",
+      "sha256": "52f8b2931fa6d496c792a2ed808177414ac24f2f87b667bb13fbc21bf1d99758",
+      "bytes": 1998,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/README.md",
+      "gitPath": "README.md",
+      "gitMode": "100644",
+      "gitBlobSha1": "6676201c9a8b14ddea13daa765fd64772a2a3b20"
+    },
+    {
+      "file": "third-party/packaging-source/texts/6f0d5086e3bcbee12bcdacf5878b31d1104002aeecaeb241d3fff466108082fe.txt",
+      "sha256": "6f0d5086e3bcbee12bcdacf5878b31d1104002aeecaeb241d3fff466108082fe",
+      "bytes": 4230,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/THIRD-PARTY-NOTICES.md",
+      "gitPath": "THIRD-PARTY-NOTICES.md",
+      "gitMode": "100644",
+      "gitBlobSha1": "e6e343ff638ba6d444e1b5b2d66098bf0e9df098"
+    },
+    {
+      "file": "third-party/packaging-source/texts/f32e344b1355b6bcf3836e7f25e2c2de7f25eefeb8c96d02711ad3fcea487488.txt",
+      "sha256": "f32e344b1355b6bcf3836e7f25e2c2de7f25eefeb8c96d02711ad3fcea487488",
+      "bytes": 2804,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/build.sh",
+      "gitPath": "build.sh",
+      "gitMode": "100755",
+      "gitBlobSha1": "eca5b7f015d8234e1ffd8c5c769cca937ae0b41a"
+    },
+    {
+      "file": "third-party/packaging-source/texts/333031b3b49bf1a16d0b9d6812d98f67c404218932ef8c0b389388524a524b36.txt",
+      "sha256": "333031b3b49bf1a16d0b9d6812d98f67c404218932ef8c0b389388524a524b36",
+      "bytes": 23877,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/build/posix.sh",
+      "gitPath": "build/posix.sh",
+      "gitMode": "100755",
+      "gitBlobSha1": "8334b658572224fbbd27e38e66844b7f46fefa15"
+    },
+    {
+      "file": "third-party/packaging-source/texts/53a0ae90da3ef3e212ae696c7cfa97f9f0f0d48092f5fffd8130f9275b5959b7.txt",
+      "sha256": "53a0ae90da3ef3e212ae696c7cfa97f9f0f0d48092f5fffd8130f9275b5959b7",
+      "bytes": 1420,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/build/wasm.sh",
+      "gitPath": "build/wasm.sh",
+      "gitMode": "100755",
+      "gitBlobSha1": "5e4defe98a41037efd58585e4a962bcc3c3638a2"
+    },
+    {
+      "file": "third-party/packaging-source/texts/52f2d9d76b07d4b4ad1720659b1e9bbc76121b85f21d9d084a85af28014473f3.txt",
+      "sha256": "52f2d9d76b07d4b4ad1720659b1e9bbc76121b85f21d9d084a85af28014473f3",
+      "bytes": 1262,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/build/win.sh",
+      "gitPath": "build/win.sh",
+      "gitMode": "100755",
+      "gitBlobSha1": "a92043f73d342c76722065378a9f800b1769414f"
+    },
+    {
+      "file": "third-party/packaging-source/texts/a1bb4e6164704023aa4af141b7b088faf48a58ea46c852cd57c80ce09ef2b5c7.txt",
+      "sha256": "a1bb4e6164704023aa4af141b7b088faf48a58ea46c852cd57c80ce09ef2b5c7",
+      "bytes": 2598,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/check-latest-versions.sh",
+      "gitPath": "check-latest-versions.sh",
+      "gitMode": "100755",
+      "gitBlobSha1": "c162c61e1fe42f02350164c5141c46941b383405"
+    },
+    {
+      "file": "third-party/packaging-source/texts/2d99bc7bfc0287416eabbfc6e4d22bb283fab9d29f99ed5217d0bd4e832beaf6.txt",
+      "sha256": "2d99bc7bfc0287416eabbfc6e4d22bb283fab9d29f99ed5217d0bd4e832beaf6",
+      "bytes": 485,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/generate-release-notes.sh",
+      "gitPath": "generate-release-notes.sh",
+      "gitMode": "100755",
+      "gitBlobSha1": "c18c7b0bffc694d05b1159473c89c72e6e5a0d61"
+    },
+    {
+      "file": "third-party/packaging-source/texts/cfead70a86962ddbd35712f502006eae60965ad37eef0a411a255d24cea0d0c4.txt",
+      "sha256": "cfead70a86962ddbd35712f502006eae60965ad37eef0a411a255d24cea0d0c4",
+      "bytes": 826,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/darwin-arm64/package.json",
+      "gitPath": "npm/darwin-arm64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "00beee878ccc64995cf26e03177ab9af8f08bd74"
+    },
+    {
+      "file": "third-party/packaging-source/texts/5e39254b12ccb24c2dd04e13deafb50ad160b179d02a0e3002e119566be72990.txt",
+      "sha256": "5e39254b12ccb24c2dd04e13deafb50ad160b179d02a0e3002e119566be72990",
+      "bytes": 813,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/darwin-x64/package.json",
+      "gitPath": "npm/darwin-x64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "52f614ce07ec17d37744682843c58abc2911fde0"
+    },
+    {
+      "file": "third-party/packaging-source/texts/2cf12762fdcdcb6f64aeaaf39fcc640adce9b94c283d532a5a75b3a062b39219.txt",
+      "sha256": "2cf12762fdcdcb6f64aeaaf39fcc640adce9b94c283d532a5a75b3a062b39219",
+      "bytes": 3074,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/dev-wasm32/THIRD-PARTY-NOTICES.md",
+      "gitPath": "npm/dev-wasm32/THIRD-PARTY-NOTICES.md",
+      "gitMode": "100644",
+      "gitBlobSha1": "bb4fe305ce666618eca5fdae58ccd966f2ed933a"
+    },
+    {
+      "file": "third-party/packaging-source/texts/6bbfdcb0bcf58b1fdbc57fc60faaf522b55d826890bf77b50fb04d70b2ce444d.txt",
+      "sha256": "6bbfdcb0bcf58b1fdbc57fc60faaf522b55d826890bf77b50fb04d70b2ce444d",
+      "bytes": 807,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/dev-wasm32/package.json",
+      "gitPath": "npm/dev-wasm32/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "29458d98483b5751a5b06d132d87708fc3a6a75d"
+    },
+    {
+      "file": "third-party/packaging-source/texts/7eddab4015bfa4ee10407678b3061ccb8d356058c3ccf30aea6232c85294bb70.txt",
+      "sha256": "7eddab4015bfa4ee10407678b3061ccb8d356058c3ccf30aea6232c85294bb70",
+      "bytes": 779,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/dev/package.json",
+      "gitPath": "npm/dev/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "dc3533da8e623f0316fad704b09a7dd4ba06190f"
+    },
+    {
+      "file": "third-party/packaging-source/texts/da9cbca12ac41c98a2eda75b7786bfd70c2be10834cd9182a79893c0b2ed5ccc.txt",
+      "sha256": "da9cbca12ac41c98a2eda75b7786bfd70c2be10834cd9182a79893c0b2ed5ccc",
+      "bytes": 895,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/linux-arm/package.json",
+      "gitPath": "npm/linux-arm/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "7fb4f7ae404a2267e48325459e472b6ff0b19e27"
+    },
+    {
+      "file": "third-party/packaging-source/texts/07236a57c17d42f6ccb0416c2803d2e895b18ec9eb98a3d46f0a4171e5fde555.txt",
+      "sha256": "07236a57c17d42f6ccb0416c2803d2e895b18ec9eb98a3d46f0a4171e5fde555",
+      "bytes": 901,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/linux-arm64/package.json",
+      "gitPath": "npm/linux-arm64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "5dcfc225c202342662784c87e55017bb8eeee864"
+    },
+    {
+      "file": "third-party/packaging-source/texts/110841350420bbe91841c05b6399bc9ce7605f3d390b1116edfad5560bb63877.txt",
+      "sha256": "110841350420bbe91841c05b6399bc9ce7605f3d390b1116edfad5560bb63877",
+      "bytes": 898,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/linux-ppc64/package.json",
+      "gitPath": "npm/linux-ppc64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "9fe0a6e566728bf470974afc8cdc1a26c80fda0b"
+    },
+    {
+      "file": "third-party/packaging-source/texts/26859f7cb00a2d0d4d9d385960b60776e3d29bc934a1ef5c57651a2e24e1990f.txt",
+      "sha256": "26859f7cb00a2d0d4d9d385960b60776e3d29bc934a1ef5c57651a2e24e1990f",
+      "bytes": 910,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/linux-riscv64/package.json",
+      "gitPath": "npm/linux-riscv64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "76383885d1cd7d24c7e40cef4f0f83d25858c616"
+    },
+    {
+      "file": "third-party/packaging-source/texts/dd56bde361f3a438bc7acb2a70d482bdd1a1e9e6678905a5991188a751207369.txt",
+      "sha256": "dd56bde361f3a438bc7acb2a70d482bdd1a1e9e6678905a5991188a751207369",
+      "bytes": 896,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/linux-s390x/package.json",
+      "gitPath": "npm/linux-s390x/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "9a516d10672c841d4a5fb8e35d97586896f1ed66"
+    },
+    {
+      "file": "third-party/packaging-source/texts/e6edd04552250f392f238af05da633486cbe38976c3022feb6fe651562462311.txt",
+      "sha256": "e6edd04552250f392f238af05da633486cbe38976c3022feb6fe651562462311",
+      "bytes": 888,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/linux-x64/package.json",
+      "gitPath": "npm/linux-x64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "ed7d03cc89377e05e1d804b612dcbc7a1cb05f03"
+    },
+    {
+      "file": "third-party/packaging-source/texts/8bbd4d4fd8e2c32cb014e6e28d491fdbc1fecb0065ae98296711562dc4f447e4.txt",
+      "sha256": "8bbd4d4fd8e2c32cb014e6e28d491fdbc1fecb0065ae98296711562dc4f447e4",
+      "bytes": 907,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/linuxmusl-arm64/package.json",
+      "gitPath": "npm/linuxmusl-arm64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "079d88acec506896903376f749104aa942ad0184"
+    },
+    {
+      "file": "third-party/packaging-source/texts/b7386fee454510e68bc92dbae7a2fdb2365fd684d2fcd2ec3dfb3d4d5ba7fb6f.txt",
+      "sha256": "b7386fee454510e68bc92dbae7a2fdb2365fd684d2fcd2ec3dfb3d4d5ba7fb6f",
+      "bytes": 894,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/linuxmusl-x64/package.json",
+      "gitPath": "npm/linuxmusl-x64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "fcf59dc0a3fa49763a23a5e8be8a3683ac9f982f"
+    },
+    {
+      "file": "third-party/packaging-source/texts/5abf549da2462d1e7d1d55fd64777089ebe6e3e0c6a0a3e2ca9bf942de0ed81c.txt",
+      "sha256": "5abf549da2462d1e7d1d55fd64777089ebe6e3e0c6a0a3e2ca9bf942de0ed81c",
+      "bytes": 377,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/package.json",
+      "gitPath": "npm/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "179047124099873e7be574139d808a6013c605e0"
+    },
+    {
+      "file": "third-party/packaging-source/texts/b9d8a53b55e7b776f597f969d8638bf35219be91edd727c96dadd54d8de34360.txt",
+      "sha256": "b9d8a53b55e7b776f597f969d8638bf35219be91edd727c96dadd54d8de34360",
+      "bytes": 770,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/win32-arm64/package.json",
+      "gitPath": "npm/win32-arm64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "a65fd0c828361db4a68d1134650c384ace3de2f9"
+    },
+    {
+      "file": "third-party/packaging-source/texts/beb7a41413ee43ceec010ece67f6110700790d45bff7018ab8fa37fe5776f674.txt",
+      "sha256": "beb7a41413ee43ceec010ece67f6110700790d45bff7018ab8fa37fe5776f674",
+      "bytes": 761,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/win32-ia32/package.json",
+      "gitPath": "npm/win32-ia32/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "b30f15575debd1e21eb5c99270b56986561d096d"
+    },
+    {
+      "file": "third-party/packaging-source/texts/4aac4688d0f0402fa513d8a789787a33f7df3f2c1693c15dc3a115c78ca240e6.txt",
+      "sha256": "4aac4688d0f0402fa513d8a789787a33f7df3f2c1693c15dc3a115c78ca240e6",
+      "bytes": 759,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/npm/win32-x64/package.json",
+      "gitPath": "npm/win32-x64/package.json",
+      "gitMode": "100644",
+      "gitBlobSha1": "a30e200ec274c60047310cd8b96bfb205e39829c"
+    },
+    {
+      "file": "third-party/packaging-source/texts/752c37ab0b1b9401ec9cad4ef0d6588511b6a1011fe8789acba4066f65cccf99.txt",
+      "sha256": "752c37ab0b1b9401ec9cad4ef0d6588511b6a1011fe8789acba4066f65cccf99",
+      "bytes": 390,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/darwin-arm64v8/Toolchain.cmake",
+      "gitPath": "platforms/darwin-arm64v8/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "cd1cf457eded79f2338559efd7d70aae24ca0195"
+    },
+    {
+      "file": "third-party/packaging-source/texts/d9143811fe878743bc874d92de848a87a2c9a334b0d39e34d49b56c0a025a5ee.txt",
+      "sha256": "d9143811fe878743bc874d92de848a87a2c9a334b0d39e34d49b56c0a025a5ee",
+      "bytes": 210,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/darwin-arm64v8/meson.ini",
+      "gitPath": "platforms/darwin-arm64v8/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "527b07056f43f1d94aef6e5d5ce5f8d282ae045a"
+    },
+    {
+      "file": "third-party/packaging-source/texts/ef6c4131336a3600023a4e5f332eef53e4b52406d1a1699c5678f2a47d46e3e2.txt",
+      "sha256": "ef6c4131336a3600023a4e5f332eef53e4b52406d1a1699c5678f2a47d46e3e2",
+      "bytes": 363,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/darwin-x64/Toolchain.cmake",
+      "gitPath": "platforms/darwin-x64/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "94a5660b904956ec253c4fe09558671427d423e2"
+    },
+    {
+      "file": "third-party/packaging-source/texts/d9143811fe878743bc874d92de848a87a2c9a334b0d39e34d49b56c0a025a5ee.txt",
+      "sha256": "d9143811fe878743bc874d92de848a87a2c9a334b0d39e34d49b56c0a025a5ee",
+      "bytes": 210,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/darwin-x64/meson.ini",
+      "gitPath": "platforms/darwin-x64/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "527b07056f43f1d94aef6e5d5ce5f8d282ae045a"
+    },
+    {
+      "file": "third-party/packaging-source/texts/1ba128aaa15a894fcecc2efbc801cd3eae4beaefbf9caecdb2ce35d1102a16c4.txt",
+      "sha256": "1ba128aaa15a894fcecc2efbc801cd3eae4beaefbf9caecdb2ce35d1102a16c4",
+      "bytes": 1503,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-arm64v8/Dockerfile",
+      "gitPath": "platforms/linux-arm64v8/Dockerfile",
+      "gitMode": "100644",
+      "gitBlobSha1": "5264d02d814e8bd2496021ea42209abda4d0d379"
+    },
+    {
+      "file": "third-party/packaging-source/texts/eaf601b65260c4ff1991063f248346d51fe6751e84f7dc83b7fcd3fd4658cad6.txt",
+      "sha256": "eaf601b65260c4ff1991063f248346d51fe6751e84f7dc83b7fcd3fd4658cad6",
+      "bytes": 224,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-arm64v8/Toolchain.cmake",
+      "gitPath": "platforms/linux-arm64v8/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "96ed50278cfc9712102560e6f271b7d177c513be"
+    },
+    {
+      "file": "third-party/packaging-source/texts/c256bf8fcad1bcee36872c22c007d41980ace7cfe74072af130d336ddd92f61e.txt",
+      "sha256": "c256bf8fcad1bcee36872c22c007d41980ace7cfe74072af130d336ddd92f61e",
+      "bytes": 212,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-arm64v8/aarch64-linux-gnu-pkgconf",
+      "gitPath": "platforms/linux-arm64v8/aarch64-linux-gnu-pkgconf",
+      "gitMode": "100755",
+      "gitBlobSha1": "84b5ae9bcc21704aa98d1cdd01727815802144ee"
+    },
+    {
+      "file": "third-party/packaging-source/texts/0d85749d3921b1877e3d68615265a7f158856bf615ab56d6beb75d71a7fd0a41.txt",
+      "sha256": "0d85749d3921b1877e3d68615265a7f158856bf615ab56d6beb75d71a7fd0a41",
+      "bytes": 185,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-arm64v8/meson.ini",
+      "gitPath": "platforms/linux-arm64v8/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "2f9d2ad0e4fd0c1f24f587ce8274f91f135fe0f9"
+    },
+    {
+      "file": "third-party/packaging-source/texts/de6ff99f786f422536b2a01fbfed36be351ca919621bba2f8a026e8f1fd850f2.txt",
+      "sha256": "de6ff99f786f422536b2a01fbfed36be351ca919621bba2f8a026e8f1fd850f2",
+      "bytes": 1535,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-armv6/Dockerfile",
+      "gitPath": "platforms/linux-armv6/Dockerfile",
+      "gitMode": "100644",
+      "gitBlobSha1": "bc25ec6540801f514eb8b702080c9e85a120698e"
+    },
+    {
+      "file": "third-party/packaging-source/texts/f90f9711d43642eae79f357aed3e886a0c2f6155dfc4f1113f58c540d810c5f7.txt",
+      "sha256": "f90f9711d43642eae79f357aed3e886a0c2f6155dfc4f1113f58c540d810c5f7",
+      "bytes": 546,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-armv6/Toolchain.cmake",
+      "gitPath": "platforms/linux-armv6/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "2a46c799242a88b680cb8e6d440d846cce08a427"
+    },
+    {
+      "file": "third-party/packaging-source/texts/c149f44adcff1d5e99ad8cf4df891368d8b15c5ea2be4832d15489d042c3fae1.txt",
+      "sha256": "c149f44adcff1d5e99ad8cf4df891368d8b15c5ea2be4832d15489d042c3fae1",
+      "bytes": 654,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-armv6/meson.ini",
+      "gitPath": "platforms/linux-armv6/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "177ce58ee21c6c78dd89df29bcc8243ac44912c0"
+    },
+    {
+      "file": "third-party/packaging-source/texts/c305ef3159f42b769a27bcd52f4147c8e39d3f398b3d180ee76662dd097eba6d.txt",
+      "sha256": "c305ef3159f42b769a27bcd52f4147c8e39d3f398b3d180ee76662dd097eba6d",
+      "bytes": 1580,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-ppc64le/Dockerfile",
+      "gitPath": "platforms/linux-ppc64le/Dockerfile",
+      "gitMode": "100644",
+      "gitBlobSha1": "7a91261f843c0b5f78a1952a31a9bece1d29adef"
+    },
+    {
+      "file": "third-party/packaging-source/texts/40e944a8ad8dce710d9695c56495edc1d52617f0295ba7bf6e4064a4e79c2097.txt",
+      "sha256": "40e944a8ad8dce710d9695c56495edc1d52617f0295ba7bf6e4064a4e79c2097",
+      "bytes": 617,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-ppc64le/Toolchain.cmake",
+      "gitPath": "platforms/linux-ppc64le/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "68fecc5d8794f61562575d7a39bd126ed51f226b"
+    },
+    {
+      "file": "third-party/packaging-source/texts/4742b4ea998577736698c08873f1756be51ca51e9c1602e2a6f301e72c9ecca6.txt",
+      "sha256": "4742b4ea998577736698c08873f1756be51ca51e9c1602e2a6f301e72c9ecca6",
+      "bytes": 711,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-ppc64le/meson.ini",
+      "gitPath": "platforms/linux-ppc64le/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "fcb2c1a9b7a3d2f35f1934bb7b9802952c8865b5"
+    },
+    {
+      "file": "third-party/packaging-source/texts/ba231d83c8f7d6802e87564fe8c8565f42c8c09b7a7f13fe0781126e7c3164cd.txt",
+      "sha256": "ba231d83c8f7d6802e87564fe8c8565f42c8c09b7a7f13fe0781126e7c3164cd",
+      "bytes": 1640,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-riscv64/Dockerfile",
+      "gitPath": "platforms/linux-riscv64/Dockerfile",
+      "gitMode": "100644",
+      "gitBlobSha1": "d352375773fb6478c15fc5b9c606c682ca453ff4"
+    },
+    {
+      "file": "third-party/packaging-source/texts/fdb65322ae0788387a2131e0bff33d51f34402ca045696215cc53e8c34681c08.txt",
+      "sha256": "fdb65322ae0788387a2131e0bff33d51f34402ca045696215cc53e8c34681c08",
+      "bytes": 540,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-riscv64/Toolchain.cmake",
+      "gitPath": "platforms/linux-riscv64/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "bd1dc009987981a72e3f0912118b02b89b93f3d2"
+    },
+    {
+      "file": "third-party/packaging-source/texts/ec13f61802ddf860fd297b96c2ff4b983c4b06c0a3a47ad6faf4268a450cbb69.txt",
+      "sha256": "ec13f61802ddf860fd297b96c2ff4b983c4b06c0a3a47ad6faf4268a450cbb69",
+      "bytes": 644,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-riscv64/meson.ini",
+      "gitPath": "platforms/linux-riscv64/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "44df5198c3a50c5e66df25d49180626767bd72aa"
+    },
+    {
+      "file": "third-party/packaging-source/texts/4d3aedc81f9a01ee140bf237bf86cd08c6f75d28461368cc499f64d6bc1c7af6.txt",
+      "sha256": "4d3aedc81f9a01ee140bf237bf86cd08c6f75d28461368cc499f64d6bc1c7af6",
+      "bytes": 1721,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-s390x/Dockerfile",
+      "gitPath": "platforms/linux-s390x/Dockerfile",
+      "gitMode": "100644",
+      "gitBlobSha1": "9807ec7ce97764b7d0c84951f903842b38a21591"
+    },
+    {
+      "file": "third-party/packaging-source/texts/f69c77b46305c128177460532bbaba6102021d04f3cc1d62e9044a9649be1782.txt",
+      "sha256": "f69c77b46305c128177460532bbaba6102021d04f3cc1d62e9044a9649be1782",
+      "bytes": 583,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-s390x/Toolchain.cmake",
+      "gitPath": "platforms/linux-s390x/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "5d8f0c3ba669fe6b224037eeaa582688ea3b0599"
+    },
+    {
+      "file": "third-party/packaging-source/texts/46719946be406ee26826efcee1fc33c66ffbb2669ca15793146095fe393ed42b.txt",
+      "sha256": "46719946be406ee26826efcee1fc33c66ffbb2669ca15793146095fe393ed42b",
+      "bytes": 658,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-s390x/meson.ini",
+      "gitPath": "platforms/linux-s390x/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "0b1cfb1566adc698b8ecb3c3342517cc82309cf8"
+    },
+    {
+      "file": "third-party/packaging-source/texts/1e8bc3981c8f1718cd99ea4fcd6d2e511afb9969f2fe3e0d2dc1ebf5a338a6e3.txt",
+      "sha256": "1e8bc3981c8f1718cd99ea4fcd6d2e511afb9969f2fe3e0d2dc1ebf5a338a6e3",
+      "bytes": 1429,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-x64/Dockerfile",
+      "gitPath": "platforms/linux-x64/Dockerfile",
+      "gitMode": "100644",
+      "gitBlobSha1": "4e09ca1f5574fda4e63c53cff7dacb64f5c33bc2"
+    },
+    {
+      "file": "third-party/packaging-source/texts/eaf601b65260c4ff1991063f248346d51fe6751e84f7dc83b7fcd3fd4658cad6.txt",
+      "sha256": "eaf601b65260c4ff1991063f248346d51fe6751e84f7dc83b7fcd3fd4658cad6",
+      "bytes": 224,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-x64/Toolchain.cmake",
+      "gitPath": "platforms/linux-x64/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "96ed50278cfc9712102560e6f271b7d177c513be"
+    },
+    {
+      "file": "third-party/packaging-source/texts/0d85749d3921b1877e3d68615265a7f158856bf615ab56d6beb75d71a7fd0a41.txt",
+      "sha256": "0d85749d3921b1877e3d68615265a7f158856bf615ab56d6beb75d71a7fd0a41",
+      "bytes": 185,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-x64/meson.ini",
+      "gitPath": "platforms/linux-x64/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "2f9d2ad0e4fd0c1f24f587ce8274f91f135fe0f9"
+    },
+    {
+      "file": "third-party/packaging-source/texts/c256bf8fcad1bcee36872c22c007d41980ace7cfe74072af130d336ddd92f61e.txt",
+      "sha256": "c256bf8fcad1bcee36872c22c007d41980ace7cfe74072af130d336ddd92f61e",
+      "bytes": 212,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linux-x64/x86_64-linux-gnu-pkgconf",
+      "gitPath": "platforms/linux-x64/x86_64-linux-gnu-pkgconf",
+      "gitMode": "100755",
+      "gitBlobSha1": "84b5ae9bcc21704aa98d1cdd01727815802144ee"
+    },
+    {
+      "file": "third-party/packaging-source/texts/fc8af7add4ae5819bc5ef4130efa7fc83a4450916c767a177dbba5591bc43d27.txt",
+      "sha256": "fc8af7add4ae5819bc5ef4130efa7fc83a4450916c767a177dbba5591bc43d27",
+      "bytes": 1490,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linuxmusl-arm64v8/Dockerfile",
+      "gitPath": "platforms/linuxmusl-arm64v8/Dockerfile",
+      "gitMode": "100644",
+      "gitBlobSha1": "b8c38d803f02fdc0cdce12bb8aadd6855b8814de"
+    },
+    {
+      "file": "third-party/packaging-source/texts/eaf601b65260c4ff1991063f248346d51fe6751e84f7dc83b7fcd3fd4658cad6.txt",
+      "sha256": "eaf601b65260c4ff1991063f248346d51fe6751e84f7dc83b7fcd3fd4658cad6",
+      "bytes": 224,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linuxmusl-arm64v8/Toolchain.cmake",
+      "gitPath": "platforms/linuxmusl-arm64v8/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "96ed50278cfc9712102560e6f271b7d177c513be"
+    },
+    {
+      "file": "third-party/packaging-source/texts/9b9ac8223114dbe407673195f64c075468f394426c5bacbcc233b9048830debf.txt",
+      "sha256": "9b9ac8223114dbe407673195f64c075468f394426c5bacbcc233b9048830debf",
+      "bytes": 344,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linuxmusl-arm64v8/meson.ini",
+      "gitPath": "platforms/linuxmusl-arm64v8/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "86c70e82ee500da5311cec66e71b68fff6042ca8"
+    },
+    {
+      "file": "third-party/packaging-source/texts/547187f4c281e8aba140047a4cd1fe1c056004b7ce45495df561705f6561de0a.txt",
+      "sha256": "547187f4c281e8aba140047a4cd1fe1c056004b7ce45495df561705f6561de0a",
+      "bytes": 1420,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linuxmusl-x64/Dockerfile",
+      "gitPath": "platforms/linuxmusl-x64/Dockerfile",
+      "gitMode": "100644",
+      "gitBlobSha1": "1fe08e995fce0bc1b4168b26e744b8c3442af11c"
+    },
+    {
+      "file": "third-party/packaging-source/texts/eaf601b65260c4ff1991063f248346d51fe6751e84f7dc83b7fcd3fd4658cad6.txt",
+      "sha256": "eaf601b65260c4ff1991063f248346d51fe6751e84f7dc83b7fcd3fd4658cad6",
+      "bytes": 224,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linuxmusl-x64/Toolchain.cmake",
+      "gitPath": "platforms/linuxmusl-x64/Toolchain.cmake",
+      "gitMode": "100644",
+      "gitBlobSha1": "96ed50278cfc9712102560e6f271b7d177c513be"
+    },
+    {
+      "file": "third-party/packaging-source/texts/9b9ac8223114dbe407673195f64c075468f394426c5bacbcc233b9048830debf.txt",
+      "sha256": "9b9ac8223114dbe407673195f64c075468f394426c5bacbcc233b9048830debf",
+      "bytes": 344,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/linuxmusl-x64/meson.ini",
+      "gitPath": "platforms/linuxmusl-x64/meson.ini",
+      "gitMode": "100644",
+      "gitBlobSha1": "86c70e82ee500da5311cec66e71b68fff6042ca8"
+    },
+    {
+      "file": "third-party/packaging-source/texts/0a13eb73428365434eb602e34c7a859aec077a1ccd5bbe1bcc32a2742a44b546.txt",
+      "sha256": "0a13eb73428365434eb602e34c7a859aec077a1ccd5bbe1bcc32a2742a44b546",
+      "bytes": 284,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/platforms/win32/Dockerfile",
+      "gitPath": "platforms/win32/Dockerfile",
+      "gitMode": "100644",
+      "gitBlobSha1": "648a2659fde0eaf572c096a0417bbcbc74078854"
+    },
+    {
+      "file": "third-party/packaging-source/texts/a960e41223db945832cd63f92ed38e9c297f58a5f72c6f4adea80f805fc12589.txt",
+      "sha256": "a960e41223db945832cd63f92ed38e9c297f58a5f72c6f4adea80f805fc12589",
+      "bytes": 2628,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/populate-npm-workspace.sh",
+      "gitPath": "populate-npm-workspace.sh",
+      "gitMode": "100755",
+      "gitBlobSha1": "6073203d28eb1a395f83e554c6cda426d5975d11"
+    },
+    {
+      "file": "third-party/packaging-source/texts/c0ad634f7c2ac8994f831dd0bcb5c60043db7ba4ddd9cc2dbc3703b15f4ec7e5.txt",
+      "sha256": "c0ad634f7c2ac8994f831dd0bcb5c60043db7ba4ddd9cc2dbc3703b15f4ec7e5",
+      "bytes": 594,
+      "archiveMember": "sharp-libvips-ebb95f8add54eee8bed840e3fb587e4cbec857d7/versions.properties",
+      "gitPath": "versions.properties",
+      "gitMode": "100644",
+      "gitBlobSha1": "c1fbc154d9ea9fece19f3a08a335709c18b3ca5e"
+    }
+  ],
+  "counts": {
+    "regularFiles": 63,
+    "sourceBytes": 95376
+  }
+}

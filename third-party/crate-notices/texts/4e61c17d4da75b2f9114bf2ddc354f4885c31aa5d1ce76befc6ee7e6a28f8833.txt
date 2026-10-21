@@ -1,0 +1,128 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+use crate::parser::SelectorImpl;
+use cssparser::ToCss;
+use std::fmt;
+
+#[cfg(feature = "to_shmem")]
+use to_shmem_derive::ToShmem;
+
+#[derive(Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "to_shmem", derive(ToShmem))]
+#[cfg_attr(feature = "to_shmem", shmem(no_bounds))]
+pub struct AttrSelectorWithOptionalNamespace<Impl: SelectorImpl> {
+    #[cfg_attr(feature = "to_shmem", shmem(field_bound))]
+    pub namespace: Option<NamespaceConstraint<(Impl::NamespacePrefix, Impl::NamespaceUrl)>>,
+    #[cfg_attr(feature = "to_shmem", shmem(field_bound))]
+    pub local_name: Impl::LocalName,
+    pub local_name_lower: Impl::LocalName,
+    #[cfg_attr(feature = "to_shmem", shmem(field_bound))]
+    pub operation: ParsedAttrSelectorOperation<Impl::AttrValue>,
+}
+
+impl<Impl: SelectorImpl> AttrSelectorWithOptionalNamespace<Impl> {
+    pub fn namespace(&self) -> Option<NamespaceConstraint<&Impl::NamespaceUrl>> {
+        self.namespace.as_ref().map(|ns| match ns {
+            NamespaceConstraint::Any => NamespaceConstraint::Any,
+            NamespaceConstraint::Specific((_, ref url)) => NamespaceConstraint::Specific(url),
+        })
+    }
+}
+
+#[derive(Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "to_shmem", derive(ToShmem))]
+pub enum NamespaceConstraint<NamespaceUrl> {
+    Any,
+
+    /// Empty string for no namespace
+    Specific(NamespaceUrl),
+}
+
+#[derive(Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "to_shmem", derive(ToShmem))]
+pub enum ParsedAttrSelectorOperation<AttrValue> {
+    Exists,
+    WithValue {
+        operator: AttrSelectorOperator,
+        case_sensitivity: ParsedCaseSensitivity,
+        value: AttrValue,
+    },
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub enum AttrSelectorOperation<AttrValue> {
+    Exists,
+    WithValue {
+        operator: AttrSelectorOperator,
+        case_sensitivity: CaseSensitivity,
+        value: AttrValue,
+    },
+}
+
+impl<AttrValue> AttrSelectorOperation<AttrValue> {
+    pub fn eval_str(&self, element_attr_value: &str) -> bool
+    where
+        AttrValue: AsRef<str>,
+    {
+        match *self {
+            AttrSelectorOperation::Exists => true,
+            AttrSelectorOperation::WithValue {
+                operator,
+                case_sensitivity,
+                ref value,
+            } => operator.eval_str(element_attr_value, value.as_ref(), case_sensitivity),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(feature = "to_shmem", derive(ToShmem))]
+pub enum AttrSelectorOperator {
+    Equal,
+    Includes,
+    DashMatch,
+    Prefix,
+    Substring,
+    Suffix,
+}
+
+impl ToCss for AttrSelectorOperator {
+    fn to_css<W>(&self, dest: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        // https://drafts.csswg.org/cssom/#serializing-selectors
+        // See "attribute selector".
+        dest.write_str(match *self {
+            AttrSelectorOperator::Equal => "=",
+            AttrSelectorOperator::Includes => "~=",
+            AttrSelectorOperator::DashMatch => "|=",
+            AttrSelectorOperator::Prefix => "^=",
+            AttrSelectorOperator::Substring => "*=",
+            AttrSelectorOperator::Suffix => "$=",
+        })
+    }
+}
+
+impl AttrSelectorOperator {
+    pub fn eval_str(
+        self,
+        element_attr_value: &str,
+        attr_selector_value: &str,
+        case_sensitivity: CaseSensitivity,
+    ) -> bool {
+        let e = element_attr_value.as_bytes();
+        let s = attr_selector_value.as_bytes();
+        let case = case_sensitivity;
+        match self {
+            AttrSelectorOperator::Equal => case.eq(e, s),
+            AttrSelectorOperator::Prefix => {
+                !s.is_empty() && e.len() >= s.len() && case.eq(&e[..s.len()], s)
+            },
+            AttrSelectorOperator::Suffix => {
+                !s.is_empty() && e.len() >= s.len() && case.eq(&e[(e.len() - s.len())..], s)
+            },
+            AttrSelectorOperator::Substring => {
+                !s.is_em

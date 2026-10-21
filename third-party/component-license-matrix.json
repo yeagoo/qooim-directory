@@ -1,0 +1,1343 @@
+{
+  "format": 1,
+  "scope": "Automated join of existing component, archive and notice evidence; family hints are text matches, not license clearance.",
+  "sourceReviewSha256": "a3ed7dc29177cbfd2e995d662c89652c0d66466cac4a6065d4db1b3002b05afc",
+  "componentNoticesSha256": "086cc39c4b087d64b392fddfc61dfb4fb1fb734fe45c3fb7aac13e8a17c5f8ee",
+  "noticeTableSha256": "6f0d5086e3bcbee12bcdacf5878b31d1104002aeecaeb241d3fff466108082fe",
+  "summary": {
+    "components": 28,
+    "withArchive": 28,
+    "withMatchingFamilyText": 28,
+    "withoutMatchingFamilyText": [],
+    "withoutExpectedFamily": [],
+    "customFamilyComponents": [
+      "png",
+      "freetype",
+      "fontconfig"
+    ],
+    "noticeCandidates": 105
+  },
+  "components": [
+    {
+      "id": "proxy-libintl",
+      "declaredVersion": "0.5",
+      "declaredLicense": "LGPLv3",
+      "expectedFamilies": [
+        "lgpl"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "lgpl"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "f7a1cbd7579baaf575c66f9d99fb6295e9b0684a28b095967cfda17857595303",
+      "archiveBytes": 13056,
+      "applicability": {
+        "linux-arm64": false,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 1,
+      "notices": [
+        {
+          "file": "third-party/component-notices/d245807f90032872d1438d741ed21e2490e1175dc8aa3afa5ddb6c8e529b58e5.txt",
+          "sha256": "d245807f90032872d1438d741ed21e2490e1175dc8aa3afa5ddb6c8e529b58e5",
+          "bytes": 25292,
+          "archiveMember": "proxy-libintl-0.5/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "zlib-ng",
+      "declaredVersion": "2.3.3",
+      "declaredLicense": "zlib License",
+      "expectedFamilies": [
+        "zlib"
+      ],
+      "noticeFamiliesFound": [
+        "zlib"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
+      "archiveBytes": 2447397,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 1,
+      "notices": [
+        {
+          "file": "third-party/component-notices/6c9f0d975b41afaa34d22f55bb8986ce69e5cb7ad327cb2b28820cd425edf5ee.txt",
+          "sha256": "6c9f0d975b41afaa34d22f55bb8986ce69e5cb7ad327cb2b28820cd425edf5ee",
+          "bytes": 867,
+          "archiveMember": "zlib-ng-2.3.3/LICENSE.md"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "ffi",
+      "declaredVersion": "3.8.0",
+      "declaredLicense": "MIT License",
+      "expectedFamilies": [
+        "mit"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "lgpl",
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+      "archiveBytes": 1581626,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/e67978cd18816c0cb7d29aaaacde7b7447402c2fb321a051698890a8eaedda94.txt",
+          "sha256": "e67978cd18816c0cb7d29aaaacde7b7447402c2fb321a051698890a8eaedda94",
+          "bytes": 18698,
+          "archiveMember": "libffi-3.8.0/LICENSE-BUILDTOOLS"
+        },
+        {
+          "file": "third-party/component-notices/17b64dc60f3b6897a60f971e288b973f655c2edcdf08b25f3c3dd5549857881c.txt",
+          "sha256": "17b64dc60f3b6897a60f971e288b973f655c2edcdf08b25f3c3dd5549857881c",
+          "bytes": 1132,
+          "archiveMember": "libffi-3.8.0/LICENSE"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "glib",
+      "declaredVersion": "2.90.0",
+      "declaredLicense": "LGPLv3",
+      "expectedFamilies": [
+        "lgpl"
+      ],
+      "noticeFamiliesFound": [
+        "apache",
+        "cc0",
+        "gpl",
+        "lgpl",
+        "mit",
+        "mpl",
+        "public-domain"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "17d15cac2af80a33271127408e0abc2748eb297c595c2a26409e81e14e7d1b8f",
+      "archiveBytes": 5830480,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 16,
+      "notices": [
+        {
+          "file": "third-party/component-notices/7ecc7db84298adb05d2cf10339c63a5315a1c5c270a68d97d7d40a53b508ccde.txt",
+          "sha256": "7ecc7db84298adb05d2cf10339c63a5315a1c5c270a68d97d7d40a53b508ccde",
+          "bytes": 8987,
+          "archiveMember": "glib-2.90.0/LICENSES/AFL-2.0.txt"
+        },
+        {
+          "file": "third-party/component-notices/074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff.txt",
+          "sha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff",
+          "bytes": 10280,
+          "archiveMember": "glib-2.90.0/LICENSES/Apache-2.0.txt"
+        },
+        {
+          "file": "third-party/component-notices/3f941b3b89cf7b8370ceb83cc76d2120d471b58735d8ca60238a751a48d7f72f.txt",
+          "sha256": "3f941b3b89cf7b8370ceb83cc76d2120d471b58735d8ca60238a751a48d7f72f",
+          "bytes": 22240,
+          "archiveMember": "glib-2.90.0/LICENSES/CC-BY-SA-3.0.txt"
+        },
+        {
+          "file": "third-party/component-notices/a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499.txt",
+          "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+          "bytes": 7048,
+          "archiveMember": "glib-2.90.0/LICENSES/CC0-1.0.txt"
+        },
+        {
+          "file": "third-party/component-notices/aaf135472f81c5b4a0dca9367e5bb5e9750032b5bebe5442b36e4c0a47430df3.txt",
+          "sha256": "aaf135472f81c5b4a0dca9367e5bb5e9750032b5bebe5442b36e4c0a47430df3",
+          "bytes": 17337,
+          "archiveMember": "glib-2.90.0/LICENSES/GPL-2.0-or-later.txt"
+        },
+        {
+          "file": "third-party/component-notices/fa6f36630bb1e0c571d34b2bbdf188d08495c9dbf58f28cac112f303fc1f58fb.txt",
+          "sha256": "fa6f36630bb1e0c571d34b2bbdf188d08495c9dbf58f28cac112f303fc1f58fb",
+          "bytes": 25967,
+          "archiveMember": "glib-2.90.0/LICENSES/LGPL-2.1-only.txt"
+        },
+        {
+          "file": "third-party/component-notices/fa6f36630bb1e0c571d34b2bbdf188d08495c9dbf58f28cac112f303fc1f58fb.txt",
+          "sha256": "fa6f36630bb1e0c571d34b2bbdf188d08495c9dbf58f28cac112f303fc1f58fb",
+          "bytes": 25967,
+          "archiveMember": "glib-2.90.0/LICENSES/LGPL-2.1-or-later.txt"
+        },
+        {
+          "file": "third-party/component-notices/e34c58338bd89d43e709e226610d8f32b3e3c47f4ad9a99a8dc1d4ac7842488e.txt",
+          "sha256": "e34c58338bd89d43e709e226610d8f32b3e3c47f4ad9a99a8dc1d4ac7842488e",
+          "bytes": 919,
+          "archiveMember": "glib-2.90.0/LICENSES/LLVM-exception.txt"
+        },
+        {
+          "file": "third-party/component-notices/fb261b2d5dbe76c4850f90da763210bc385e52428df6bbfd7b06295ac8a32914.txt",
+          "sha256": "fb261b2d5dbe76c4850f90da763210bc385e52428df6bbfd7b06295ac8a32914",
+          "bytes": 841,
+          "archiveMember": "glib-2.90.0/LICENSES/LicenseRef-old-glib-tests.txt"
+        },
+        {
+          "file": "third-party/component-notices/b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0.txt",
+          "sha256": "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0",
+          "bytes": 1078,
+          "archiveMember": "glib-2.90.0/LICENSES/MIT.txt"
+        },
+        {
+          "file": "third-party/component-notices/6214f8b1300bb9f37b16ebc146f8f61af0187e0025042ff95c8b3030744a8795.txt",
+          "sha256": "6214f8b1300bb9f37b16ebc146f8f61af0187e0025042ff95c8b3030744a8795",
+          "bytes": 23669,
+          "archiveMember": "glib-2.90.0/LICENSES/MPL-1.1.txt"
+        },
+        {
+          "file": "third-party/component-notices/b4f60a02b2b1f82764f8295b2eafbfcd4c33f596d70abcf5cb3c3623b1cfbc6d.txt",
+          "sha256": "b4f60a02b2b1f82764f8295b2eafbfcd4c33f596d70abcf5cb3c3623b1cfbc6d",
+          "bytes": 122,
+          "archiveMember": "glib-2.90.0/docs/reference/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/b1ec1d0e5947f81e815d8771f7d4d90671a94bb10a42dc687fb566de461a57aa.txt",
+          "sha256": "b1ec1d0e5947f81e815d8771f7d4d90671a94bb10a42dc687fb566de461a57aa",
+          "bytes": 1698,
+          "archiveMember": "glib-2.90.0/docs/reference/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/28073c8c65c072387b778ba00b6c24a2ff1b573ca4415e151aa91fab5a6454be.txt",
+          "sha256": "28073c8c65c072387b778ba00b6c24a2ff1b573ca4415e151aa91fab5a6454be",
+          "bytes": 25,
+          "archiveMember": "glib-2.90.0/gmodule/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/bdbcdaa7858872393e9d6b216bbdc8a23e99d98dd6cdb7cda19458025b9e19fc.txt",
+          "sha256": "bdbcdaa7858872393e9d6b216bbdc8a23e99d98dd6cdb7cda19458025b9e19fc",
+          "bytes": 26445,
+          "archiveMember": "glib-2.90.0/subprojects/gvdb/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/5749785c8bdefafcb5d798270ed0a967036fe2ca63dcedade1627565dfef81d2.txt",
+          "sha256": "5749785c8bdefafcb5d798270ed0a967036fe2ca63dcedade1627565dfef81d2",
+          "bytes": 26001,
+          "archiveMember": "glib-2.90.0/subprojects/gvdb/LICENSES/LGPL-2.1-or-later.txt"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "xml2",
+      "declaredVersion": "2.15.4",
+      "declaredLicense": "MIT License",
+      "expectedFamilies": [
+        "mit"
+      ],
+      "noticeFamiliesFound": [
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+      "archiveBytes": 3177444,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 3,
+      "notices": [
+        {
+          "file": "third-party/component-notices/5d4873884a890122a4b9b20ad56ac6f7da1d796a5bfcf04a427970ac96217626.txt",
+          "sha256": "5d4873884a890122a4b9b20ad56ac6f7da1d796a5bfcf04a427970ac96217626",
+          "bytes": 1314,
+          "archiveMember": "libxml2-2.15.4/Copyright"
+        },
+        {
+          "file": "third-party/component-notices/d6a2cb265a0a249a234b89eeffa7f316ebe5bff546672a0a2b1a861dd2238460.txt",
+          "sha256": "d6a2cb265a0a249a234b89eeffa7f316ebe5bff546672a0a2b1a861dd2238460",
+          "bytes": 1270,
+          "archiveMember": "libxml2-2.15.4/test/html-tokenizer/NOTICE"
+        },
+        {
+          "file": "third-party/component-notices/d6a2cb265a0a249a234b89eeffa7f316ebe5bff546672a0a2b1a861dd2238460.txt",
+          "sha256": "d6a2cb265a0a249a234b89eeffa7f316ebe5bff546672a0a2b1a861dd2238460",
+          "bytes": 1270,
+          "archiveMember": "libxml2-2.15.4/result/html-tokenizer/NOTICE"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "exif",
+      "declaredVersion": "0.6.26",
+      "declaredLicense": "LGPLv3",
+      "expectedFamilies": [
+        "lgpl"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "lgpl"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "4a055ed6575e61ca46c3172be3c753cc16c9becd0f99ec71d58dd0e471476c0c",
+      "archiveBytes": 1335488,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/a19ef6f43014fc57829658087d0c2bf59d97482e015cf553d7a68124603cbc44.txt",
+          "sha256": "a19ef6f43014fc57829658087d0c2bf59d97482e015cf553d7a68124603cbc44",
+          "bytes": 240,
+          "archiveMember": "libexif-0.6.26/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/36b6d3fa47916943fd5fec313c584784946047ec1337a78b440e5992cb595f89.txt",
+          "sha256": "36b6d3fa47916943fd5fec313c584784946047ec1337a78b440e5992cb595f89",
+          "bytes": 26434,
+          "archiveMember": "libexif-0.6.26/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "lcms",
+      "declaredVersion": "2.19.1",
+      "declaredLicense": "MIT License",
+      "expectedFamilies": [
+        "mit"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8",
+      "archiveBytes": 5728743,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 5,
+      "notices": [
+        {
+          "file": "third-party/component-notices/6dbd60437f8ef91d8de1f08ad75882547fd4931bfcc3566a0735f28db1484d31.txt",
+          "sha256": "6dbd60437f8ef91d8de1f08ad75882547fd4931bfcc3566a0735f28db1484d31",
+          "bytes": 1080,
+          "archiveMember": "lcms2-2.19.1/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/c53a65c2fd561c87eaabf1072ef5dcab8653042bc15308465f52413585eb6271.txt",
+          "sha256": "c53a65c2fd561c87eaabf1072ef5dcab8653042bc15308465f52413585eb6271",
+          "bytes": 35146,
+          "archiveMember": "lcms2-2.19.1/plugins/fast_float/COPYING.GPL3"
+        },
+        {
+          "file": "third-party/component-notices/c53a65c2fd561c87eaabf1072ef5dcab8653042bc15308465f52413585eb6271.txt",
+          "sha256": "c53a65c2fd561c87eaabf1072ef5dcab8653042bc15308465f52413585eb6271",
+          "bytes": 35146,
+          "archiveMember": "lcms2-2.19.1/plugins/threaded/COPYING.GPL3"
+        },
+        {
+          "file": "third-party/component-notices/8baac37d14eed89b82ffcb041677dd701164eb5cc0f26e165fe47eb11afa0dca.txt",
+          "sha256": "8baac37d14eed89b82ffcb041677dd701164eb5cc0f26e165fe47eb11afa0dca",
+          "bytes": 3234,
+          "archiveMember": "lcms2-2.19.1/utils/jpgicc/LICENSE_iccjpeg"
+        },
+        {
+          "file": "third-party/component-notices/4847d97cd41e980794939b1d2694bd8f67b92856ec80e95c2fcfc34066f0df93.txt",
+          "sha256": "4847d97cd41e980794939b1d2694bd8f67b92856ec80e95c2fcfc34066f0df93",
+          "bytes": 1010,
+          "archiveMember": "lcms2-2.19.1/AUTHORS"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "aom",
+      "declaredVersion": "3.15.1",
+      "declaredLicense": "BSD 2-Clause + Alliance for Open Media Patent License 1.0",
+      "expectedFamilies": [
+        "bsd"
+      ],
+      "noticeFamiliesFound": [
+        "bsd",
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "8ca0c52746174603500f0adb6f2a215d69c9ca2aab2acb3caa06fb791d8d01bf",
+      "archiveBytes": 6623477,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 12,
+      "notices": [
+        {
+          "file": "third-party/component-notices/c31b80ca48fde06ca03aef2f3dec15413fe0c2661fe6b56e86ccd69dbc6f9a1d.txt",
+          "sha256": "c31b80ca48fde06ca03aef2f3dec15413fe0c2661fe6b56e86ccd69dbc6f9a1d",
+          "bytes": 13178,
+          "archiveMember": "libaom-3.15.1/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/4764a286d8b2faeaf42f4418e7d7a28d58fc8fd4d00a3d0a7f44b0a4099de7f2.txt",
+          "sha256": "4764a286d8b2faeaf42f4418e7d7a28d58fc8fd4d00a3d0a7f44b0a4099de7f2",
+          "bytes": 1316,
+          "archiveMember": "libaom-3.15.1/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/661fb8e504744e95587b556b94a58343448300606a41bea8c7a9b97125696e61.txt",
+          "sha256": "661fb8e504744e95587b556b94a58343448300606a41bea8c7a9b97125696e61",
+          "bytes": 5701,
+          "archiveMember": "libaom-3.15.1/PATENTS"
+        },
+        {
+          "file": "third-party/component-notices/499041ddee5227b6f29ca06c17803e5fe24d60f243c69635cd76b7ba08d0ddd5.txt",
+          "sha256": "499041ddee5227b6f29ca06c17803e5fe24d60f243c69635cd76b7ba08d0ddd5",
+          "bytes": 1504,
+          "archiveMember": "libaom-3.15.1/third_party/fastfeat/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/9702de7e4117a8e2b20dafab11ffda58c198aede066406496bef670d40a22138.txt",
+          "sha256": "9702de7e4117a8e2b20dafab11ffda58c198aede066406496bef670d40a22138",
+          "bytes": 1475,
+          "archiveMember": "libaom-3.15.1/third_party/googletest/src/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/d25e82e26acd42ca3ccc9993622631163425b869b9e16284226d534cff6470f2.txt",
+          "sha256": "d25e82e26acd42ca3ccc9993622631163425b869b9e16284226d534cff6470f2",
+          "bytes": 1515,
+          "archiveMember": "libaom-3.15.1/third_party/highway/LICENSE-BSD3"
+        },
+        {
+          "file": "third-party/component-notices/3edb5f5496bfff3d6d4a62fa75fe996b814920d0d6e348c2e65c589e7ac5d177.txt",
+          "sha256": "3edb5f5496bfff3d6d4a62fa75fe996b814920d0d6e348c2e65c589e7ac5d177",
+          "bytes": 137,
+          "archiveMember": "libaom-3.15.1/third_party/libwebm/AUTHORS.TXT"
+        },
+        {
+          "file": "third-party/component-notices/5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf.txt",
+          "sha256": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf",
+          "bytes": 1496,
+          "archiveMember": "libaom-3.15.1/third_party/libwebm/LICENSE.TXT"
+        },
+        {
+          "file": "third-party/component-notices/cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c.txt",
+          "sha256": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
+          "bytes": 1436,
+          "archiveMember": "libaom-3.15.1/third_party/libwebm/PATENTS.TXT"
+        },
+        {
+          "file": "third-party/component-notices/2b2cc1180c7e6988328ad2033b04b80117419db9c4c584918bbb3cfec7e9364f.txt",
+          "sha256": "2b2cc1180c7e6988328ad2033b04b80117419db9c4c584918bbb3cfec7e9364f",
+          "bytes": 1506,
+          "archiveMember": "libaom-3.15.1/third_party/libyuv/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/ff6c857ce2708e87701323078aef115c1872a1f80a9649f86dc899b48083bc60.txt",
+          "sha256": "ff6c857ce2708e87701323078aef115c1872a1f80a9649f86dc899b48083bc60",
+          "bytes": 1084,
+          "archiveMember": "libaom-3.15.1/third_party/vector/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/719d8fa235f2068e0ae6d6a7dceb0a7720d7840f0f0ebed29957989e6ded3cd8.txt",
+          "sha256": "719d8fa235f2068e0ae6d6a7dceb0a7720d7840f0f0ebed29957989e6ded3cd8",
+          "bytes": 936,
+          "archiveMember": "libaom-3.15.1/third_party/x86inc/LICENSE"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "heif",
+      "declaredVersion": "1.23.5",
+      "declaredLicense": "LGPLv3",
+      "expectedFamilies": [
+        "lgpl"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "lgpl",
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "fd9036064c4432f0550d15072ddf34956a248279ee9aeaff0fba3fa0f77d8f1a",
+      "archiveBytes": 2276803,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/fa81ce652315b013359d6e8e4744335f31a50c7c192907176d3632f78a3b4596.txt",
+          "sha256": "fa81ce652315b013359d6e8e4744335f31a50c7c192907176d3632f78a3b4596",
+          "bytes": 44366,
+          "archiveMember": "libheif-1.23.5/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/278ee9bbb13ecb080a131c68927bd589a6a56fd5449ce25e8e594c858864830d.txt",
+          "sha256": "278ee9bbb13ecb080a131c68927bd589a6a56fd5449ce25e8e594c858864830d",
+          "bytes": 1066,
+          "archiveMember": "libheif-1.23.5/examples/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "mozjpeg",
+      "declaredVersion": "0826579",
+      "declaredLicense": "zlib License, IJG License, BSD 3-Clause",
+      "expectedFamilies": [
+        "bsd",
+        "zlib"
+      ],
+      "noticeFamiliesFound": [
+        "bsd",
+        "gpl",
+        "lgpl",
+        "zlib"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "b680167bd5d9afebdd576a12f8c49d2c9066a3b92ef96a2b2c5f7829b8600fe5",
+      "archiveBytes": 2443542,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 3,
+      "notices": [
+        {
+          "file": "third-party/component-notices/96f5b328adbb78eeaaec6980d73fd558cb1e4d62560ed615646bc3cf5e532430.txt",
+          "sha256": "96f5b328adbb78eeaaec6980d73fd558cb1e4d62560ed615646bc3cf5e532430",
+          "bytes": 5620,
+          "archiveMember": "mozjpeg-08265790774cd0714832c9e675522acbe5581437/LICENSE.md"
+        },
+        {
+          "file": "third-party/component-notices/4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726.txt",
+          "sha256": "4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726",
+          "bytes": 19274,
+          "archiveMember": "mozjpeg-08265790774cd0714832c9e675522acbe5581437/java/doc/legal/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/933e1427ec78050c76396182fd9819a23fef58c17e997b67581852167be971db.txt",
+          "sha256": "933e1427ec78050c76396182fd9819a23fef58c17e997b67581852167be971db",
+          "bytes": 2172,
+          "archiveMember": "mozjpeg-08265790774cd0714832c9e675522acbe5581437/release/License.rtf"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "png",
+      "declaredVersion": "1.6.58",
+      "declaredLicense": "libpng License",
+      "expectedFamilies": [
+        "custom-png"
+      ],
+      "noticeFamiliesFound": [
+        "custom-png",
+        "gpl",
+        "lgpl",
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "a9d4df463d36a6e5f9c29bd6f4967312d17e996c1854f3511f833924eb1993cf",
+      "archiveBytes": 1592190,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 8,
+      "notices": [
+        {
+          "file": "third-party/component-notices/0c777e9f2a67bd4058ab91050eb7a56106c92ed038ba8fe5f54c83344f2d93ca.txt",
+          "sha256": "0c777e9f2a67bd4058ab91050eb7a56106c92ed038ba8fe5f54c83344f2d93ca",
+          "bytes": 1773,
+          "archiveMember": "libpng-1.6.58/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526.txt",
+          "sha256": "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526",
+          "bytes": 5345,
+          "archiveMember": "libpng-1.6.58/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1.txt",
+          "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
+          "bytes": 1036,
+          "archiveMember": "libpng-1.6.58/ci/LICENSE_MIT.txt"
+        },
+        {
+          "file": "third-party/component-notices/d6cb0e9e560f51085556949a84af12b79a00f10ab8b66c752537faf7cd665572.txt",
+          "sha256": "d6cb0e9e560f51085556949a84af12b79a00f10ab8b66c752537faf7cd665572",
+          "bytes": 18097,
+          "archiveMember": "libpng-1.6.58/contrib/gregbook/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/b6a03c1803eb58ffb1f1278d5c7d4096c4c116e66dce8a7553e8c77d163c3438.txt",
+          "sha256": "b6a03c1803eb58ffb1f1278d5c7d4096c4c116e66dce8a7553e8c77d163c3438",
+          "bytes": 2373,
+          "archiveMember": "libpng-1.6.58/contrib/gregbook/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1.txt",
+          "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
+          "bytes": 1036,
+          "archiveMember": "libpng-1.6.58/contrib/pngexif/LICENSE_MIT.txt"
+        },
+        {
+          "file": "third-party/component-notices/1806f1f10d393e9e377b3a8d1b968452b54f1a90378f14eeef45426946ace330.txt",
+          "sha256": "1806f1f10d393e9e377b3a8d1b968452b54f1a90378f14eeef45426946ace330",
+          "bytes": 1164,
+          "archiveMember": "libpng-1.6.58/contrib/pngminus/LICENSE.txt"
+        },
+        {
+          "file": "third-party/component-notices/50633b976f0133862c921aa67d56de2c0b42eb344c8ca3853686efb092a447db.txt",
+          "sha256": "50633b976f0133862c921aa67d56de2c0b42eb344c8ca3853686efb092a447db",
+          "bytes": 862,
+          "archiveMember": "libpng-1.6.58/scripts/cmake/AUTHORS.md"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "imagequant",
+      "declaredVersion": "2.4.1",
+      "declaredLicense": "BSD 2-Clause",
+      "expectedFamilies": [
+        "bsd"
+      ],
+      "noticeFamiliesFound": [
+        "bsd"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "47d2a84b7b1052975c9d50a3d4e3cacbf57b43d84a4c3131210848ead9964dfb",
+      "archiveBytes": 45792,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 1,
+      "notices": [
+        {
+          "file": "third-party/component-notices/7391bfbcde4404cefb9849553362c3ab436f929f5cc1abb57071ec045590ee99.txt",
+          "sha256": "7391bfbcde4404cefb9849553362c3ab436f929f5cc1abb57071ec045590ee99",
+          "bytes": 1851,
+          "archiveMember": "libimagequant-2.4.1/COPYRIGHT"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "webp",
+      "declaredVersion": "1.6.0",
+      "declaredLicense": "New BSD License",
+      "expectedFamilies": [
+        "bsd"
+      ],
+      "noticeFamiliesFound": [
+        "bsd"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564",
+      "archiveBytes": 4296070,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 3,
+      "notices": [
+        {
+          "file": "third-party/component-notices/cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c.txt",
+          "sha256": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
+          "bytes": 1436,
+          "archiveMember": "libwebp-1.6.0/PATENTS"
+        },
+        {
+          "file": "third-party/component-notices/5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf.txt",
+          "sha256": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf",
+          "bytes": 1496,
+          "archiveMember": "libwebp-1.6.0/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/f251be89fd442bd9d701360730aea163cc8e2076ff03528f59267dc2c4f8b60a.txt",
+          "sha256": "f251be89fd442bd9d701360730aea163cc8e2076ff03528f59267dc2c4f8b60a",
+          "bytes": 3279,
+          "archiveMember": "libwebp-1.6.0/AUTHORS"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "tiff",
+      "declaredVersion": "4.7.2",
+      "declaredLicense": "libtiff License (BSD-like)",
+      "expectedFamilies": [
+        "bsd"
+      ],
+      "noticeFamiliesFound": [
+        "bsd",
+        "custom-fontconfig"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "62b15f44c10106065211efa22a2dc77937bd97ee1f6e3afd2c9659010de112eb",
+      "archiveBytes": 2616788,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/0e27c2382d7b8147972bbb746e04059a1152c8d0fda9d03ef1399d1a433c4ade.txt",
+          "sha256": "0e27c2382d7b8147972bbb746e04059a1152c8d0fda9d03ef1399d1a433c4ade",
+          "bytes": 2416,
+          "archiveMember": "libtiff-v4.7.2/LICENSE.md"
+        },
+        {
+          "file": "third-party/component-notices/02e86af3b805e0f2075ebb5ac512831f6ab2a97ddeb186de076c418956418ba1.txt",
+          "sha256": "02e86af3b805e0f2075ebb5ac512831f6ab2a97ddeb186de076c418956418ba1",
+          "bytes": 1181,
+          "archiveMember": "libtiff-v4.7.2/doc/project/license.rst"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "highway",
+      "declaredVersion": "1.4.0",
+      "declaredLicense": "BSD 3-Clause",
+      "expectedFamilies": [
+        "bsd"
+      ],
+      "noticeFamiliesFound": [
+        "apache",
+        "bsd",
+        "cc0",
+        "public-domain"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "e72241ac9524bb653ae52ced768b508045d4438726a303f10181a38f764a453c",
+      "archiveBytes": 3691240,
+      "applicability": {
+        "linux-arm64": "requires WITHOUT_HIGHWAY unset",
+        "linuxmusl-arm64": "requires WITHOUT_HIGHWAY unset"
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/e340270d4f64384569a91d546acb5b094d69ce47f0c015db77abb74dc6f815af.txt",
+          "sha256": "e340270d4f64384569a91d546acb5b094d69ce47f0c015db77abb74dc6f815af",
+          "bytes": 20785,
+          "archiveMember": "highway-1.4.0/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/6e4ecf1cae052b678ea3178dd4b3652d581ee66a82d58db8800dd7d80dd6de76.txt",
+          "sha256": "6e4ecf1cae052b678ea3178dd4b3652d581ee66a82d58db8800dd7d80dd6de76",
+          "bytes": 825,
+          "archiveMember": "highway-1.4.0/debian/copyright"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "freetype",
+      "declaredVersion": "2.14.3",
+      "declaredLicense": "freetype License (BSD-like)",
+      "expectedFamilies": [
+        "bsd",
+        "custom-freetype"
+      ],
+      "noticeFamiliesFound": [
+        "custom-freetype",
+        "public-domain",
+        "zlib"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "dc49de6b01a266eef4876a4dd34d9842c475d3e28ff2eff63bd2fb760ab56261",
+      "archiveBytes": 2515533,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/bd36c8b474855fa294c2ec5c184544478ef3720aad37d65a6296a4f264fd2d3b.txt",
+          "sha256": "bd36c8b474855fa294c2ec5c184544478ef3720aad37d65a6296a4f264fd2d3b",
+          "bytes": 2149,
+          "archiveMember": "freetype-VER-2-14-3/LICENSE.TXT"
+        },
+        {
+          "file": "third-party/component-notices/5a5ee54c5001bbad1cdc1a57cc3dd4c42199b2da09d39c7ee41fab002d02967f.txt",
+          "sha256": "5a5ee54c5001bbad1cdc1a57cc3dd4c42199b2da09d39c7ee41fab002d02967f",
+          "bytes": 6743,
+          "archiveMember": "freetype-VER-2-14-3/docs/FTL.TXT"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "expat",
+      "declaredVersion": "2.8.5",
+      "declaredLicense": "MIT License",
+      "expectedFamilies": [
+        "mit"
+      ],
+      "noticeFamiliesFound": [
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "1e727b8933ec51a77a9a9d9afcf8e688bce45d907c13e36ab7393fe36e703182",
+      "archiveBytes": 528380,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87.txt",
+          "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87",
+          "bytes": 1144,
+          "archiveMember": "expat-2.8.5/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/59f14371c6b75912cfebb46e6247ee5146766e803a0365b124e5d3011e7d0877.txt",
+          "sha256": "59f14371c6b75912cfebb46e6247ee5146766e803a0365b124e5d3011e7d0877",
+          "bytes": 142,
+          "archiveMember": "expat-2.8.5/AUTHORS"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "archive",
+      "declaredVersion": "3.8.9",
+      "declaredLicense": "BSD 2-Clause",
+      "expectedFamilies": [
+        "bsd"
+      ],
+      "noticeFamiliesFound": [
+        "bsd",
+        "cc0",
+        "public-domain"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "888c934f9d95648ecb9163dc8e23ab80a476ecb81a8f1154704a227b5b676dde",
+      "archiveBytes": 6617696,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 1,
+      "notices": [
+        {
+          "file": "third-party/component-notices/30e556b3959e3985d66efefec5eaac51d4995053caa1d3cffe6eb916f146f229.txt",
+          "sha256": "30e556b3959e3985d66efefec5eaac51d4995053caa1d3cffe6eb916f146f229",
+          "bytes": 3089,
+          "archiveMember": "libarchive-3.8.9/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "fontconfig",
+      "declaredVersion": "2.18.3",
+      "declaredLicense": "fontconfig License (BSD-like)",
+      "expectedFamilies": [
+        "bsd",
+        "custom-fontconfig"
+      ],
+      "noticeFamiliesFound": [
+        "custom-fontconfig",
+        "mit",
+        "public-domain"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "9ae01e1d53acdef56010c5451cd34aa41d325b2faccd8606448d8fa01b2496b3",
+      "archiveBytes": 666753,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/db6d73a160bb2de10268f88ef60aae91771fefdeee4992b791c76ce6592a4a4b.txt",
+          "sha256": "db6d73a160bb2de10268f88ef60aae91771fefdeee4992b791c76ce6592a4a4b",
+          "bytes": 62,
+          "archiveMember": "fontconfig-2.18.3/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/51a51aa9823704fd90bccc616cdd17ebabb5b2b3e9cbde886ca02c7002288067.txt",
+          "sha256": "51a51aa9823704fd90bccc616cdd17ebabb5b2b3e9cbde886ca02c7002288067",
+          "bytes": 8616,
+          "archiveMember": "fontconfig-2.18.3/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "harfbuzz",
+      "declaredVersion": "14.5.0",
+      "declaredLicense": "MIT License",
+      "expectedFamilies": [
+        "mit"
+      ],
+      "noticeFamiliesFound": [
+        "apache",
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "97ec7488a46b974e18e08ee774af93173e7e1dbf738424796eb315ebcb735ec5",
+      "archiveBytes": 38777964,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 7,
+      "notices": [
+        {
+          "file": "third-party/component-notices/19bfe8f5ed100636cd24ab0c90a3f71c21d8b02d9ba00719447a0faab364d49f.txt",
+          "sha256": "19bfe8f5ed100636cd24ab0c90a3f71c21d8b02d9ba00719447a0faab364d49f",
+          "bytes": 201,
+          "archiveMember": "harfbuzz-14.5.0/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64.txt",
+          "sha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64",
+          "bytes": 1971,
+          "archiveMember": "harfbuzz-14.5.0/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/cf977e70247d5fa9d44955e4d8ed23b503c31f78570f62136756278c2cfcb3c3.txt",
+          "sha256": "cf977e70247d5fa9d44955e4d8ed23b503c31f78570f62136756278c2cfcb3c3",
+          "bytes": 1289,
+          "archiveMember": "harfbuzz-14.5.0/perf/texts/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "bytes": 1141,
+          "archiveMember": "harfbuzz-14.5.0/src/ms-use/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/9b35b8485f69cd298fccbb3c40a827dc06cf1185553bef827903497d2944a8d7.txt",
+          "sha256": "9b35b8485f69cd298fccbb3c40a827dc06cf1185553bef827903497d2944a8d7",
+          "bytes": 4370,
+          "archiveMember": "harfbuzz-14.5.0/test/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/f55f74bf740db07bb032a90aa74af4307adea3d489c1ccba12453cf0c0a764cb.txt",
+          "sha256": "f55f74bf740db07bb032a90aa74af4307adea3d489c1ccba12453cf0c0a764cb",
+          "bytes": 593,
+          "archiveMember": "harfbuzz-14.5.0/test/shape/data/aots/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/d24039e4d22c9bc72096f6174374539d92a3d6e1163938546ec59179fe095e6f.txt",
+          "sha256": "d24039e4d22c9bc72096f6174374539d92a3d6e1163938546ec59179fe095e6f",
+          "bytes": 584,
+          "archiveMember": "harfbuzz-14.5.0/test/shape/data/text-rendering-tests/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "pixman",
+      "declaredVersion": "0.46.4",
+      "declaredLicense": "MIT License",
+      "expectedFamilies": [
+        "mit"
+      ],
+      "noticeFamiliesFound": [
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "d09c44ebc3bd5bee7021c79f922fe8fb2fb57f7320f55e97ff9914d2346a591c",
+      "archiveBytes": 827198,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 1,
+      "notices": [
+        {
+          "file": "third-party/component-notices/fac9270f0987b96ff4533fca3548c633e02083cbba4a0172a3b149b2e4019793.txt",
+          "sha256": "fac9270f0987b96ff4533fca3548c633e02083cbba4a0172a3b149b2e4019793",
+          "bytes": 2087,
+          "archiveMember": "pixman-0.46.4/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "cairo",
+      "declaredVersion": "1.18.6",
+      "declaredLicense": "Mozilla Public License 1.1",
+      "expectedFamilies": [
+        "mpl"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "lgpl",
+        "mpl",
+        "public-domain"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "1c767308174337a74694da0f3ec069c271452163a1ef4540964c50c301f157d4",
+      "archiveBytes": 32725456,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 10,
+      "notices": [
+        {
+          "file": "third-party/component-notices/7118b55c2d911781622ecb281d9e11fd7eeb5f46c8925e6d740f96f89e79a8fe.txt",
+          "sha256": "7118b55c2d911781622ecb281d9e11fd7eeb5f46c8925e6d740f96f89e79a8fe",
+          "bytes": 8148,
+          "archiveMember": "cairo-1.18.6/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/67228a9f7c5f9b67c58f556f1be178f62da4d9e2e6285318d8c74d567255abdf.txt",
+          "sha256": "67228a9f7c5f9b67c58f556f1be178f62da4d9e2e6285318d8c74d567255abdf",
+          "bytes": 1576,
+          "archiveMember": "cairo-1.18.6/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/9e9e8608c4cdda51a78cc3a385f4ec9a2e4c96d5ecad74ac8bca5fca3e563b7d.txt",
+          "sha256": "9e9e8608c4cdda51a78cc3a385f4ec9a2e4c96d5ecad74ac8bca5fca3e563b7d",
+          "bytes": 26533,
+          "archiveMember": "cairo-1.18.6/COPYING-LGPL-2.1"
+        },
+        {
+          "file": "third-party/component-notices/53692a2ed6c6a2c6ec9b32dd0b820dfae91e0a1fcdf625ca9ed0bdf8705fcc4f.txt",
+          "sha256": "53692a2ed6c6a2c6ec9b32dd0b820dfae91e0a1fcdf625ca9ed0bdf8705fcc4f",
+          "bytes": 25755,
+          "archiveMember": "cairo-1.18.6/COPYING-MPL-1.1"
+        },
+        {
+          "file": "third-party/component-notices/6f93b45ea874706058ae35bc02df79c3f9daf00948672eea8394cc25d1327d49.txt",
+          "sha256": "6f93b45ea874706058ae35bc02df79c3f9daf00948672eea8394cc25d1327d49",
+          "bytes": 229,
+          "archiveMember": "cairo-1.18.6/perf/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/a37812e0e27a211272d4c27fa45028c3653e78bb708acccb77c94128dc72b98e.txt",
+          "sha256": "a37812e0e27a211272d4c27fa45028c3653e78bb708acccb77c94128dc72b98e",
+          "bytes": 1026,
+          "archiveMember": "cairo-1.18.6/test/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/008e976b6e5e7155ee24322073f42cab7cd6daf90bc2322f1d5c3aacab94111c.txt",
+          "sha256": "008e976b6e5e7155ee24322073f42cab7cd6daf90bc2322f1d5c3aacab94111c",
+          "bytes": 138,
+          "archiveMember": "cairo-1.18.6/util/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/25f4d4ce651b1ee6aff713ff986275d6c190a8537e36437886f8bf1497b0a174.txt",
+          "sha256": "25f4d4ce651b1ee6aff713ff986275d6c190a8537e36437886f8bf1497b0a174",
+          "bytes": 656,
+          "archiveMember": "cairo-1.18.6/util/cairo-script/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/421158645572270264a980b8b130dd988138e4dae20144e22455446e0ef90902.txt",
+          "sha256": "421158645572270264a980b8b130dd988138e4dae20144e22455446e0ef90902",
+          "bytes": 179,
+          "archiveMember": "cairo-1.18.6/util/cairo-trace/COPYING"
+        },
+        {
+          "file": "third-party/component-notices/8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903.txt",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "bytes": 35147,
+          "archiveMember": "cairo-1.18.6/util/cairo-trace/COPYING-GPL-3"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "fribidi",
+      "declaredVersion": "1.0.17",
+      "declaredLicense": "LGPLv3",
+      "expectedFamilies": [
+        "lgpl"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "lgpl"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "6949dcde27d41cebad1fd741fcafc36d55a1020d2d872d4a6eb3914caabbada2",
+      "archiveBytes": 1203284,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/cb173f55c9514c8f38f4647ac3fedd5f8611358d331e65ab955da931e826861c.txt",
+          "sha256": "cb173f55c9514c8f38f4647ac3fedd5f8611358d331e65ab955da931e826861c",
+          "bytes": 1640,
+          "archiveMember": "fribidi-1.0.17/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95.txt",
+          "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95",
+          "bytes": 26419,
+          "archiveMember": "fribidi-1.0.17/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "pango",
+      "declaredVersion": "1.58.2",
+      "declaredLicense": "LGPLv3",
+      "expectedFamilies": [
+        "lgpl"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "lgpl"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "342385b6ca3b7c73455d7c80a13b7dbe4489e00bc3bd4c5bd6ed4dce421e374a",
+      "archiveBytes": 1918112,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 1,
+      "notices": [
+        {
+          "file": "third-party/component-notices/d245807f90032872d1438d741ed21e2490e1175dc8aa3afa5ddb6c8e529b58e5.txt",
+          "sha256": "d245807f90032872d1438d741ed21e2490e1175dc8aa3afa5ddb6c8e529b58e5",
+          "bytes": 25292,
+          "archiveMember": "pango-1.58.2/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "rsvg",
+      "declaredVersion": "2.63.2",
+      "declaredLicense": "LGPLv3",
+      "expectedFamilies": [
+        "lgpl"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "lgpl",
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "852b18e1a00b8605528825a27dc7748bff2a5dd254028f59dc22a34ea57e81b6",
+      "archiveBytes": 6768408,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 3,
+      "notices": [
+        {
+          "file": "third-party/component-notices/14e765b9c1097d93f4b842a6ad23172b530cc00dfe7a5aae1b9afefdca54531b.txt",
+          "sha256": "14e765b9c1097d93f4b842a6ad23172b530cc00dfe7a5aae1b9afefdca54531b",
+          "bytes": 1798,
+          "archiveMember": "librsvg-2.63.2/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551.txt",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+          "bytes": 26530,
+          "archiveMember": "librsvg-2.63.2/COPYING.LIB"
+        },
+        {
+          "file": "third-party/component-notices/f9c4c77baa3828004ee54b8a4f2db2e88ed44a6237a493965bf551fac0fcb62d.txt",
+          "sha256": "f9c4c77baa3828004ee54b8a4f2db2e88ed44a6237a493965bf551fac0fcb62d",
+          "bytes": 1023,
+          "archiveMember": "librsvg-2.63.2/librsvg-rebind/LICENSE"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "cgif",
+      "declaredVersion": "0.5.4",
+      "declaredLicense": "MIT License",
+      "expectedFamilies": [
+        "mit"
+      ],
+      "noticeFamiliesFound": [
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "83a70a15bc2da41f081a44ebc58ee48e2e1d524a6d3fdb4a24064afa08d5ad4d",
+      "archiveBytes": 40028,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/76ed8a61cb7e254cab424641ebbb4069d08bf820dfe00f6f7ab5485057ca003d.txt",
+          "sha256": "76ed8a61cb7e254cab424641ebbb4069d08bf820dfe00f6f7ab5485057ca003d",
+          "bytes": 193,
+          "archiveMember": "cgif-0.5.4/AUTHORS"
+        },
+        {
+          "file": "third-party/component-notices/7264dede477abab4ac3fe8236beb8153845c04ccd33b18f281085087e219fc6d.txt",
+          "sha256": "7264dede477abab4ac3fe8236beb8153845c04ccd33b18f281085087e219fc6d",
+          "bytes": 1099,
+          "archiveMember": "cgif-0.5.4/LICENSE"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "uhdr",
+      "declaredVersion": "2.0.2",
+      "declaredLicense": "MIT License",
+      "expectedFamilies": [
+        "mit"
+      ],
+      "noticeFamiliesFound": [
+        "apache",
+        "bsd",
+        "mit",
+        "public-domain"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "aa8d193bb887c348c419780511dd03b374f4e07af8812b6d3f80c8537cf1ef2c",
+      "archiveBytes": 1518872,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 7,
+      "notices": [
+        {
+          "file": "third-party/component-notices/c9247b5cb07866938643cc238292434e6f2af8642e1fce10771c0e4cc7909316.txt",
+          "sha256": "c9247b5cb07866938643cc238292434e6f2af8642e1fce10771c0e4cc7909316",
+          "bytes": 12566,
+          "archiveMember": "libultrahdr-2.0.2/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "bytes": 11358,
+          "archiveMember": "libultrahdr-2.0.2/LICENSE-APACHE"
+        },
+        {
+          "file": "third-party/component-notices/029624bf1488ed7b8c92727d267c95f588c9c12fa6932c207884c2641a7e9d37.txt",
+          "sha256": "029624bf1488ed7b8c92727d267c95f588c9c12fa6932c207884c2641a7e9d37",
+          "bytes": 1088,
+          "archiveMember": "libultrahdr-2.0.2/LICENSE-MIT"
+        },
+        {
+          "file": "third-party/component-notices/746d8c9c414b335bb7c9615918a15a6489a4dcc1c5c3aac2bda410d1072c332a.txt",
+          "sha256": "746d8c9c414b335bb7c9615918a15a6489a4dcc1c5c3aac2bda410d1072c332a",
+          "bytes": 66,
+          "archiveMember": "libultrahdr-2.0.2/adobe-hdr-gain-map-license/NOTICE"
+        },
+        {
+          "file": "third-party/component-notices/c4b2cd68902b8c4a82c9b5ddebe15538acbce7f70a88fcc751e1e921bde89f7f.txt",
+          "sha256": "c4b2cd68902b8c4a82c9b5ddebe15538acbce7f70a88fcc751e1e921bde89f7f",
+          "bytes": 19354,
+          "archiveMember": "libultrahdr-2.0.2/tests/data/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "bytes": 11358,
+          "archiveMember": "libultrahdr-2.0.2/third_party/image_io/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/d47e8390fb0d7ad4a18f26aedd6283c7ab6b5b4fabab536ccb4db7f9f6d90c08.txt",
+          "sha256": "d47e8390fb0d7ad4a18f26aedd6283c7ab6b5b4fabab536ccb4db7f9f6d90c08",
+          "bytes": 1721,
+          "archiveMember": "libultrahdr-2.0.2/third_party/image_io/src/modp_b64/LICENSE"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    },
+    {
+      "id": "vips",
+      "declaredVersion": "8.18.7",
+      "declaredLicense": "LGPLv3",
+      "expectedFamilies": [
+        "lgpl"
+      ],
+      "noticeFamiliesFound": [
+        "gpl",
+        "lgpl",
+        "mit"
+      ],
+      "matchingFamilyText": true,
+      "archiveSha256": "5baaead3b0bb20ffdb9e9ff09aa9fda08620923df77b63b436654cb5e0b3bf94",
+      "archiveBytes": 25425084,
+      "applicability": {
+        "linux-arm64": true,
+        "linuxmusl-arm64": true
+      },
+      "binaryPresence": "not-asserted",
+      "noticeCount": 2,
+      "notices": [
+        {
+          "file": "third-party/component-notices/dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551.txt",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+          "bytes": 26530,
+          "archiveMember": "vips-8.18.7/LICENSE"
+        },
+        {
+          "file": "third-party/component-notices/1469b759cf18e43c6e1b4ff892307d3962cbbb337ac497620d6690a219fad10c.txt",
+          "sha256": "1469b759cf18e43c6e1b4ff892307d3962cbbb337ac497620d6690a219fad10c",
+          "bytes": 1133,
+          "archiveMember": "vips-8.18.7/libvips/foreign/libnsgif/COPYING"
+        }
+      ],
+      "status": "evidence-joined; clearance not assessed"
+    }
+  ],
+  "distributionStatus": "Historical evidence retained after sharp removal on 2026-10-20; not part of the current distribution."
+}

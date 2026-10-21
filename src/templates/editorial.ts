@@ -1,0 +1,7 @@
+/** AI-authored example. Reviewed source, API v1; imports only the public SDK. */
+import {defineTemplate,escapeHtml,frame,resourceCard,searchForm,pagination,detailBody} from '../public/sdk.js';
+export default defineTemplate({id:'editorial',apiVersion:1,render(page){
+ if(page.kind==='detail')return frame(page,detailBody(page),'editorial');
+ if(page.kind==='missing')return frame(page,`<section class="resource-detail"><p class="eyebrow">THE READING ROOM</p><h1>这一页，尚待书写。</h1><p>该语言内容暂不可用。</p>${page.alternates.map(a=>`<a href="${escapeHtml(a.url)}">${a.locale==='zh'?'查看中文':'View English'}</a>`).join(' · ')}<p><a href="/">返回目录</a></p></section>`,'editorial');
+ return frame(page,`<section class="editorial-masthead"><span class="eyebrow">${escapeHtml(page.site.templateParams?.eyebrow??'A NOTEBOOK OF USEFUL DISCOVERIES')}</span><h1>${escapeHtml(page.site.name)}</h1><div class="editorial-deck"><p>${escapeHtml(page.site.tagline)}</p><nav>${page.site.locales.map(l=>`<a href="/${l}/${escapeHtml(page.catalogPath)}">${l==='zh'?'中文':'English'}</a>`).join(' / ')}</nav></div></section>${searchForm(page)}<div class="result-label">THE INDEX · ${page.result.total} 个发现</div><section class="editorial-index">${page.result.items.map((item,i)=>`<div class="editorial-entry"><span class="entry-number">${String((page.result.page-1)*page.result.limit+i+1).padStart(2,'0')}</span>${resourceCard(page,item)}</div>`).join('')||'<p class="empty">目录还在生长。试试另一个关键词。</p>'}</section>${pagination(page)}`,'editorial');
+}});

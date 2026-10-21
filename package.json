@@ -1,0 +1,61 @@
+{
+  "name": "navigation-network",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.11.1",
+  "scripts": {
+    "test:p0": "node scripts/test-p0.mjs",
+    "check": "tsc --noEmit && node --check scripts/backup.mjs && node --check scripts/release.mjs && node --check scripts/distribution.mjs && node scripts/check-boundaries.mjs && node --check src/ui/admin.js && node --check src/ui/account.js && node --check src/ui/account-home.js && node --check src/ui/content-admin.js && node --check src/ui/directory.js && node --check src/ui/github-admin.js",
+    "build:p0": "next build --webpack",
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "node scripts/release.mjs bundle && next build --webpack",
+    "start": "next start --hostname 0.0.0.0",
+    "cli": "node --env-file-if-exists=.env --import tsx src/cli.ts",
+    "worker": "node --env-file-if-exists=.env --import tsx src/worker.ts",
+    "test:p1": "node scripts/test-p0.mjs tests/p1/platform.test.ts",
+    "init:env": "node scripts/init-env.mjs",
+    "test:docker": "node scripts/test-compose.mjs",
+    "test:p2": "node scripts/test-p0.mjs tests/p2/content.test.ts",
+    "test:p3": "node scripts/test-p0.mjs tests/p3/platform.test.ts",
+    "template:preview": "node --import tsx scripts/template-preview.ts",
+    "test:p4": "node scripts/test-p0.mjs tests/p4/github.test.ts",
+    "source:bundle": "node scripts/release.mjs bundle",
+    "source:export": "node scripts/release.mjs export",
+    "backup": "node --env-file-if-exists=.env scripts/backup.mjs",
+    "test:p5": "node scripts/test-p0.mjs tests/p5/operations.test.ts tests/p5/source-download.test.ts",
+    "test:capacity": "node scripts/test-p0.mjs tests/p5/capacity.test.ts",
+    "release:check": "node scripts/release.mjs check",
+    "test:release": "node --test tests/p5/release.test.mjs",
+    "release:check:image": "node scripts/release.mjs check-image",
+    "release:inventory": "node scripts/distribution.mjs inventory"
+  },
+  "dependencies": {
+    "@better-auth/oauth-provider": "1.7.10",
+    "better-auth": "1.7.10",
+    "next": "16.4.2",
+    "nodemailer": "10.1.2",
+    "pg": "8.23.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/nodemailer": "8.0.2",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  },
+  "license": "AGPL-3.0-only",
+  "pnpm": {
+    "ignoredOptionalDependencies": [
+      "sharp"
+    ]
+  }
+}

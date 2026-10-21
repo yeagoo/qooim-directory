@@ -1,0 +1,20 @@
+# 本地调研和内部证据不进入未来公开仓库。
+/docs/PROJECT-BACKGROUND.md
+/.local/
+.env
+.env.*
+!.env.example
+node_modules/
+test-results/
+playwright-report/
+.next/
+*.tsbuildinfo
+
+# Local working notes.
+/task_plan.md
+/findings.md
+/progress.md
+
+# Maintainer Python collection/test artifacts.
+**/__pycache__
+*.pyc

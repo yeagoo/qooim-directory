@@ -1,0 +1,482 @@
+{
+  "format": 1,
+  "scope": "node-base",
+  "collectedAt": "2026-10-21T02:16:56.916Z",
+  "collectorSha256": "3dddccb155f34bad6cdc203737fab04d6ce8cfffc152fddc581d59ef7b3bbb37",
+  "image": {
+    "reference": "navigation-network:final3-20261021",
+    "id": "sha256:97d12c83a9627abfd5741aafc14f5e2adae493dc2c2c7805357afea4e95ac2f1",
+    "repoDigests": [
+      "navigation-network@sha256:97d12c83a9627abfd5741aafc14f5e2adae493dc2c2c7805357afea4e95ac2f1"
+    ],
+    "architecture": "arm64",
+    "os": "linux"
+  },
+  "basis": {
+    "inventory": ".local/license-evidence/app-inventory.json",
+    "inventorySha256": "95c14cf6864f164117d6b992974629e15b774c98165c165f4d177e88ff545e1a",
+    "collector": "scripts/distribution.mjs inventoryImage (format 2)"
+  },
+  "observations": {
+    "baseImage": "node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+    "osRelease": "PRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"12\"\nVERSION=\"12 (bookworm)\"\nVERSION_CODENAME=bookworm\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+    "node": "v24.21.0",
+    "nodeBinarySha256": "0f8949d1028f6d61506b2d5bc57e7e6fe893d7b1997509b7847294fc9c616584  /usr/local/bin/node",
+    "osPackageCount": 88,
+    "osPackageManifestSha256": "e23d4fee2a1a86ec05d899d70aa994894cfb0e86af16f98c40255687b4d1544c",
+    "osPackages": [
+      {
+        "name": "adduser",
+        "version": "3.134",
+        "architecture": "all"
+      },
+      {
+        "name": "apt",
+        "version": "2.6.1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "base-files",
+        "version": "12.4+deb12u15",
+        "architecture": "arm64"
+      },
+      {
+        "name": "base-passwd",
+        "version": "3.6.1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "bash",
+        "version": "5.2.15-2+b13",
+        "architecture": "arm64"
+      },
+      {
+        "name": "bsdutils",
+        "version": "1:2.38.1-5+deb12u3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "coreutils",
+        "version": "9.1-1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "dash",
+        "version": "0.5.12-2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "debconf",
+        "version": "1.5.82",
+        "architecture": "all"
+      },
+      {
+        "name": "debian-archive-keyring",
+        "version": "2023.3+deb12u2",
+        "architecture": "all"
+      },
+      {
+        "name": "debianutils",
+        "version": "5.7-0.5~deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "diffutils",
+        "version": "1:3.8-4",
+        "architecture": "arm64"
+      },
+      {
+        "name": "dpkg",
+        "version": "1.21.23",
+        "architecture": "arm64"
+      },
+      {
+        "name": "e2fsprogs",
+        "version": "1.47.0-2+b2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "findutils",
+        "version": "4.9.0-4",
+        "architecture": "arm64"
+      },
+      {
+        "name": "gcc-12-base",
+        "version": "12.2.0-14+deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "gpgv",
+        "version": "2.2.40-1.1+deb12u2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "grep",
+        "version": "3.8-5",
+        "architecture": "arm64"
+      },
+      {
+        "name": "gzip",
+        "version": "1.12-1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "hostname",
+        "version": "3.23+nmu1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "init-system-helpers",
+        "version": "1.65.2+deb12u1",
+        "architecture": "all"
+      },
+      {
+        "name": "libacl1",
+        "version": "2.3.1-3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libapt-pkg6.0",
+        "version": "2.6.1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libattr1",
+        "version": "1:2.5.1-4",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libaudit-common",
+        "version": "1:3.0.9-1",
+        "architecture": "all"
+      },
+      {
+        "name": "libaudit1",
+        "version": "1:3.0.9-1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libblkid1",
+        "version": "2.38.1-5+deb12u3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libbz2-1.0",
+        "version": "1.0.8-5+b1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libc-bin",
+        "version": "2.36-9+deb12u14",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libc6",
+        "version": "2.36-9+deb12u14",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libcap-ng0",
+        "version": "0.8.3-1+b3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libcap2",
+        "version": "1:2.66-4+deb12u3+b1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libcom-err2",
+        "version": "1.47.0-2+b2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libcrypt1",
+        "version": "1:4.4.33-2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libdb5.3",
+        "version": "5.3.28+dfsg2-1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libdebconfclient0",
+        "version": "0.270",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libext2fs2",
+        "version": "1.47.0-2+b2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libffi8",
+        "version": "3.4.4-1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libgcc-s1",
+        "version": "12.2.0-14+deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libgcrypt20",
+        "version": "1.10.1-3+deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libgmp10",
+        "version": "2:6.2.1+dfsg1-1.1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libgnutls30",
+        "version": "3.7.9-2+deb12u7",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libgpg-error0",
+        "version": "1.46-1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libhogweed6",
+        "version": "3.8.1-2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libidn2-0",
+        "version": "2.3.3-1+b1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "liblz4-1",
+        "version": "1.9.4-1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "liblzma5",
+        "version": "5.4.1-1+deb12u2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libmd0",
+        "version": "1.0.4-2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libmount1",
+        "version": "2.38.1-5+deb12u3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libnettle8",
+        "version": "3.8.1-2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libp11-kit0",
+        "version": "0.24.1-2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libpam-modules",
+        "version": "1.5.2-6+deb12u2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libpam-modules-bin",
+        "version": "1.5.2-6+deb12u2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libpam-runtime",
+        "version": "1.5.2-6+deb12u2",
+        "architecture": "all"
+      },
+      {
+        "name": "libpam0g",
+        "version": "1.5.2-6+deb12u2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libpcre2-8-0",
+        "version": "10.42-1+deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libseccomp2",
+        "version": "2.5.4-1+deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libselinux1",
+        "version": "3.4-1+b6",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libsemanage-common",
+        "version": "3.4-1",
+        "architecture": "all"
+      },
+      {
+        "name": "libsemanage2",
+        "version": "3.4-1+b5",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libsepol2",
+        "version": "3.4-2.1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libsmartcols1",
+        "version": "2.38.1-5+deb12u3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libss2",
+        "version": "1.47.0-2+b2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libstdc++6",
+        "version": "12.2.0-14+deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libsystemd0",
+        "version": "252.39-1~deb12u2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libtasn1-6",
+        "version": "4.19.0-2+deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libtinfo6",
+        "version": "6.4-4",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libudev1",
+        "version": "252.39-1~deb12u2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libunistring2",
+        "version": "1.0-2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libuuid1",
+        "version": "2.38.1-5+deb12u3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libxxhash0",
+        "version": "0.8.1-1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "libzstd1",
+        "version": "1.5.4+dfsg2-5",
+        "architecture": "arm64"
+      },
+      {
+        "name": "login",
+        "version": "1:4.13+dfsg1-1+deb12u2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "logsave",
+        "version": "1.47.0-2+b2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "mawk",
+        "version": "1.3.4.20200120-3.1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "mount",
+        "version": "2.38.1-5+deb12u3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "ncurses-base",
+        "version": "6.4-4",
+        "architecture": "all"
+      },
+      {
+        "name": "ncurses-bin",
+        "version": "6.4-4",
+        "architecture": "arm64"
+      },
+      {
+        "name": "passwd",
+        "version": "1:4.13+dfsg1-1+deb12u2",
+        "architecture": "arm64"
+      },
+      {
+        "name": "perl-base",
+        "version": "5.36.0-7+deb12u3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "sed",
+        "version": "4.9-1+deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "sysvinit-utils",
+        "version": "3.06-4",
+        "architecture": "arm64"
+      },
+      {
+        "name": "tar",
+        "version": "1.34+dfsg-1.2+deb12u1",
+        "architecture": "arm64"
+      },
+      {
+        "name": "tzdata",
+        "version": "2026b-0+deb12u1",
+        "architecture": "all"
+      },
+      {
+        "name": "usr-is-merged",
+        "version": "37~deb12u1",
+        "architecture": "all"
+      },
+      {
+        "name": "util-linux",
+        "version": "2.38.1-5+deb12u3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "util-linux-extra",
+        "version": "2.38.1-5+deb12u3",
+        "architecture": "arm64"
+      },
+      {
+        "name": "zlib1g",
+        "version": "1:1.2.13.dfsg-1",
+        "architecture": "arm64"
+      }
+    ],
+    "osLicenseFileCount": 88,
+    "nodeLicense": [
+      {
+        "path": "/usr/local/LICENSE",
+        "sha256": "5888dbb9a1d2b18f2c3e6c5f6af1b39de658372b402a0577b002777f14c62ace"
+      }
+    ],
+    "globalTools": [
+      "npm\t11.19.0\tArtistic-2.0",
+      "corepack\t0.36.0\tMIT"
+    ]
+  },
+  "limitations": "Inventory and identity evidence only. No license clearance, linking analysis, corresponding-source delivery or vulnerability assessment."
+}

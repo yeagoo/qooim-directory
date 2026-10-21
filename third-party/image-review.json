@@ -1,0 +1,92 @@
+{
+  "format": 1,
+  "inputs": {
+    "Dockerfile": "d420eabc4da3359f3cdc2943fc872d75a4caa8217103cadc61e521000f0d4593",
+    "compose.yaml": "053ee0752ce937f8228771f741c5298f9161b70c6cc84241d9c509a00f5893da",
+    "compose.demo.yaml": "b99944fbac97da67ff18a64492b42452b9cfad274852ead04eee76567220a373",
+    "pnpm-lock.yaml": "bb7b235c4ad0c5f0faeacd5ebd23b07c2f703dfa7b5830217eee6eebd3c646d4",
+    "package.json": "b4cbe5f2f39f29ddd248c7cc57b197ae8d97846c7a55c08521bd2fcfda40e4ba",
+    ".dockerignore": "87be22530b65cbe1bdca500bad7116f07f223ee4c28e66f3880edb31c716ba71"
+  },
+  "scopes": [
+    {
+      "id": "node-base",
+      "status": "complete",
+      "detail": "QooIM 2026-10-21: accepted with reservation (decision card option B). Reviewed the 88 Debian copyright files and Node LICENSE. Residual: per-component notices for Node bundled OpenSSL/V8/ICU and Debian source-offer mechanics are not individually confirmed.",
+      "evidence": [
+        {
+          "file": "third-party/image-evidence/node-base.json",
+          "sha256": "4a514712ac9dcd95b8784d2b69d87d0910357e5954316d9166d99b23ddda9fd1"
+        }
+      ],
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "global-pnpm",
+      "status": "complete",
+      "detail": "QooIM 2026-10-21: accepted (decision card option A) with explicit attribution decision. Reviewed 82 bundled packages; 12 missing notices were supplemented from exact tarballs, imurmurhash uses the upstream master LICENSE, and @npmcli/agent/eastasianwidth/err-code use the recorded derived-attribution candidates, not artifact texts. pnpm.cjs bundled scope and placing supplements in the image remain follow-ups.",
+      "evidence": [
+        {
+          "file": "third-party/image-evidence/global-pnpm.json",
+          "sha256": "b78244f73540fdf304a3f650557f46ef8bc4fd7d514726efd522d65e4dd5f42e"
+        }
+      ],
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "next-swc",
+      "status": "complete",
+      "detail": "QooIM 2026-10-21: accepted with explicit reservation (decision card option B). Reviewed the Next 16.4.2 and @next/swc-linux-arm64-gnu/musl package-level MIT declarations and the two native binary digests. The release artifact has no packages/next-swc/Cargo.lock and no build-level crate graph, so per-crate Rust licenses/notices were not obtained and static-linking obligations were not independently verified. This sign-off accepts that residual risk; it must not be read as verified per-crate clearance.",
+      "evidence": [
+        {
+          "file": "third-party/image-evidence/next-swc.json",
+          "sha256": "a3bdf7ec2a1c1695d0b12df93769dbb0e466bbbe259fe993d71106900bf20cdf"
+        }
+      ],
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "esbuild",
+      "status": "complete",
+      "detail": "QooIM 2026-10-21: accepted with reservation (decision card option B). Reviewed esbuild MIT, golang.org/x/sys BSD-3-Clause and Go 1.26.5 LICENSE. Residual: Go runtime notice delivery and a frozen-image binary hash recheck before release.",
+      "evidence": [
+        {
+          "file": "third-party/image-evidence/esbuild.json",
+          "sha256": "2cccdf998d510921633e0247530bbc62615a58d7285d9afbf5450d85166c155a"
+        }
+      ],
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "postgres-image",
+      "status": "complete",
+      "detail": "QooIM 2026-10-21: accepted with reservation (decision card option B) as a separate database image/aggregate distribution. Reviewed 53 apk packages (46 APKINDEX matches), the undeclared .postgresql-rundeps meta package, 8 GPL-2.0-only base packages, and upstream licenses for OpenSSL/OpenLDAP/nghttp2/zlib/tzdata. Residual: Alpine copyright/APKBUILD notices, undeclared-package explanation, and the recorded GPL/AGPL separate-work position.",
+      "evidence": [
+        {
+          "file": "third-party/image-evidence/postgres-image.json",
+          "sha256": "00b6d3d8db1a4e9b2552a512c03e3c68fc20900669bec6d296737364fae63c48"
+        }
+      ],
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "demo-proxy-image",
+      "status": "complete",
+      "detail": "QooIM 2026-10-21: accepted with reservation (decision card option B). Reviewed Caddy 2.11.7 Apache-2.0, Go 1.26.8 LICENSE, and 32 apk packages (29 APKINDEX matches). Residual: Caddy Go module dependency notices and Alpine copyright/APKBUILD notices.",
+      "evidence": [
+        {
+          "file": "third-party/image-evidence/demo-proxy-image.json",
+          "sha256": "9b46ea4701804d55d390be6ab3fd2dd7c7e0d6dd72a2c48b667bebeb3143977b"
+        }
+      ],
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-21"
+    }
+  ],
+  "targetPlatform": "linux/arm64"
+}

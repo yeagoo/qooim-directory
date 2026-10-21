@@ -1,0 +1,862 @@
+import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { resolve } from "node:path";
+import { sourceDownload } from "./source-download.js";
+import type { Pool } from "pg";
+import { z } from "zod";
+import { type AuthPolicy, clientIp } from "./auth-policy.js";
+import { renderTemplate, templateCss, templateManifest } from "./templates.js";
+import { Catalog, NotFound } from "../domain/catalog.js";
+import { Conflict, InvalidReference, configSchema } from "../domain/config.js";
+import { transaction } from "../domain/transaction.js";
+import { AuthRegistry } from "./auth.js";
+import { Sites } from "./sites.js";
+import { HttpError } from "./operators.js";
+import {
+  adminPage,
+  adminLogin,
+  accountPage,
+  accountHomePage,
+  publicPage,
+  css,
+} from "../ui/pages.js";
+import { moduleManifest } from "../public/modules.js";
+import { GithubSources } from "./github.js";
+import { githubHttp } from "./github-http.js";
+import { Content } from "./content.js";
+import { contentHttp } from "./content-http.js";
+import { Personal } from "./personal.js";
+import { AuditLog } from "./audit.js";
+import {
+  personalPage,
+  sitemapXml,
+} from "../ui/directory.js";
+const version = z.strictObject({
+  revision: z.number().int().nonnegative(),
+  draftVersion: z.number().int().nonnegative(),
+});
+export class Application {
+  readonly sites: Sites;
+  readonly auth: AuthRegistry;
+  readonly catalog: Catalog;
+  readonly content: Content;
+  readonly personal: Personal;
+  readonly github: GithubSources;
+  readonly audit: AuditLog;
+  private assets = new Map<string, { body: string; etag: string }>();
+  constructor(
+    readonly pool: Pool,
+    readonly config: {
+      key: string;
+      adminOrigin: string;
+      databaseUrl: string;
+      development: boolean;
+      auth?: AuthPolicy;
+    },
+  ) {
+    this.sites = new Sites(
+      pool,
+      config.key,
+      config.adminOrigin,
+      config.development,
+    );
+    this.auth = new AuthRegistry(
+      pool,
+      config.key,
+      config.databaseUrl,
+      config.auth,
+    );
+    this.catalog = new Catalog(pool);
+    this.content = new Content(pool);
+    this.personal = new Personal(pool);
+    this.github = new GithubSources(pool, this.content);
+    this.audit = new AuditLog(pool);
+  }
+  async close() {
+    await this.auth.close();
+  }
+  private json(value: unknown, status = 200) {
+    return Response.json(value, { status });
+  }
+  private html(value: string) {
+    return new Response(value, {
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
+  }
+  private async asset(file: string) {
+    let cached = this.assets.get(file);
+    if (!cached) {
+      const body = await readFile(resolve("src/ui", file), "utf8");
+      cached = {
+        body,
+        etag: '"' + createHash("sha256").update(body).digest("base64url").slice(0, 20) + '"',
+      };
+      this.assets.set(file, cached);
+    }
+    return new Response(cached.body, {
+      headers: { "content-type": "text/javascript", etag: cached.etag },
+    });
+  }
+  async respond(request: Request) {
+    let response: Response;
+    try {
+      response = await this.route(request);
+    } catch (error) {
+      const code =
+        error && typeof error === "object"
+          ? (error as { code?: string }).code
+          : undefined;
+      const status =
+        error instanceof HttpError
+          ? error.status
+          : error instanceof NotFound
+            ? 404
+            : error instanceof Conflict
+              ? 409
+              : error instanceof InvalidReference || error instanceof z.ZodError
+                ? 400
+                : code === "23505"
+                  ? 409
+                  : code === "23503" || code === "22P02"
+                    ? 400
+                    : 503;
+      const message =
+        error instanceof HttpError ||
+        error instanceof Conflict ||
+        error instanceof InvalidReference
+          ? error.message
+          : status === 400
+            ? code === "23503"
+              ? "关联的对象不存在或已被删除"
+              : "配置格式或参数不正确"
+            : status === 409
+              ? "记录已存在或版本冲突"
+              : status === 404
+                ? "Not found"
+                : "服务暂不可用，请稍后重试";
+      if (status === 503 && !(error instanceof HttpError))
+        console.error(
+          "Unhandled request error",
+          request.method,
+          new URL(request.url).pathname,
+          error,
+        );
+      response = this.json({ error: message }, status);
+    }
+    // Framework and protocol redirects may have immutable headers. Read a
+    // cacheable body before constructing the copy: sharing the original stream
+    // with another Response would make the original body unusable.
+    const path = new URL(request.url).pathname;
+    const publicAsset = path.startsWith("/assets/");
+    const publicPage =
+      path === "/" ||
+      path === "/sitemap.xml" ||
+      path === "/robots.txt" ||
+      /^\/[a-z]{2}\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(path);
+    const cacheable =
+      request.method === "GET" &&
+      response.status === 200 &&
+      !response.headers.has("set-cookie") &&
+      (publicAsset || publicPage);
+    const body = cacheable
+      ? Buffer.from(await response.arrayBuffer())
+      : undefined;
+    const copy = new Response(body ?? response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+    if (body) {
+      const etag =
+        '"' +
+        createHash("sha256").update(body).digest("base64url").slice(0, 20) +
+        '"';
+      copy.headers.set(
+        "cache-control",
+        publicAsset ? "public, max-age=3600" : "public, max-age=60, must-revalidate",
+      );
+      copy.headers.set("etag", etag);
+      if (request.headers.get("if-none-match") === etag)
+        response = new Response(null, { status: 304, headers: copy.headers });
+      else response = copy;
+    } else {
+      response = copy;
+      response.headers.set("cache-control", "no-store");
+    }
+    response.headers.set("x-content-type-options", "nosniff");
+    response.headers.set("referrer-policy", "no-referrer");
+    response.headers.set("x-frame-options", "DENY");
+    response.headers.set(
+      "content-security-policy",
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    );
+    return response;
+  }
+  private async body(request: Request) {
+    if (!request.headers.get("content-type")?.startsWith("application/json"))
+      throw new HttpError(415, "请提交 JSON");
+    const reader = request.body?.getReader();
+    if (!reader) throw new HttpError(400, "缺少请求内容");
+    let size = 0;
+    const chunks: Uint8Array[] = [];
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      size += part.value.length;
+      if (size > 262144) {
+        await reader.cancel();
+        throw new HttpError(413, "请求超过 256 KiB");
+      }
+      chunks.push(part.value);
+    }
+    try {
+      return JSON.parse(Buffer.concat(chunks).toString());
+    } catch {
+      throw new HttpError(400, "JSON 格式错误");
+    }
+  }
+  private cookie(token: string, maxAge: number) {
+    return `network_operator=${token}; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${this.config.adminOrigin.startsWith("https:") ? "; Secure" : ""}`;
+  }
+  private async route(request: Request): Promise<Response> {
+    const host = request.headers.get("host")?.toLowerCase();
+    if (!host || !/^[a-z0-9]+(?:[.-][a-z0-9]+)*(?::[0-9]{1,5})?$/.test(host))
+      throw new NotFound();
+    const path = new URL(request.url).pathname;
+    const admin = host === new URL(this.config.adminOrigin).host;
+    let site;
+    if (!admin) {
+      const ctx = await this.catalog.resolve(host);
+      site = await this.auth.instance(ctx.siteId);
+      if (new URL(site.origin).host !== host) throw new NotFound();
+    }
+    if (path === "/source.tar.gz") {
+      if (request.method !== "GET")
+        throw new HttpError(405, "Method not allowed");
+      return sourceDownload(request, resolve(".local/source.tar.gz"));
+    }
+    if (path.startsWith("/assets/")) {
+      if (request.method !== "GET")
+        throw new HttpError(405, "Method not allowed");
+      if (path === "/assets/templates.css")
+        return new Response(templateCss, {
+          headers: { "content-type": "text/css" },
+        });
+      if (path === "/assets/network.css")
+        return new Response(css, { headers: { "content-type": "text/css" } });
+      const file =
+        path === "/assets/admin.js" && admin
+          ? "admin.js"
+          : path === "/assets/account.js" && !admin
+            ? "account.js"
+            : path === "/assets/account-home.js" && !admin
+              ? "account-home.js"
+              : path === "/assets/github-admin.js" && admin
+              ? "github-admin.js"
+              : path === "/assets/content-admin.js" && admin
+                ? "content-admin.js"
+                : path === "/assets/directory.js" && !admin
+                  ? "directory.js"
+                  : null;
+      if (!file) throw new NotFound();
+      return this.asset(file);
+    }
+    if (admin) {
+      if (request.method !== "GET" && request.method !== "POST")
+        throw new HttpError(405, "Method not allowed");
+      if (
+        request.method === "POST" &&
+        request.headers.get("origin") !== this.config.adminOrigin
+      )
+        throw new HttpError(403, "来源验证失败");
+      if (path === "/health" && request.method === "GET") {
+        await this.pool.query("SELECT 1 FROM schema_migration LIMIT 1");
+        return this.json({ status: "ok" });
+      }
+      if (path === "/admin/login" && request.method === "GET")
+        return this.html(adminLogin());
+      if (path === "/admin/api/login" && request.method === "POST") {
+        await this.auth.limiter.consume(
+          "operator-login",
+          clientIp(request.headers, this.auth.policy.proxyToken),
+          100,
+        );
+        const body = z
+          .strictObject({ email: z.string(), password: z.string() })
+          .parse(await this.body(request));
+        const token = await this.sites.operators.login(
+          body.email,
+          body.password,
+          clientIp(request.headers, this.auth.policy.proxyToken),
+        );
+        const response = this.json({ ok: true });
+        response.headers.set("set-cookie", this.cookie(token, 28800));
+        return response;
+      }
+      if (path === "/admin/api/logout" && request.method === "POST") {
+        await this.sites.operators.logout(request.headers);
+        const r = this.json({ ok: true });
+        r.headers.set("set-cookie", this.cookie("", 0));
+        return r;
+      }
+      let operator;
+      try {
+        operator = await this.sites.operators.current(request.headers);
+      } catch (error) {
+        if (path === "/admin" && request.method === "GET")
+          return Response.redirect(
+            this.config.adminOrigin + "/admin/login",
+            303,
+          );
+        throw error;
+      }
+      if (path === "/admin" && request.method === "GET")
+        return this.html(adminPage());
+      if (!path.startsWith("/admin/api/")) throw new NotFound();
+      const action = path.slice("/admin/api".length);
+      if (action === "/modules" && request.method === "GET")
+        return this.json(moduleManifest);
+      if (action === "/templates" && request.method === "GET")
+        return this.json(templateManifest);
+      if (action === "/me" && request.method === "GET")
+        return this.json(operator);
+      if (action === "/audit" && request.method === "GET") {
+        const query = new URL(request.url).searchParams;
+        return this.json(
+          await this.audit.list(operator, {
+            site: query.get("site") || undefined,
+            before: query.get("before") || undefined,
+            limit: query.get("limit") || undefined,
+          }),
+        );
+      }
+      if (action === "/sites")
+        return request.method === "GET"
+          ? this.json(await this.sites.list(operator))
+          : this.json(
+              await this.sites.create(operator, await this.body(request)),
+              201,
+            );
+      const githubResponse = await githubHttp(
+        this.github,
+        operator,
+        action,
+        request,
+        () => this.body(request),
+      );
+      if (githubResponse) return githubResponse;
+      const contentResponse = await contentHttp(
+        this.content,
+        operator,
+        action,
+        request,
+        () => this.body(request),
+      );
+      if (contentResponse) return contentResponse;
+      const match = action.match(
+        /^\/sites\/([a-z][a-z0-9-]{0,47})(?:\/([a-z-]+))?$/,
+      );
+      if (match) {
+        const [, id, operation] = match;
+        await this.sites.operators.require(
+          operator,
+          id,
+          request.method === "POST",
+        );
+        const state = await this.sites.config(operator).read(id);
+        if (!operation && request.method === "GET") {
+          const row = (await this.sites.list(operator)).find(
+            (s) => s.id === id,
+          );
+          if (!row) throw new NotFound();
+          return this.json({
+            site: row,
+            state,
+            history: (
+              await this.pool.query(
+                "SELECT revision,config FROM config_revision WHERE site_id=$1 ORDER BY revision DESC LIMIT 50",
+                [id],
+              )
+            ).rows,
+            authProviders: await this.auth.providers.list(operator, id),
+          });
+        }
+        if (operation === "export" && request.method === "GET")
+          return this.json(
+            await this.sites.export(
+              operator,
+              id,
+              new URL(request.url).searchParams.get("draft") === "true",
+            ),
+          );
+        if (operation === "preview" && request.method === "GET") {
+          const candidate = configSchema.parse(state.draft ?? state.config);
+          const instance = await this.auth.instance(id);
+          return this.html(
+            renderTemplate(candidate.template, {
+              kind: "directory",
+              preview: true,
+              site: candidate,
+              origin: instance.origin,
+              catalogPath: candidate.catalogPath,
+              locale: candidate.locales[0],
+              canonical: instance.origin,
+              result: { total: 0, items: [], page: 1, limit: 24 },
+              categories: [],
+              q: "",
+              alternates: [],
+              noindex: true,
+            }),
+          );
+        }
+        if (request.method !== "POST")
+          throw new HttpError(405, "Method not allowed");
+        const input = await this.body(request);
+        if (operation === "compare") {
+          const b = z.strictObject({ snapshot: z.unknown() }).parse(input);
+          return this.json(await this.sites.preview(operator, id, b.snapshot));
+        }
+        if (operation === "save") {
+          const b = z
+            .strictObject({
+              snapshot: z.unknown(),
+              expected: version,
+              replace: z.boolean().default(false),
+            })
+            .parse(input);
+          return this.json({
+            draftVersion: await this.sites.save(
+              operator,
+              id,
+              b.snapshot,
+              b.expected,
+              b.replace,
+            ),
+          });
+        }
+        if (operation === "publish") {
+          const b = z
+            .strictObject({ expected: version, operationId: z.uuid() })
+            .parse(input);
+          const revision = await this.sites.publish(
+            operator,
+            id,
+            b.expected,
+            b.operationId,
+          );
+          this.catalog.invalidate(id);
+          return this.json({ revision });
+        }
+        if (operation === "rollback") {
+          const b = z
+            .strictObject({
+              revision: z.number().int().nonnegative(),
+              expected: version,
+            })
+            .parse(input);
+          return this.json({
+            draftVersion: await this.sites
+              .config(operator)
+              .rollback(id, b.revision, b.expected),
+          });
+        }
+        if (operation === "status") {
+          const b = z.strictObject({ active: z.boolean() }).parse(input);
+          await this.sites.status(operator, id, b.active);
+          return this.json({ ok: true });
+        }
+        throw new NotFound();
+      }
+      await this.sites.operators.require(operator);
+      if (action === "/operators") {
+        if (request.method === "GET")
+          return this.json(
+            (
+              await this.pool.query(
+                `SELECT u.id,u.email,u.global_admin,u.disabled,string_agg(g.site_id||':'||g.role,', ' ORDER BY g.site_id) AS grants FROM operator_user u LEFT JOIN operator_grant g ON g.user_id=u.id GROUP BY u.id ORDER BY email`,
+              )
+            ).rows,
+          );
+        const b = z
+          .strictObject({ email: z.email(), password: z.string() })
+          .parse(await this.body(request));
+        return this.json({
+          id: await this.sites.operators.create(
+            b.email,
+            b.password,
+            false,
+            operator,
+          ),
+        });
+      }
+      if (action === "/tasks" && request.method === "GET")
+        return this.json({
+          github: (
+            await this.pool.query(
+              "SELECT status,count(*)::int AS count FROM github_task GROUP BY status",
+            )
+          ).rows,
+          mail: (
+            await this.pool.query(
+              "SELECT status,count(*)::int AS count FROM mail_queue GROUP BY status",
+            )
+          ).rows,
+          instances: (
+            await this.pool.query(
+              "SELECT site_id,state,attempts,error_code FROM auth_instance ORDER BY site_id",
+            )
+          ).rows,
+          events: (
+            await this.pool.query(
+              "SELECT status,count(*)::int AS count FROM outbox GROUP BY status",
+            )
+          ).rows,
+          delivery: (
+            await this.pool.query(
+              "SELECT site_id,revision FROM config_delivery ORDER BY site_id",
+            )
+          ).rows,
+          eventFailures: (
+            await this.pool.query(
+              "SELECT id,site_id,revision,attempts,last_error FROM outbox WHERE status='failed' ORDER BY id LIMIT 100",
+            )
+          ).rows,
+          maintenance: (
+            await this.pool.query("SELECT * FROM maintenance_status")
+          ).rows,
+        });
+      if (request.method !== "POST") throw new NotFound();
+      const input = await this.body(request);
+      if (action === "/grants") {
+        const b = z
+          .strictObject({
+            userId: z.uuid(),
+            siteId: z.string(),
+            role: z.enum(["viewer", "editor"]),
+          })
+          .parse(input);
+        await this.sites.operators.grant(operator, b.userId, b.siteId, b.role);
+        return this.json({ ok: true });
+      }
+      if (action === "/grants/revoke") {
+        const b = z
+          .strictObject({ userId: z.uuid(), siteId: z.string() })
+          .parse(input);
+        await transaction(this.pool, async (c) => {
+          await c.query(
+            "SELECT role FROM operator_grant WHERE user_id=$1 AND site_id=$2 FOR UPDATE",
+            [b.userId, b.siteId],
+          );
+          await this.sites.operators.require(operator, undefined, false, c);
+          await c.query(
+            "DELETE FROM operator_grant WHERE user_id=$1 AND site_id=$2",
+            [b.userId, b.siteId],
+          );
+          await c.query(
+            "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'operator.revoke',$3)",
+            [operator.id, b.siteId, { userId: b.userId }],
+          );
+        });
+        return this.json({ ok: true });
+      }
+      if (
+        [
+          "/operators/disable",
+          "/operators/enable",
+          "/operators/revoke-sessions",
+        ].includes(action)
+      ) {
+        const b = z.strictObject({ userId: z.uuid() }).parse(input);
+        if (action === "/operators/revoke-sessions")
+          await this.sites.operators.revokeSessions(operator, b.userId);
+        else
+          await this.sites.operators.setDisabled(
+            operator,
+            b.userId,
+            action === "/operators/disable",
+          );
+        return this.json({ ok: true });
+      }
+      if (action === "/operators/password") {
+        const b = z
+          .strictObject({ userId: z.uuid(), password: z.string() })
+          .parse(input);
+        await this.sites.operators.setPassword(operator, b.userId, b.password);
+        return this.json({ ok: true });
+      }
+      if (action === "/tasks/retry-event") {
+        const b = z
+          .strictObject({ id: z.string().regex(/^[0-9]{1,18}$/) })
+          .parse(input);
+        await transaction(this.pool, async (c) => {
+          await c.query("SELECT id FROM outbox WHERE id=$1 FOR UPDATE", [b.id]);
+          await this.sites.operators.require(operator, undefined, false, c);
+          const row = (
+            await c.query(
+              "UPDATE outbox SET status='pending',attempts=0,available_at=now(),lease_token=NULL,lease_until=NULL,last_error=NULL WHERE id=$1 AND status='failed' RETURNING site_id",
+              [b.id],
+            )
+          ).rows[0];
+          if (!row) throw new HttpError(409, "任务不处于失败状态");
+          await c.query(
+            "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'task.retry',$3)",
+            [operator.id, row.site_id, { eventId: b.id }],
+          );
+        });
+        return this.json({ ok: true });
+      }
+      if (action === "/tasks/retry") {
+        const b = z.strictObject({ siteId: z.string() }).parse(input);
+        await transaction(this.pool, async (c) => {
+          await c.query(
+            "SELECT site_id FROM auth_instance WHERE site_id=$1 FOR UPDATE",
+            [b.siteId],
+          );
+          await this.sites.operators.require(operator, undefined, false, c);
+          const result = await c.query(
+            "UPDATE auth_instance SET state='pending',attempts=0,retry_at=now(),error_code=NULL WHERE site_id=$1 AND state='failed' RETURNING site_id",
+            [b.siteId],
+          );
+          if (!result.rowCount) throw new HttpError(409, "任务不处于失败状态");
+          await c.query(
+            "INSERT INTO audit_event(actor_id,site_id,action) VALUES($1,$2,'auth.retry')",
+            [operator.id, b.siteId],
+          );
+        });
+        return this.json({ ok: true });
+      }
+      throw new NotFound();
+    }
+    if (!site) throw new NotFound();
+    if (path.startsWith("/api/auth/") || path.startsWith("/.well-known/")) {
+      const headers = new Headers(request.headers);
+      for (const name of [...headers.keys()])
+        if (name.startsWith("x-forwarded-") || name === "forwarded")
+          headers.delete(name);
+      const url = new URL(request.url);
+      const canonical = new URL(url.pathname + url.search, site.origin);
+      return this.auth.handle(
+        site,
+        new Request(
+          canonical,
+          request.method === "GET" || request.method === "HEAD"
+            ? { method: request.method, headers }
+            : ({
+                method: request.method,
+                headers,
+                body: request.body,
+                duplex: "half",
+              } as RequestInit),
+        ),
+      );
+    }
+    const ctx = await this.catalog.resolve(host);
+    const { revision, config } = await this.catalog.configuration(ctx);
+    const url = new URL(request.url),
+      locale = url.searchParams.get("locale") ?? config.locales[0];
+    if (path.startsWith("/api/me/")) {
+      const user = await this.auth.current(site, request.headers);
+      if (!user) throw new HttpError(401, "请先登录");
+      if (request.method === "POST") {
+        if (request.headers.get("origin") !== site.origin)
+          throw new HttpError(403, "来源验证失败");
+        const input = await this.body(request);
+        if (path === "/api/me/favorites") {
+          const value = z
+            .strictObject({ resourceId: z.string(), enabled: z.boolean() })
+            .parse(input);
+          return this.json(
+            await this.personal.favorite(
+              ctx.siteId,
+              user,
+              value.resourceId,
+              value.enabled,
+            ),
+          );
+        }
+        if (path === "/api/me/submissions")
+          return this.json(
+            await this.personal.submit(ctx.siteId, user, input),
+            201,
+          );
+      } else if (request.method === "GET") {
+        if (path === "/api/me/favorites")
+          return this.json(
+            await this.catalog.browse(
+              ctx,
+              { locale, page: url.searchParams.get("page") ?? 1 },
+              user.user_id,
+            ),
+          );
+        if (path === "/api/me/submissions")
+          return this.json(
+            await this.personal.submissions(
+              ctx.siteId,
+              user,
+              url.searchParams.get("page") ?? 1,
+            ),
+          );
+      }
+      throw new NotFound();
+    }
+    if (request.method !== "GET")
+      throw new HttpError(405, "Method not allowed");
+    if (path === "/api/account/options")
+      return this.json(await this.auth.publicOptions(site));
+    if (path === "/account") {
+      if (site.center_site) {
+        const center = await this.auth.instance(site.center_site);
+        return new Response(null, {
+          status: 303,
+          headers: { location: center.origin + "/account" },
+        });
+      }
+      const identity = await this.auth.current(site, request.headers);
+      if (!identity)
+        return new Response(null, {
+          status: 303,
+          headers: { location: "/login?returnTo=%2Faccount" },
+        });
+      const options = await this.auth.publicOptions(site);
+      return this.html(
+        accountHomePage(config.name, identity.email, options.providers),
+      );
+    }
+    if (["/login", "/forgot-password", "/reset-password"].includes(path)) {
+      const options = await this.auth.publicOptions(site);
+      if (path !== "/login" && !options.mail)
+        return new Response(null, {
+          status: 303,
+          headers: { location: "/login" },
+        });
+      return this.html(
+        accountPage(config.name, !!site.center_site, path, options),
+      );
+    }
+    if (path === "/api/session") {
+      const identity = await this.auth.current(site, request.headers);
+      return this.json(
+        identity ? { email: identity.email, role: identity.role } : null,
+      );
+    }
+    if (path === "/api/config") return this.json({ revision, config });
+    const options = {
+      locale,
+      q: url.searchParams.get("q") ?? "",
+      category: url.searchParams.get("category") || undefined,
+      page: url.searchParams.get("page") ?? 1,
+    };
+    if (path === "/api/catalog")
+      return this.json(await this.catalog.list(ctx, locale));
+    if (path === "/api/search")
+      return this.json(await this.catalog.browse(ctx, options));
+    if (path === "/api/categories")
+      return this.json(await this.catalog.categories(ctx, locale));
+    if (path === "/robots.txt")
+      return new Response(
+        `User-agent: *\nAllow: /\nSitemap: ${site.origin}/sitemap.xml\n`,
+        {
+          headers: {
+            "content-type": "text/plain; charset=utf-8",
+          },
+        },
+      );
+    if (path === "/sitemap.xml") {
+      const entries = await this.catalog.entries(ctx);
+      if (entries.length > 50000)
+        throw new HttpError(503, "Sitemap requires sharding");
+      return new Response(
+        sitemapXml(site.origin, config.catalogPath, entries),
+        { headers: { "content-type": "application/xml; charset=utf-8" } },
+      );
+    }
+    if (path === "/me")
+      return this.html(personalPage(config.name, config.locales));
+    const item = path.match(/^\/api\/items\/(zh|en)\/([a-z][a-z0-9-]{0,63})$/);
+    if (item)
+      return this.json(await this.catalog.detail(ctx, item[1], item[2]));
+    const parts = path.split("/");
+    const language = path === "/" ? config.locales[0] : parts[1];
+    if (
+      path !== "/" &&
+      (!config.locales.includes(language as "zh" | "en") ||
+        parts[2] !== config.catalogPath ||
+        parts.length > 4)
+    )
+      throw new NotFound();
+    if (parts.length === 4) {
+      try {
+        const item = await this.catalog.detail(ctx, language, parts[3]);
+        const alternates = await this.catalog.alternates(ctx, item.resource_id);
+        return this.html(
+          renderTemplate(config.template, {
+            kind: "detail",
+            site: config,
+            origin: site.origin,
+            catalogPath: config.catalogPath,
+            locale: language,
+            item,
+            canonical:
+              site.origin + `/${language}/${config.catalogPath}/${item.slug}`,
+            alternates: alternates.map((a) => ({
+              locale: a.locale,
+              url: site.origin + `/${a.locale}/${config.catalogPath}/${a.slug}`,
+            })),
+            noindex: false,
+          }),
+        );
+      } catch (error) {
+        if (!(error instanceof NotFound)) throw error;
+        return new Response(
+          renderTemplate(config.template, {
+            kind: "missing",
+            site: config,
+            origin: site.origin,
+            catalogPath: config.catalogPath,
+            locale: language,
+            canonical:
+              site.origin + `/${language}/${config.catalogPath}/${parts[3]}`,
+            alternates: (
+              await this.catalog.availableForSlug(ctx, parts[3])
+            ).map((a) => ({
+              locale: a.locale,
+              url: site.origin + `/${a.locale}/${config.catalogPath}/${a.slug}`,
+            })),
+            noindex: true,
+          }),
+          {
+            status: 404,
+            headers: { "content-type": "text/html; charset=utf-8" },
+          },
+        );
+      }
+    }
+    const result = await this.catalog.browse(ctx, {
+      ...options,
+      locale: language,
+    });
+    const categories = await this.catalog.categories(ctx, language);
+    return this.html(
+      renderTemplate(config.template, {
+        kind: "directory",
+        site: config,
+        origin: site.origin,
+        catalogPath: config.catalogPath,
+        locale: language,
+        result,
+        categories,
+        q: options.q,
+        category: options.category,
+        canonical:
+          site.origin +
+          `/${language}/${config.catalogPath}` +
+          (result.page > 1 ? "?page=" + result.page : ""),
+        alternates: config.locales.map((l) => ({
+          locale: l,
+          url: site.origin + `/${l}/${config.catalogPath}`,
+        })),
+        noindex: !!options.q || !!options.category,
+      }),
+    );
+  }
+}

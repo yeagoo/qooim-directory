@@ -1,0 +1,11 @@
+import {createServer} from 'node:http';
+import type {AddressInfo} from 'node:net';
+import next from 'next';
+const app=next({dev:false,hostname:'127.0.0.1'});
+await app.prepare();
+const handle=app.getRequestHandler();
+const server=createServer((req,res)=>{void handle(req,res);});
+server.listen(0,'127.0.0.1',()=>process.send?.({port:(server.address() as AddressInfo).port}));
+let stopping=false;
+const stop=()=>{if(stopping)return;stopping=true;server.closeAllConnections();server.close(()=>{void app.close().then(()=>process.exit());});};
+process.on('SIGTERM',stop);process.on('disconnect',stop);

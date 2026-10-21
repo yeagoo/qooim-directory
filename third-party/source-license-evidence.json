@@ -1,0 +1,238 @@
+{
+  "format": 1,
+  "collectedAt": "2026-10-20T08:55:08.817Z",
+  "scope": "Exact published artifacts and pinned upstream revisions. Recording absence or presence of notice text is not a legal clearance decision.",
+  "collectorSha256": "924620e9bdf9a1ed2c93fcbd7f661be6f71805d8e0f2ddd8db3c38d2a4c80354",
+  "lockfileSha256": "739e859251e4d12830a3228baece0eb001c8924b7c05f615f03829ac8b0f9d50",
+  "packages": [
+    {
+      "name": "@better-auth/utils",
+      "version": "0.5.0",
+      "registryUrl": "https://registry.npmjs.org/%40better-auth%2Futils/0.5.0",
+      "tarballUrl": "https://registry.npmjs.org/@better-auth/utils/-/utils-0.5.0.tgz",
+      "shasum": "753b2c3421c7745023dea964c5bafb00297cba96",
+      "integrity": "sha512-BL8W4EfIZFwlu0r54m3v1ztjDhu6dDe/amLTm0xybmbZaNgYUqhD3SjpAsnq0q8YD6/ki4iwIgxJNLP/N3TxiA==",
+      "tarballBytes": 18017,
+      "tarballSha256": "63193eef51c0d9bd9458d9123f4011ac71b2fd9df7d85c0eb0eceb98d88d1eb7",
+      "fileCount": 58,
+      "fileListSha256": "727e9063c7553e489d74125f42a9e3970a64857dcce2f09ea9c34f63c9482c97",
+      "noticeCandidates": [],
+      "declaresLicense": "MIT",
+      "author": "Bereket Engida",
+      "maintainers": [
+        {
+          "name": "bekacru",
+          "email": "Bekacru@gmail.com"
+        },
+        {
+          "name": "better-gustavo",
+          "email": "gustavo@better-auth.com"
+        }
+      ],
+      "repository": {
+        "url": "git+https://github.com/better-auth/utils.git",
+        "type": "git"
+      },
+      "homepage": null,
+      "bugs": null,
+      "publishedAt": "2026-07-25T07:39:13.646Z",
+      "publisher": "GitHub Actions"
+    },
+    {
+      "name": "client-only",
+      "version": "0.0.1",
+      "registryUrl": "https://registry.npmjs.org/client-only/0.0.1",
+      "tarballUrl": "https://registry.npmjs.org/client-only/-/client-only-0.0.1.tgz",
+      "shasum": "38bba5d403c41ab150bff64a95c85013cf73bca1",
+      "integrity": "sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==",
+      "tarballBytes": 481,
+      "tarballSha256": "dcd7bc3868e2d3518d08944559952e4a68f581d89a84b6892de9fd8f40860b19",
+      "fileCount": 3,
+      "fileListSha256": "e1b757e0cafcc170127eb24443e50b4c1a7adc34f55a10df563fe8b09424bf98",
+      "noticeCandidates": [],
+      "declaresLicense": "MIT",
+      "author": null,
+      "maintainers": [
+        {
+          "name": "sebmarkbage",
+          "email": "sebastian@calyptus.eu"
+        }
+      ],
+      "repository": null,
+      "homepage": "https://reactjs.org/",
+      "bugs": {
+        "url": "https://github.com/facebook/react/issues"
+      },
+      "publishedAt": "2022-09-03T01:07:11.981Z",
+      "publisher": "sebmarkbage"
+    },
+    {
+      "name": "@img/sharp-libvips-linux-arm64",
+      "version": "1.3.4",
+      "registryUrl": "https://registry.npmjs.org/%40img%2Fsharp-libvips-linux-arm64/1.3.4",
+      "tarballUrl": "https://registry.npmjs.org/@img/sharp-libvips-linux-arm64/-/sharp-libvips-linux-arm64-1.3.4.tgz",
+      "shasum": "78c11c6b0a4b4045c72dacacdec3b10f3e521349",
+      "integrity": "sha512-Y3dgX/6lE2QhQb+Gxy0WZxfg9MEm/JBjamZpS2IklP7xIQoKN4hzAm7KcMVGtaVDt3neE9OKBC7vAfonA/Lr1A==",
+      "tarballBytes": 8485392,
+      "tarballSha256": "495e6c63c797c6b080a9dbd827a8cc0790b77f8f7d5d82f1764dadfc5068a845",
+      "fileCount": 6,
+      "fileListSha256": "3bace0b8d661bf4335612b673cf914b0d8d9be4f4d5ebec21335afd6d4a72620",
+      "noticeCandidates": [],
+      "declaresLicense": "LGPL-3.0-or-later",
+      "author": {
+        "name": "Lovell Fuller",
+        "email": "npm@lovell.info"
+      },
+      "maintainers": [
+        {
+          "name": "lovell",
+          "email": "npm@lovell.info"
+        }
+      ],
+      "repository": {
+        "url": "git+https://github.com/lovell/sharp-libvips.git",
+        "type": "git",
+        "directory": "npm/linux-arm64"
+      },
+      "homepage": "https://sharp.pixelplumbing.com",
+      "bugs": {
+        "url": "https://github.com/lovell/sharp-libvips/issues"
+      },
+      "publishedAt": "2026-09-27T12:10:53.588Z",
+      "publisher": "GitHub Actions"
+    },
+    {
+      "name": "@img/sharp-libvips-linuxmusl-arm64",
+      "version": "1.3.4",
+      "registryUrl": "https://registry.npmjs.org/%40img%2Fsharp-libvips-linuxmusl-arm64/1.3.4",
+      "tarballUrl": "https://registry.npmjs.org/@img/sharp-libvips-linuxmusl-arm64/-/sharp-libvips-linuxmusl-arm64-1.3.4.tgz",
+      "shasum": "420f2418eaec33cef4346e43d96a7864bb3fcbb4",
+      "integrity": "sha512-hvulFwtjUcagsis6BBxHwGFwWoNZjgYmULGVrZcyfNbjA8hKILbRxGg15/7w5HDyXHXUos/j6baAWqnCyQ2DWA==",
+      "tarballBytes": 8526011,
+      "tarballSha256": "d98395f7aa0f73e5f7306bdff30af7c310d15d9e003addbc36efb3c6613bfa59",
+      "fileCount": 6,
+      "fileListSha256": "f0d97647e8a1f210ad3e3c42839baa9afb169e78606efc506da18154162aa0af",
+      "noticeCandidates": [],
+      "declaresLicense": "LGPL-3.0-or-later",
+      "author": {
+        "name": "Lovell Fuller",
+        "email": "npm@lovell.info"
+      },
+      "maintainers": [
+        {
+          "name": "lovell",
+          "email": "npm@lovell.info"
+        }
+      ],
+      "repository": {
+        "url": "git+https://github.com/lovell/sharp-libvips.git",
+        "type": "git",
+        "directory": "npm/linuxmusl-arm64"
+      },
+      "homepage": "https://sharp.pixelplumbing.com",
+      "bugs": {
+        "url": "https://github.com/lovell/sharp-libvips/issues"
+      },
+      "publishedAt": "2026-09-27T12:10:57.585Z",
+      "publisher": "GitHub Actions"
+    }
+  ],
+  "findings": {
+    "betterAuthUtils": {
+      "package": "@better-auth/utils@0.5.0",
+      "exactRevision": "f03c1c76aff7bfa3f4de4af47b112315c770a0d1",
+      "revisionTree": [
+        {
+          "name": ".github",
+          "type": "dir"
+        },
+        {
+          "name": ".gitignore",
+          "type": "file"
+        },
+        {
+          "name": ".nvmrc",
+          "type": "file"
+        },
+        {
+          "name": "README.md",
+          "type": "file"
+        },
+        {
+          "name": "biome.json",
+          "type": "file"
+        },
+        {
+          "name": "lefthook.yml",
+          "type": "file"
+        },
+        {
+          "name": "package.json",
+          "type": "file"
+        },
+        {
+          "name": "pnpm-lock.yaml",
+          "type": "file"
+        },
+        {
+          "name": "pnpm-workspace.yaml",
+          "type": "file"
+        },
+        {
+          "name": "src",
+          "type": "dir"
+        },
+        {
+          "name": "tsconfig.json",
+          "type": "file"
+        },
+        {
+          "name": "tsdown.config.mts",
+          "type": "file"
+        },
+        {
+          "name": "vitest.config.ts",
+          "type": "file"
+        }
+      ],
+      "revisionHasLicenseFile": false,
+      "commitMessage": "chore: release v0.5.0",
+      "commitAuthorDate": "2026-07-25T07:38:44Z",
+      "laterLicenseCommit": "ef522888b7b2",
+      "laterLicenseDate": "2026-07-27T19:11:40Z",
+      "laterLicenseSha256": "b5052b5db9a8720634e5243aaf019269ddd93c2e43f46a09f72b99e0004c8680",
+      "laterLicenseText": "MIT License\n\nCopyright (c) 2024 - present, Bereket Engida\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
+      "conclusion": "The exact release revision has no LICENSE/COPYING/NOTICE file. A later commit added an MIT text; it is recorded for a maintainer decision only and is not treated as the release notice."
+    },
+    "clientOnly": {
+      "package": "client-only@0.0.1",
+      "publisher": "sebmarkbage",
+      "publishedAt": "2022-09-03T01:07:11.981Z",
+      "repository": null,
+      "homepage": "https://reactjs.org/",
+      "bugs": {
+        "url": "https://github.com/facebook/react/issues"
+      },
+      "packageJson": "package.json declares MIT, no copyright line",
+      "conclusion": "The published tarball contains no notice text and no repository field. Maintainer provenance (React team) does not by itself establish the package-specific copyright line."
+    },
+    "sharpLibvips": {
+      "packages": [
+        {
+          "name": "@img/sharp-libvips-linux-arm64",
+          "version": "1.3.4",
+          "noticeCandidates": []
+        },
+        {
+          "name": "@img/sharp-libvips-linuxmusl-arm64",
+          "version": "1.3.4",
+          "noticeCandidates": []
+        }
+      ],
+      "componentReview": "libvips-source-review.json",
+      "componentNoticeCollection": "component-notices.json",
+      "conclusion": "Package-level tarball contents are unchanged; the 28 declared components and their notice/source gaps remain governed by the existing component review."
+    }
+  },
+  "distributionStatus": "sharp and both @img/sharp-libvips packages were removed from the distribution on 2026-10-20; these records are retained for historical and reintroduction review."
+}

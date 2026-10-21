@@ -1,0 +1,104 @@
+export function escape(value: unknown) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ]!,
+  );
+}
+export const css = `
+@media(max-width:600px){.github-sources table{min-width:340px}.github-sources button{white-space:nowrap}}
+.sidebar,.panel,.split>div,fieldset{min-width:0}
+.project-facts{font:12px/1.8 ui-monospace,monospace;color:var(--muted);overflow-wrap:anywhere}fieldset{border:1px solid var(--line);margin-top:18px}
+.account-layout{max-width:1040px;margin:8vh auto;display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);background:white;min-height:620px}.account-story{background:#e8ecdf;padding:48px;display:flex;flex-direction:column;justify-content:center}.account-story .brand{margin-bottom:70px;text-decoration:none}.account-story h1{font-size:54px;line-height:1.15}.account-story .eyebrow{color:var(--muted)}.account-form{padding:48px}.account-form h2{font-size:34px;margin-top:42px}.provider-list{border-top:1px solid var(--line);padding-top:16px}.provider-list button{display:block;width:100%;margin:10px 0}.linked-list{border-top:1px solid var(--line);margin:20px 0}.linked-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px 0;border-bottom:1px solid var(--line)}.linked-row strong{font-weight:600}.linked-row .muted{font-size:13px}@media(max-width:720px){.account-layout{display:block;margin:18px;min-height:0}.account-story{padding:28px}.account-story .brand{margin-bottom:24px}.account-story h1{font-size:36px}.account-form{padding:28px}.account-form h2{margin-top:24px}}
+
+.directory-intro{padding:60px 0 24px}.directory-intro h1{font-size:56px}.search{border-top:1px solid var(--line);padding:18px 0}.search .row{flex-wrap:nowrap}.search input{flex:1;min-width:0}.search select{width:auto;max-width:180px}.result-label{font:12px/2 monospace;color:var(--muted);margin:16px 0}.directory-list{border-top:2px solid var(--ink)}.directory-item{display:flex;justify-content:space-between;gap:24px;align-items:center;padding:26px 0;border-bottom:1px solid var(--line)}.directory-item>div{min-width:0}.directory-item p{white-space:pre-wrap;overflow-wrap:anywhere}.item-title{font-family:Georgia,serif;font-size:26px;text-decoration:none}.favorite{flex-shrink:0}.resource-detail{padding:65px 0;max-width:800px}.resource-detail h1{font-size:52px}.detail-description{font-size:19px;line-height:1.9;white-space:pre-wrap;overflow-wrap:anywhere}.pagination{display:flex;gap:14px;margin-top:24px}.empty{padding:40px 0}.button.secondary{background:transparent;color:var(--ink);border-color:var(--line)}@media(max-width:600px){.directory-intro h1,.resource-detail h1{font-size:36px}.search .row{flex-wrap:wrap}.search input{flex-basis:100%}.directory-item{gap:12px}.item-title{font-size:22px}.public header{gap:18px;flex-wrap:wrap}.panel{padding:20px}}
+:root{--ink:#20312e;--muted:#697873;--paper:#f5f4ef;--line:#d9ded7;--accent:#286747;--warm:#e8ecdf}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 "Avenir Next","PingFang SC","Microsoft Yahei",sans-serif}a{color:inherit}button,input,textarea,select{font:inherit}button,.button{background:var(--accent);color:white;border:1px solid var(--accent);padding:9px 18px;border-radius:5px;cursor:pointer;text-decoration:none;display:inline-block}button:hover{filter:brightness(.92)}button:disabled{opacity:.5;cursor:wait}button.secondary{background:transparent;color:var(--ink);border-color:var(--line)}input,textarea,select{width:100%;padding:10px 12px;border:1px solid #bfc9bf;border-radius:4px;background:#fff;color:var(--ink)}input[type=checkbox]{width:auto;margin-right:8px}label:has(input[type=checkbox]){display:flex;align-items:center}input:focus,textarea:focus,button:focus-visible{outline:2px solid #56895e;outline-offset:3px}textarea{min-height:220px;font:13px/1.7 ui-monospace,monospace;resize:vertical}label{display:block;font-weight:600;margin:16px 0 7px}h1,h2,h3{font-family:"Iowan Old Style","Songti SC",Georgia,serif;font-weight:500;letter-spacing:-.035em}h1{font-size:40px;line-height:1.2;margin:8px 0 20px}h2{font-size:26px;margin:0 0 18px}p{margin:10px 0}small,.muted{color:var(--muted)}.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}.sidebar{background:#e8ecdf;padding:32px 24px;border-right:1px solid var(--line)}.brand{font-family:Georgia,serif;font-size:25px;letter-spacing:-1px}.brand span{display:block;font:10px/2 monospace;letter-spacing:3px;color:var(--muted)}.sidebar nav{margin-top:45px}.sidebar a{display:block;padding:10px 12px;margin:3px 0;border-radius:4px;text-decoration:none}.sidebar a.active,.sidebar a:hover{background:#d7dfce}.content{min-width:0;max-width:1240px;width:100%;padding:36px 54px 70px;margin:auto}.topline{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:35px;gap:20px}.eyebrow{font:11px/1.6 monospace;letter-spacing:2px;text-transform:uppercase}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:26px 0}.site-card{background:#fff;padding:26px;border:1px solid var(--line);border-top:3px solid var(--accent);text-decoration:none;display:block}.site-card h2{margin:16px 0 10px}.badge{font-size:12px;padding:3px 9px;background:var(--warm);border-radius:20px}.panel{background:#fff;border:1px solid var(--line);padding:26px;margin-top:24px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row>*{flex:0 1 auto}.split{display:grid;grid-template-columns:1fr 1fr;gap:24px}.actions{margin:22px 0;display:flex;gap:10px;flex-wrap:wrap}.notice{padding:12px 16px;margin:16px 0;border-left:3px solid var(--accent);background:#e8f0e5;white-space:pre-wrap}.notice.error{border-color:#a34c35;background:#f5e8df}table{width:100%;border-collapse:collapse;text-align:left}.table-wrap code{overflow-wrap:anywhere}th,td{padding:13px 10px;border-bottom:1px solid var(--line);font-size:14px}th{font-weight:500;color:var(--muted)}.table-wrap{overflow:auto}pre{overflow:auto;white-space:pre-wrap;font-size:12px}details{margin:18px 0}summary{cursor:pointer;color:var(--accent)}.login{max-width:430px;margin:10vh auto;background:white;border:1px solid var(--line);padding:40px}.public{max-width:1000px;margin:auto;padding:42px 28px}.public header{display:flex;align-items:center;justify-content:space-between;padding:18px 0;border-bottom:1px solid var(--line)}.hero{padding:70px 0 35px;max-width:720px}.hero h1{font-size:62px}.resource{padding:22px 0;border-bottom:1px solid var(--line);display:block;text-decoration:none}.resource strong{font-size:20px}.footer{padding-top:50px;font-size:12px;color:var(--muted)}[hidden]{display:none!important}@media(max-width:850px){.shell{grid-template-columns:1fr}.sidebar{padding:18px 24px}.sidebar nav{margin-top:12px;display:flex;overflow:auto}.sidebar a{white-space:nowrap}.brand span{display:inline;margin-left:12px}.content{padding:25px}.grid,.split{grid-template-columns:1fr}.hero h1{font-size:40px}.topline{align-items:flex-start;flex-wrap:wrap}.row{overflow-wrap:anywhere}.login{margin:5vh 18px}}@media(prefers-reduced-motion:no-preference){.site-card{transition:transform .15s}.site-card:hover{transform:translateY(-3px)}}`;
+export function document(
+  title: string,
+  body: string,
+  script?: string,
+  head = "",
+  lang = "zh-CN",
+) {
+  return `<!doctype html><html lang="${escape(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title>${head}<link rel="stylesheet" href="/assets/network.css"></head><body>${body}<footer class="footer" aria-label="Source"><a href="/source.tar.gz">获取本部署源码 · AGPL-3.0</a></footer>${script ? `<script type="module" src="${script}"></script>` : ""}</body></html>`;
+}
+export function adminPage() {
+  return document(
+    "站群工作台",
+    `<div class="shell"><aside class="sidebar"><div class="brand">Qoo.IM Directory<span>DIRECTORY CONSOLE</span></div><nav id="nav"><a href="/admin">站点总览</a><a href="/admin#resources">资源主档</a><a href="/admin#github">开源项目</a><a href="/admin#team">成员权限</a><a href="/admin#tasks">运行任务</a><a href="/admin#audit">审计日志</a></nav><p class="footer">一个后台，管理每个独立站点。</p></aside><main class="content"><div class="topline"><span class="eyebrow">工作台 / 站群管理</span><div class="row"><span id="account" class="muted"></span><button class="secondary" id="logout">退出</button></div></div><div id="message" role="status" aria-live="polite"></div><div id="workspace"><p>正在加载站点…</p></div></main></div>`,
+    "/assets/admin.js",
+  );
+}
+export function adminLogin() {
+  return document(
+    "登录工作台",
+    `<main class="login"><div class="eyebrow">QOO.IM DIRECTORY / WORKSPACE</div><h1>欢迎回来</h1><p class="muted">登录统一后台，继续管理你的站点。</p><form id="operator-login"><label for="email">邮箱</label><input id="email" name="email" type="email" autocomplete="username" required><label for="password">密码</label><input id="password" name="password" type="password" autocomplete="current-password" required><div class="actions"><button>登录工作台</button></div></form><div id="message" role="status"></div></main>`,
+    "/assets/admin.js",
+  );
+}
+export function accountPage(
+  name: string,
+  shared: boolean,
+  path: string,
+  options: {
+    mail: boolean;
+    requireEmail: boolean;
+    providers: { id: string; label: string; kind: string }[];
+  },
+) {
+  const mode =
+    path === "/forgot-password"
+      ? "forgot"
+      : path === "/reset-password"
+        ? "reset"
+        : "login";
+  const title =
+    mode === "forgot"
+      ? "找回密码"
+      : mode === "reset"
+        ? "设置新密码"
+        : "登录你的账号";
+  const data = JSON.stringify({ ...options, shared, mode }).replace(
+    /</g,
+    "\\u003c",
+  );
+  return document(
+    title + " · " + name,
+    `<main class="account-layout"><aside class="account-story"><a class="brand" href="/">${escape(name)}</a><span class="eyebrow">YOUR OWN CORNER OF THE WEB</span><h1>留住发现，<br>分享方向。</h1><p>一个账号，继续你在本站的收藏与探索。</p></aside><section class="account-form"><a href="/">← 返回 ${escape(name)}</a><h2>${title}</h2><p class="muted">${shared ? "通过账号中心安全登录。" : mode === "forgot" ? "输入注册邮箱，我们会发送重置链接。" : mode === "reset" ? "设置至少 12 位的新密码。" : "欢迎回来，也欢迎第一次相遇。"}</p><form id="public-login" data-shared="${shared}">${!shared && mode !== "reset" ? '<label for="email">邮箱</label><input id="email" name="email" type="email" autocomplete="username" required>' : ""}${!shared && mode !== "forgot" ? `<label for="password">${mode === "reset" ? "新密码" : "密码"}</label><input id="password" name="password" type="password" autocomplete="${mode === "reset" ? "new-password" : "current-password"}" minlength="12" maxlength="128" required>` : ""}<div class="actions"><button>${shared ? "前往账号中心" : mode === "forgot" ? "发送重置邮件" : mode === "reset" ? "保存新密码" : "登录"}</button>${mode === "login" && !shared ? '<button type="button" class="secondary" id="register">注册</button>' : ""}</div></form>${mode === "login" && !shared && options.mail ? '<div class="actions"><a href="/forgot-password">忘记密码？</a><button class="secondary" id="resend">重发验证邮件</button></div>' : ""}${mode === "login" && !shared && options.providers.length ? `<div class="provider-list"><p class="muted">或使用以下账号继续</p>${options.providers.map((p) => `<button class="secondary" data-provider="${escape(p.id)}">通过 ${escape(p.label)} 登录</button>`).join("")}</div>` : ""}${mode !== "login" ? '<a href="/login">返回登录</a>' : ""}<div id="message" role="status" aria-live="polite"></div><script id="account-options" type="application/json">${data}</script></section></main>`,
+    "/assets/account.js",
+    '<meta name="robots" content="noindex,nofollow">',
+  );
+}
+export function accountHomePage(
+  name: string,
+  email: string,
+  providers: { id: string; label: string; kind: string }[],
+) {
+  const data = JSON.stringify({ email, providers }).replace(/</g, "\\u003c");
+  return document(
+    "账号设置",
+    `<main class="account-layout"><aside class="account-story"><a class="brand" href="/">${escape(name)}</a><span class="eyebrow">YOUR ACCOUNT</span><h1>你的账号，<br>由你掌握。</h1><p>管理登录方式，保留你在本站的收藏与探索。</p></aside><section class="account-form"><a href="/">← 返回 ${escape(name)}</a><h2>账号设置</h2><p class="muted">${escape(email)}</p><div id="linked-accounts"><p class="muted">正在加载登录方式…</p></div><div id="link-providers"></div><p class="muted">解除最后一个登录方式会被拒绝。绑定后可使用对应平台登录同一账号。</p><div id="message" role="status" aria-live="polite"></div><script id="account-home-data" type="application/json">${data}</script></section></main>`,
+    "/assets/account-home.js",
+    '<meta name="robots" content="noindex,nofollow">',
+  );
+}
+export function publicPage(
+  site: {
+    id: string;
+    revision: number;
+    config: {
+      name: string;
+      tagline?: string;
+      navigation: { label: string; href: string }[];
+    };
+  },
+  items: { title: string; slug: string; locale: string }[],
+  preview = false,
+) {
+  return document(
+    site.config.name,
+    `<main class="public"><header><strong>${escape(site.config.name)}</strong><nav>${site.config.navigation.map((n) => `<a href="${escape(n.href)}">${escape(n.label)}</a>`).join(" · ")} <a href="/login">账号</a></nav></header>${preview ? '<p class="notice">草稿预览 · 尚未发布</p>' : ""}<section class="hero"><span class="eyebrow">A CURATED DIRECTORY / ${escape(site.id)}</span><h1>${escape(site.config.name)}</h1><p class="muted">${escape(site.config.tagline)}</p></section><section>${items.length ? items.map((i) => `<article class="resource"><strong>${escape(i.title)}</strong><p class="muted">${escape(i.locale)} · ${escape(i.slug)}</p></article>`).join("") : '<div class="panel"><h2>一个新的起点</h2><p class="muted">站点已准备就绪，内容将陆续发布。</p></div>'}</section><footer class="footer">独立运营，共享发现。 · 修订 ${site.revision}</footer></main>`,
+  );
+}

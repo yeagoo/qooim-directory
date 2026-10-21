@@ -1,0 +1,66 @@
+name: navigation-network
+x-runtime: &runtime
+  DATABASE_URL: postgresql://network:${POSTGRES_PASSWORD:?Generate .env first}@db:5432/${APP_DATABASE:-network}
+  AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Generate .env first}
+  ADMIN_ORIGIN: ${ADMIN_ORIGIN:?Set the admin origin}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  MAIL_FROM: ${MAIL_FROM:-}
+  SMTP_ALLOW_INSECURE: ${SMTP_ALLOW_INSECURE:-false}
+  AUTH_REQUIRE_EMAIL: ${AUTH_REQUIRE_EMAIL:-true}
+  AUTH_HISTORY_DAYS: ${AUTH_HISTORY_DAYS:-30}
+  GITHUB_SYNC_TOKEN: ${GITHUB_SYNC_TOKEN:-}
+  PROXY_TRUST_TOKEN: ${PROXY_TRUST_TOKEN:-}
+  ALLOW_INSECURE_HTTP: ${ALLOW_INSECURE_HTTP:-false}
+services:
+  db:
+    image: postgres@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    environment:
+      POSTGRES_DB: network
+      POSTGRES_USER: network
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [database:/var/lib/postgresql]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -h 127.0.0.1 -U network -d network]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  init:
+    build: .
+    image: navigation-network:${IMAGE_TAG:-local}
+    command: init
+    environment:
+      <<: *runtime
+      OPERATOR_EMAIL: ${OPERATOR_EMAIL}
+      OPERATOR_PASSWORD: ${OPERATOR_PASSWORD}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      DEMO_ORIGINS: ${DEMO_ORIGINS:-}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+  web:
+    image: navigation-network:${IMAGE_TAG:-local}
+    command: web
+    environment: *runtime
+    ports: ["127.0.0.1:${APP_PORT:-3000}:3000"]
+    depends_on:
+      init: { condition: service_completed_successfully }
+    restart: unless-stopped
+  worker:
+    image: navigation-network:${IMAGE_TAG:-local}
+    command: worker
+    environment: *runtime
+    depends_on:
+      init: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD, node, --import, tsx, scripts/worker-health.ts]
+      interval: 20s
+      timeout: 5s
+      start_period: 30s
+    restart: unless-stopped
+volumes:
+  database:

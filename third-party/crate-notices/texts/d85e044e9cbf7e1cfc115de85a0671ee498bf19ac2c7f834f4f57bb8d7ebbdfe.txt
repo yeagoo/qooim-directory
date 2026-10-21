@@ -1,0 +1,102 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+//! Helper module to build up a selector safely and efficiently.
+//!
+//! Our selector representation is designed to optimize matching, and has
+//! several requirements:
+//! * All simple selectors and combinators are stored inline in the same buffer as Component
+//!   instances.
+//! * We store the top-level compound selectors from right to left, i.e. in matching order.
+//! * We store the simple selectors for each combinator from left to right, so that we match the
+//!   cheaper simple selectors first.
+//!
+//! For example, the selector:
+//!
+//!   .bar:hover > .baz:nth-child(2) + .qux
+//!
+//! Gets stored as:
+//!
+//!   [.qux,  + , .baz, :nth-child(2),  > , .bar, :hover]
+//!
+//! Meeting all these constraints without extra memmove traffic during parsing is non-trivial. This
+//! module encapsulates those details and presents an easy-to-use API for the parser.
+
+use crate::parser::{
+    Combinator, Component, ParseRelative, RelativeSelector, Selector, SelectorData, SelectorImpl,
+};
+use crate::sink::Push;
+use bitflags::bitflags;
+use derive_more::{Add, AddAssign};
+use servo_arc::Arc;
+use smallvec::SmallVec;
+use std::cmp;
+use std::slice;
+
+#[cfg(feature = "to_shmem")]
+use to_shmem_derive::ToShmem;
+
+/// Top-level SelectorBuilder struct. This should be stack-allocated by the consumer and never
+/// moved (because it contains a lot of inline data that would be slow to memmove).
+///
+/// After instantiation, callers may call the push_simple_selector() and push_combinator() methods
+/// to append selector data as it is encountered (from left to right). Once the process is
+/// complete, callers should invoke build(), which transforms the contents of the SelectorBuilder
+/// into a heap- allocated Selector and leaves the builder in a drained state.
+#[derive(Debug)]
+pub struct SelectorBuilder<Impl: SelectorImpl> {
+    /// The entire sequence of components. We make this large because the result of parsing a
+    /// selector is fed into a new Arc-ed allocation, so any spilled vec would be a wasted
+    /// allocation. Also, Components are large enough that we don't have much cache locality
+    /// benefit from reserving stack space for fewer of them.
+    components: SmallVec<[Component<Impl>; 32]>,
+    last_compound_start: Option<usize>,
+}
+
+impl<Impl: SelectorImpl> Push<Component<Impl>> for SelectorBuilder<Impl> {
+    fn push(&mut self, value: Component<Impl>) {
+        self.push_simple_selector(value);
+    }
+}
+
+impl<Impl: SelectorImpl> SelectorBuilder<Impl> {
+    /// Pushes a simple selector onto the current compound selector.
+    #[inline(always)]
+    pub fn push_simple_selector(&mut self, ss: Component<Impl>) {
+        debug_assert!(!ss.is_combinator());
+        self.components.push(ss);
+    }
+
+    /// Completes the current compound selector and starts a new one, delimited by the given
+    /// combinator.
+    #[inline(always)]
+    pub fn push_combinator(&mut self, c: Combinator) {
+        self.reverse_last_compound();
+        self.components.push(Component::Combinator(c));
+        self.last_compound_start = Some(self.components.len());
+    }
+
+    fn reverse_last_compound(&mut self) {
+        let start = self.last_compound_start.unwrap_or(0);
+        self.components[start..].reverse();
+    }
+
+    /// Returns true if combinators have ever been pushed to this builder.
+    #[inline(always)]
+    pub fn has_combinators(&self) -> bool {
+        self.last_compound_start.is_some()
+    }
+
+    /// Consumes the builder, producing a Selector.
+    #[inline(always)]
+    pub fn build(&mut self, parse_relative: ParseRelative) -> SelectorData<Impl> {
+        // Compute the specificity and flags.
+        let sf = specificity_and_flags(
+            self.components.iter(),
+            /* for_nesting_parent = */ false,
+        );
+        self.build_with_specificity_and_flags(sf, parse_relative)
+    }
+
+    /// Builds with an explicit SpecificityAndFlags. This is se

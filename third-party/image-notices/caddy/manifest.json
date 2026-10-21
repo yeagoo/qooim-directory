@@ -1,0 +1,15 @@
+{
+  "format": 1,
+  "scope": "Caddy upstream license and Go toolchain license; not a full Go dependency notice set.",
+  "caddy": {
+    "version": "2.11.7",
+    "license": "third-party/image-notices/caddy/caddy-2.11.7-LICENSE.txt",
+    "licenseSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "go": {
+    "version": "1.26.8",
+    "file": "third-party/image-notices/caddy/go-1.26.8-LICENSE.txt",
+    "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+    "basis": "go1.26.8 string embedded in /usr/bin/caddy v2.11.7 binary"
+  }
+}

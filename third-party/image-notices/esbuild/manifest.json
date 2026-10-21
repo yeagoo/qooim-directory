@@ -1,0 +1,17 @@
+{
+  "module": "golang.org/x/sys",
+  "version": "v0.0.0-20220715151400-c0bba94af5f8",
+  "source": "https://proxy.golang.org/golang.org/x/sys/@v/v0.0.0-20220715151400-c0bba94af5f8.zip",
+  "file": "third-party/image-notices/esbuild/golang-x-sys-v0.0.0-20220715151400-c0bba94af5f8.txt",
+  "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067",
+  "scope": "exact module zip license; Go toolchain/runtime license not covered",
+  "toolchain": {
+    "go": {
+      "version": "1.26.5",
+      "source": "https://raw.githubusercontent.com/golang/go/go1.26.5/LICENSE",
+      "file": "third-party/image-notices/esbuild/go-1.26.5-LICENSE.txt",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "basis": "go1.26.5 string embedded in @esbuild/linux-arm64 0.28.2 binary"
+    }
+  }
+}
