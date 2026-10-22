@@ -3,6 +3,7 @@ import { isIP } from "node:net";
 import { lookup } from "node:dns/promises";
 import type { Pool } from "pg";
 import { z } from "zod";
+import { transaction } from "../domain/transaction.js";
 import { unseal, seal } from "./crypto.js";
 import { HttpError, Operators, type Operator } from "./operators.js";
 import { privateAddress } from "./outbound.js";
@@ -41,8 +42,17 @@ const configSchema = z.strictObject({
   enabled: z.boolean(),
   monthlyTokens: z.number().int().min(1000).max(100000000),
 });
+const siteSchema = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
+const JOB_PAGE = 50;
+const jobStatuses = ["pending", "processing", "done", "failed", "cancelled"] as const;
+const listInput = z.strictObject({
+  site: siteSchema,
+  status: z.enum(jobStatuses).optional(),
+  page: z.coerce.number().int().min(1).max(10000).default(1),
+});
+const jobAction = z.strictObject({ site: siteSchema });
 const jobInput = z.strictObject({
-  site: z.string().regex(/^[a-z][a-z0-9-]{0,47}$/),
+  site: siteSchema,
   kind: z.enum(["generate", "translate", "seo"]),
   locale: z.enum(["zh", "en"]),
   title: z.string().trim().max(200).optional(),
@@ -245,21 +255,24 @@ export class AiService {
     );
     return this.config(actor, value.site);
   }
+  // Same admission rules for new jobs and retries: AI enabled and budget left this month.
+  private async admit(db: Pick<Pool, "query">, site: string) {
+    const config = (
+      await db.query("SELECT enabled,monthly_tokens FROM ai_config WHERE site_id=$1", [
+        site,
+      ])
+    ).rows[0];
+    if (!config?.enabled) throw new HttpError(409, "本站未启用 AI");
+    const used = await monthlyTokensUsed(db, site);
+    if (used >= config.monthly_tokens)
+      throw new HttpError(429, "本月 AI token 预算已用完");
+  }
   async create(actor: Operator, input: unknown) {
     const value = jobInput.parse(input);
     await this.operators.require(actor, value.site, true);
     if (!value.title && !value.description)
       throw new HttpError(400, "至少提供标题或说明");
-    const config = (
-      await this.pool.query(
-        "SELECT enabled,monthly_tokens FROM ai_config WHERE site_id=$1",
-        [value.site],
-      )
-    ).rows[0];
-    if (!config?.enabled) throw new HttpError(409, "本站未启用 AI");
-    const used = await monthlyTokensUsed(this.pool, value.site);
-    if (used >= config.monthly_tokens)
-      throw new HttpError(429, "本月 AI token 预算已用完");
+    await this.admit(this.pool, value.site);
     const { rows } = await this.pool.query(
       `INSERT INTO ai_job(site_id,actor_id,kind,payload)
        VALUES($1,$2,$3,$4) RETURNING id,kind,status,created_at`,
@@ -277,6 +290,109 @@ export class AiService {
       ],
     );
     return rows[0];
+  }
+  // Newest first, 50 per page; payload and output stay in the detail endpoint.
+  async jobs(actor: Operator, input: unknown) {
+    const value = listInput.parse(input);
+    await this.operators.require(actor, value.site, false);
+    const site = (
+      await this.pool.query("SELECT 1 FROM site WHERE id=$1", [value.site])
+    ).rows[0];
+    if (!site) throw new HttpError(404, "站点不存在");
+    const { rows } = await this.pool.query(
+      `SELECT j.id,j.kind,j.status,j.error_code,j.tokens_in,j.tokens_out,o.email AS actor,
+              j.retry_of,r.id AS retried_by,j.created_at,j.completed_at
+       FROM ai_job j
+       LEFT JOIN operator_user o ON o.id=j.actor_id
+       LEFT JOIN LATERAL (SELECT id FROM ai_job WHERE retry_of=j.id ORDER BY created_at LIMIT 1) r ON true
+       WHERE j.site_id=$1 AND ($2::text IS NULL OR j.status=$2)
+       ORDER BY j.created_at DESC,j.id DESC
+       LIMIT $3 OFFSET $4`,
+      [
+        value.site,
+        value.status ?? null,
+        JOB_PAGE + 1,
+        (value.page - 1) * JOB_PAGE,
+      ],
+    );
+    return {
+      items: rows.slice(0, JOB_PAGE).map((row) => ({
+        id: row.id as string,
+        kind: row.kind as string,
+        status: row.status as string,
+        error: (row.error_code as string | null) ?? null,
+        tokens: { input: row.tokens_in as number, output: row.tokens_out as number },
+        actor: (row.actor as string | null) ?? null,
+        retryOf: (row.retry_of as string | null) ?? null,
+        retriedBy: (row.retried_by as string | null) ?? null,
+        createdAt: row.created_at,
+        completedAt: row.completed_at,
+      })),
+      page: value.page,
+      hasMore: rows.length > JOB_PAGE,
+    };
+  }
+  // pending/processing -> cancelled. A worker still holding the lease loses it and
+  // can only record the tokens it spent (see AiWorker.runOnce).
+  async cancel(actor: Operator, id: string, input: unknown) {
+    const { site } = jobAction.parse(input);
+    if (!z.uuid().safeParse(id).success) throw new HttpError(404, "任务不存在");
+    return transaction(this.pool, async (client) => {
+      await this.operators.require(actor, site, true, client);
+      const job = (
+        await client.query(
+          "SELECT status FROM ai_job WHERE id=$1 AND site_id=$2 FOR UPDATE",
+          [id, site],
+        )
+      ).rows[0];
+      if (!job) throw new HttpError(404, "任务不存在");
+      if (job.status !== "pending" && job.status !== "processing")
+        throw new HttpError(409, "只有排队中或处理中的任务可以取消");
+      const { rows } = await client.query(
+        `UPDATE ai_job SET status='cancelled',error_code='cancelled_by_operator',completed_at=now(),
+           lease_token=NULL,lease_until=NULL
+         WHERE id=$1 RETURNING id,kind,status,error_code,completed_at`,
+        [id],
+      );
+      await client.query(
+        "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'ai.job.cancel',$3)",
+        [actor.id, site, { jobId: id, from: job.status }],
+      );
+      return rows[0];
+    });
+  }
+  // failed/cancelled -> new pending job with the same kind and payload. The original is
+  // locked and left unchanged; at most one retry per original.
+  async retry(actor: Operator, id: string, input: unknown) {
+    const { site } = jobAction.parse(input);
+    if (!z.uuid().safeParse(id).success) throw new HttpError(404, "任务不存在");
+    return transaction(this.pool, async (client) => {
+      await this.operators.require(actor, site, true, client);
+      const job = (
+        await client.query(
+          "SELECT kind,payload,status FROM ai_job WHERE id=$1 AND site_id=$2 FOR UPDATE",
+          [id, site],
+        )
+      ).rows[0];
+      if (!job) throw new HttpError(404, "任务不存在");
+      if (job.status !== "failed" && job.status !== "cancelled")
+        throw new HttpError(409, "只有失败或已取消的任务可以重试");
+      const existing = (
+        await client.query("SELECT id FROM ai_job WHERE retry_of=$1 LIMIT 1", [id])
+      ).rows[0];
+      if (existing) throw new HttpError(409, "该任务已经重试过");
+      await this.admit(client, site);
+      const { rows } = await client.query(
+        `INSERT INTO ai_job(site_id,actor_id,kind,payload,retry_of)
+         VALUES($1,$2,$3,$4,$5) RETURNING id,kind,status,created_at,retry_of`,
+        [site, actor.id, job.kind, job.payload, id],
+      );
+      await client.query(
+        "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'ai.job.retry',$3)",
+        [actor.id, site, { jobId: rows[0].id, retryOf: id }],
+      );
+      return rows[0];
+    });
   }
   async job(actor: Operator, site: string, id: string) {
     await this.operators.require(actor, site, false);
@@ -367,10 +483,14 @@ export class AiWorker {
       await this.pool.query(
         `UPDATE ai_job SET status='processing',attempts=attempts+1,lease_token=gen_random_uuid(),lease_until=now()+interval '2 minutes'
          WHERE id=(SELECT id FROM ai_job WHERE status='pending' AND available_at<=now() ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
-         RETURNING id,site_id,kind,payload,attempts`,
+         RETURNING id,site_id,kind,payload,attempts,lease_token`,
       )
-    ).rows[0] as AiJobRow | undefined;
+    ).rows[0] as (AiJobRow & { lease_token: string }) | undefined;
     if (!row) return false;
+    const lease = row.lease_token;
+    // Every state change is conditional on still holding the lease: a cancelled job, or
+    // one whose lease expired and was re-claimed, is never finished by this run.
+    const owned = "id=$1 AND lease_token=$2 AND status='processing'";
     try {
       const config = (
         await this.pool.query(
@@ -390,10 +510,18 @@ export class AiWorker {
         maxTokens: 900,
       });
       const output = outputSchema.parse(result.output);
-      await this.pool.query(
-        `UPDATE ai_job SET status='done',output=$2,provider_model=$3,tokens_in=$4,tokens_out=$5,error_code=NULL,completed_at=now(),lease_token=NULL,lease_until=NULL WHERE id=$1`,
-        [row.id, output, result.model, result.tokensIn, result.tokensOut],
+      // Tokens accumulate so spend from a lost lease (below) is never overwritten.
+      const done = await this.pool.query(
+        `UPDATE ai_job SET status='done',output=$3,provider_model=$4,tokens_in=tokens_in+$5,tokens_out=tokens_out+$6,error_code=NULL,completed_at=now(),lease_token=NULL,lease_until=NULL WHERE ${owned}`,
+        [row.id, lease, output, result.model, result.tokensIn, result.tokensOut],
       );
+      if (!done.rowCount)
+        // Lease lost (cancelled or re-claimed): discard the output, but the provider
+        // already charged these tokens and the monthly budget must count them.
+        await this.pool.query(
+          "UPDATE ai_job SET tokens_in=tokens_in+$2,tokens_out=tokens_out+$3,provider_model=coalesce(provider_model,$4) WHERE id=$1",
+          [row.id, result.tokensIn, result.tokensOut, result.model],
+        );
     } catch (error) {
       const code =
         error instanceof Error && /^[a-z0-9_]{1,64}$/.test(error.message)
@@ -401,13 +529,13 @@ export class AiWorker {
           : "provider_failed";
       if (row.attempts < 2)
         await this.pool.query(
-          "UPDATE ai_job SET status='pending',available_at=now()+interval '30 seconds',error_code=$2,lease_token=NULL,lease_until=NULL WHERE id=$1",
-          [row.id, code],
+          `UPDATE ai_job SET status='pending',available_at=now()+interval '30 seconds',error_code=$3,lease_token=NULL,lease_until=NULL WHERE ${owned}`,
+          [row.id, lease, code],
         );
       else
         await this.pool.query(
-          "UPDATE ai_job SET status='failed',error_code=$2,completed_at=now(),lease_token=NULL,lease_until=NULL WHERE id=$1",
-          [row.id, code],
+          `UPDATE ai_job SET status='failed',error_code=$3,completed_at=now(),lease_token=NULL,lease_until=NULL WHERE ${owned}`,
+          [row.id, lease, code],
         );
     }
     return true;
@@ -475,4 +603,3 @@ export async function pruneAiJobs(
   }
   return { deletedJobs, batches };
 }
-

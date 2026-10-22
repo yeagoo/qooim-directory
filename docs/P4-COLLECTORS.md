@@ -40,6 +40,16 @@
 | `GET /admin/api/collector-candidates?site=<id>` | 待审核候选 |
 | `POST /admin/api/collector-candidates/<id>/review` | 接受/拒绝，乐观版本 |
 | `GET /admin/api/collectors/usage?site=<id>` | 来源数/配额、最近一小时采集次数/上限（M6） |
+| `GET /admin/api/collectors/tasks?site=<id>&status=&page=` | 任务列表，每页 50 条，按时间倒序（M7） |
+| `POST /admin/api/collectors/tasks/<id>/retry` | `{site,operationId}`；重试失败的任务，与手动同步共用频率限制；重放同一个 `operationId` 返回原任务；仅限站群管理员（M7） |
+| `POST /admin/api/collector-candidates/batch-review` | `{site,decision,items:[{id,expectedVersion}]}`，每批 1–100 条；站点编辑者可用（M7） |
+
+### 运维操作（M7）
+
+- 权限沿用原有规则：管理来源、手动同步、重试会对外发起请求，只有站群管理员能做；审核候选（单条或批量）只生成草稿，站点编辑者就能做。
+- 重试只针对 `failed` 的任务；`cancelled` 表示来源已经改过，不能重试。来源停用、或者已经有进行中的任务时，返回 409。重试会新建一个任务，并用 `retry_of` 关联原任务，原任务不改。
+- 批量审核不是原子操作：每条单独开事务，单独校验版本；单条失败（版本冲突、已经审核过等）会写进结果，其余照常处理；遇到意外错误时中止，已处理的条目保留。
+- 后台采集页可以编辑来源（配置、语言、启用、同步间隔 1–168 小时）；遇到版本冲突时保留用户已填写的内容。
 
 ## 配额、频率与保留期（M6）
 
@@ -61,7 +71,6 @@
 - RSS 拒绝 DOCTYPE/ENTITY，避免外部实体；正则解析不是通用 XML 解析器，畸形 feed 会失败而不执行内容。
 - 候选内容按纯文本/转义渲染；标题/说明截断，URL 只允许 http(s)。
 - 没有采集凭据、代理、Webhook；没有 YouTube/Product Hunt/社交平台。
-- 没有候选批量审核、定时编辑 UI、失败重试 UI（M7）。
 - 当前 GitHub 仍用 `github_source`/`github_worker`，未迁移到新采集表；两套入口并存是兼容性选择，不是统一适配器完成。
 
 ## 测试

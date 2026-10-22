@@ -37,8 +37,11 @@ Key 使用 `AUTH_ENCRYPTION_KEY` 经 AES-256-GCM 封装后存 `ai_config.sealed_
 | `POST /admin/api/ai/jobs` | 创建任务 `{site,kind,locale,title?,description?,url?,brief?}` |
 | `GET /admin/api/ai/jobs/<id>?site=<id>` | 轮询状态/输出/用量 |
 | `GET /admin/api/ai/usage?site=<id>` | 近 12 个月用量与当月预算（M6） |
+| `GET /admin/api/ai/jobs?site=<id>&status=&page=` | 任务列表，每页 50 条，按时间倒序，不含输入和输出（M7） |
+| `POST /admin/api/ai/jobs/<id>/cancel` | `{site}`；取消排队中或处理中的任务（M7） |
+| `POST /admin/api/ai/jobs/<id>/retry` | `{site}`；重试失败或已取消的任务：新建一个任务并用 `retry_of` 关联原任务，同一个任务只能重试一次（M7） |
 
-任务状态：`pending → processing → done|failed`。Worker 每次处理一条，失败最多重试 2 次（30 秒退避），超时/失败保留错误码；崩溃遗留的 processing 租约会在下次运行回收。
+任务状态：`pending → processing → done|failed`，排队中或处理中的任务可以被运营者改为 `cancelled`（M7）。Worker 的所有写回都要求自己仍持有该任务、且任务仍是 `processing`：已取消或已被其他 Worker 接手的任务不会被改回完成，但供应商已经消耗的 token 仍然计入，供预算统计使用。Worker 每次处理一条，失败最多重试 2 次（30 秒退避），超时/失败保留错误码；崩溃遗留的 processing 租约会在下次运行回收。
 
 ## 安全
 
@@ -57,7 +60,7 @@ Key 使用 `AUTH_ENCRYPTION_KEY` 经 AES-256-GCM 封装后存 `ai_config.sealed_
 ## 限制与未验证
 
 - 没有真实 OpenAI/Anthropic 或第三方兼容端点联调；测试使用注入传输，验证队列/校验/预算/人工确认，不证明供应商可用性或内容质量。
-- 没有 token 计费对账、供应商账单同步、提示词版本管理 UI（M9）、任务取消/重试 UI（M7）；见 [M6–M10 方案](FEATURE-PLAN-M6-M10.md)。
+- 没有 token 计费对账、供应商账单同步、提示词版本管理 UI（M9）；见 [M6–M10 方案](FEATURE-PLAN-M6-M10.md)。
 - 端点 DNS 固定是尽力而为的 SSRF 缓解，不替代出站防火墙/代理。
 - AI 输出可能不准确；发布者必须核对事实、版权、翻译质量和 SEO 声明。
 

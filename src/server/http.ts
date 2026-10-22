@@ -32,6 +32,7 @@ import { aiHttp } from "./ai-http.js";
 import { Media } from "./media.js";
 import { mediaHttp } from "./media-http.js";
 import { Limits, limitsHttp } from "./limits.js";
+import { DEFAULT_RETENTION, type RetentionPolicy } from "./retention.js";
 import { Personal } from "./personal.js";
 import { AuditLog } from "./audit.js";
 import {
@@ -64,6 +65,7 @@ export class Application {
       development: boolean;
       auth?: AuthPolicy;
       mediaRoot?: string;
+      retention?: RetentionPolicy;
     },
   ) {
     this.sites = new Sites(
@@ -634,6 +636,17 @@ export class Application {
           maintenance: (
             await this.pool.query("SELECT * FROM maintenance_status")
           ).rows,
+          ai: (
+            await this.pool.query(
+              "SELECT status,count(*)::int AS count FROM ai_job GROUP BY status",
+            )
+          ).rows,
+          collectors: (
+            await this.pool.query(
+              "SELECT status,count(*)::int AS count FROM collector_task GROUP BY status",
+            )
+          ).rows,
+          retention: this.config.retention ?? DEFAULT_RETENTION,
         });
       if (request.method !== "POST") throw new NotFound();
       const input = await this.body(request);

@@ -934,10 +934,39 @@ async function audit(scope) {
   more.addEventListener("click", () => void load(true));
   await load(false);
 }
+// Older servers and test fixtures may omit the M6/M7 fields; render only what is present.
+function retentionPanel(data) {
+  const counts = (rows) =>
+    (rows ?? []).map((r) => `${escape(r.status)} ${r.count}`).join(" · ") || "无";
+  const policy = data.retention;
+  const last = (data.maintenance ?? []).find((m) => m.name === "retention");
+  const parts = last
+    ? Object.entries(last.detail ?? {})
+        .filter(([key]) => key !== "state")
+        .map(
+          ([key, value]) =>
+            `<tr><td>${escape(key)}</td><td>${escape(
+              Object.entries(value ?? {})
+                .map(([k, v]) => `${k} ${v}`)
+                .join(" · ") || "—",
+            )}</td></tr>`,
+        )
+        .join("")
+    : "";
+  return `<section class="panel" id="retention"><h2>AI 与采集任务</h2><p>AI：${counts(data.ai)}</p><p>采集：${counts(data.collectors)}</p>${
+    policy
+      ? `<h2>数据保留</h2><div class="table-wrap"><table><tr><th>项目</th><th>保留</th></tr><tr><td>已结束 AI 任务（汇总后删除，当月不删）</td><td>${policy.aiJobDays} 天</td></tr><tr><td>已结束采集任务</td><td>${policy.collectorTaskDays} 天</td></tr><tr><td>已作废采集候选</td><td>${policy.collectorSupersededDays} 天</td></tr><tr><td>已审核采集候选（压缩内容）</td><td>${policy.collectorReviewedDays} 天</td></tr><tr><td>孤儿媒体文件宽限</td><td>${policy.mediaOrphanGraceMinutes} 分钟</td></tr></table></div><p class="muted">每 ${policy.intervalMinutes} 分钟最多执行一次；每类每次最多处理 ${policy.batchSize * policy.maxBatches} 行。</p>`
+      : ""
+  }<h2>最近一次清理</h2>${
+    last
+      ? `<p>${last.detail?.state === "failed" ? "失败" : last.detail?.state === "running" ? "运行中" : "完成"} · ${escape(last.completed_at)}</p><div class="table-wrap"><table><tr><th>部分</th><th>结果</th></tr>${parts}</table></div>`
+      : `<p class="muted">尚未运行。</p>`
+  }</section>`;
+}
 async function tasks(scope) {
   const { api, notice } = scope;
   const data = await api("/tasks");
-  workspace.innerHTML = `<h1>运行任务</h1><p class="muted">配置发布与账号准备任务的持久化状态。仅失败任务可以重新排队。</p><button class="secondary" id="refresh-tasks">刷新列表</button><section class="panel"><h2>账号服务</h2><div class="table-wrap"><table><tr><th>站点</th><th>状态</th><th>尝试次数</th><th>操作</th></tr>${data.instances.map((i) => `<tr><td>${escape(i.site_id)}</td><td>${escape(i.state)} ${escape(i.error_code || "")}</td><td>${i.attempts}</td><td>${i.state === "failed" ? `<button class="secondary retry" data-site="${escape(i.site_id)}">重试</button>` : "—"}</td></tr>`).join("")}</table></div><h2>发布事件</h2><pre>${escape(JSON.stringify(data.events, null, 2))}</pre><h2>已投递修订</h2><pre>${escape(JSON.stringify(data.delivery, null, 2))}</pre>${data.eventFailures.map((e) => `<p>${escape(e.site_id)} · 修订 ${e.revision} · ${escape(e.last_error)} <button class="secondary retry-event" data-event="${e.id}">重试发布事件</button></p>`).join("")}<h2>邮件任务</h2><pre>${escape(JSON.stringify(data.mail, null, 2))}</pre><h2>GitHub 同步任务</h2><pre>${escape(JSON.stringify(data.github, null, 2))}</pre><a href="#github">查看来源与审核候选 →</a><h2>最近维护</h2><pre>${escape(JSON.stringify(data.maintenance, null, 2))}</pre></section>`;
+  workspace.innerHTML = `<h1>运行任务</h1><p class="muted">配置发布与账号准备任务的持久化状态。仅失败任务可以重新排队。</p><button class="secondary" id="refresh-tasks">刷新列表</button><section class="panel"><h2>账号服务</h2><div class="table-wrap"><table><tr><th>站点</th><th>状态</th><th>尝试次数</th><th>操作</th></tr>${data.instances.map((i) => `<tr><td>${escape(i.site_id)}</td><td>${escape(i.state)} ${escape(i.error_code || "")}</td><td>${i.attempts}</td><td>${i.state === "failed" ? `<button class="secondary retry" data-site="${escape(i.site_id)}">重试</button>` : "—"}</td></tr>`).join("")}</table></div><h2>发布事件</h2><pre>${escape(JSON.stringify(data.events, null, 2))}</pre><h2>已投递修订</h2><pre>${escape(JSON.stringify(data.delivery, null, 2))}</pre>${data.eventFailures.map((e) => `<p>${escape(e.site_id)} · 修订 ${e.revision} · ${escape(e.last_error)} <button class="secondary retry-event" data-event="${e.id}">重试发布事件</button></p>`).join("")}<h2>邮件任务</h2><pre>${escape(JSON.stringify(data.mail, null, 2))}</pre><h2>GitHub 同步任务</h2><pre>${escape(JSON.stringify(data.github, null, 2))}</pre><a href="#github">查看来源与审核候选 →</a><h2>最近维护</h2><pre>${escape(JSON.stringify(data.maintenance, null, 2))}</pre></section>${retentionPanel(data)}`;
   const retries = [...workspace.querySelectorAll(".retry, .retry-event")];
   const refresh = workspace.querySelector("#refresh-tasks");
   let pending = false,

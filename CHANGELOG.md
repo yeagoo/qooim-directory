@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — M6 配额与保留期
+## Unreleased — M6 配额与保留期、M7 运维 UI
 
 开发方案见 [M6–M10](docs/FEATURE-PLAN-M6-M10.md)。
 
@@ -13,9 +13,17 @@
 - Worker 每小时执行一次保留期清理（多个 Worker 互斥），CLI `retention-run` 可立即执行一次；新增 `RETENTION_*` 环境变量。
 - 迁移 `010-quota-retention.sql`；新增测试 `tests/p6/`，运行方式：`node scripts/test-p0.mjs tests/p6/foundation.test.ts tests/p6/media.test.ts tests/p6/ai.test.ts tests/p6/collectors.test.ts`。`package.json` 属于镜像 evidence 固定的输入文件，所以这次没有加 `test:p6` 脚本；等发布前刷新 evidence 时一并加入。
 
+### Added（M7 运维 UI）
+
+- AI 任务：列表（分页、状态筛选）、取消排队中或处理中的任务、重试失败或已取消的任务（新建任务并用 `retry_of` 关联原任务，每个任务只能重试一次）；AI 设置页新增“任务”面板；审计 `ai.job.cancel`、`ai.job.retry`。
+- AI Worker 写回结果时会检查自己是否仍持有该任务：已取消或已被其他 Worker 接手的任务不会被改回完成；供应商已经消耗的 token 仍然计入预算。
+- 采集任务：列表、重试失败任务（与手动同步共用频率限制，`operationId` 幂等，仅限站群管理员）；后台可以编辑来源（配置、语言、启用、同步间隔）；候选批量审核（每批 1–100 条，逐条返回结果，非原子）。
+- “运行任务”页显示 AI 和采集任务的状态统计、保留期设置，以及最近一次清理的结果。
+- 迁移 `011-operations-ui.sql`；新增测试 `tests/p7/`。
+
 ### Upgrade
 
-- 应用迁移 `010-quota-retention.sql`。现有站点使用默认配额；如果已经超出默认配额，只会阻止新增，不删除任何数据。
+- 应用迁移 `010-quota-retention.sql`、`011-operations-ui.sql`。现有站点使用默认配额；如果已经超出默认配额，只会阻止新增，不删除任何数据。
 - 首次运行保留期清理时，会处理历史上积累的数据（每类每次最多 10 万行，下一小时继续）。
 
 ## v0.2.0-rc.1 — 2026-10-21 (release candidate)

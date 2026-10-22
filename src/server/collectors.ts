@@ -1,8 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { transaction } from "../domain/transaction.js";
-import { Conflict } from "../domain/config.js";
+import { Conflict, InvalidReference } from "../domain/config.js";
+import { NotFound } from "../domain/catalog.js";
 import { Content, identifier, resourceData } from "./content.js";
 import { HttpError, Operators, type Operator } from "./operators.js";
 import { DEFAULT_LIMITS, siteLimits } from "./limits.js";
@@ -17,6 +18,47 @@ const runLock = "SELECT pg_advisory_xact_lock(hashtext('collector-run:'||$1))";
 const runsLastHour = `SELECT count(*)::int AS n FROM collector_task t JOIN collector_source s ON s.id=t.source_id
   WHERE s.site_id=$1 AND t.created_at>now()-interval '1 hour'`;
 const siteParam = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
+const TASK_PAGE = 50;
+const taskQuery = z.strictObject({
+  site: siteParam,
+  status: z
+    .enum(["pending", "processing", "done", "failed", "cancelled"])
+    .optional(),
+  page: z.coerce.number().int().min(1).max(10000).default(1),
+});
+const batchInput = z.strictObject({
+  site: siteParam,
+  decision: z.enum(["accept", "reject"]),
+  items: z
+    .array(
+      z.strictObject({
+        id: z.uuid(),
+        expectedVersion: z.number().int().positive(),
+      }),
+    )
+    .min(1)
+    .max(100)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, {
+      message: "候选 ID 不能重复",
+    }),
+});
+const sourceLabel = (kind: string, config: Record<string, unknown> | null) =>
+  kind === "npm" ? "npm: " + String(config?.query ?? "") : String(config?.url ?? "");
+// Mirrors the status mapping in http.ts for errors a single review reports to
+// the client; anything else is unexpected and must abort a batch.
+const clientFailure = (error: unknown): { status: number; error: string } | null => {
+  if (error instanceof HttpError)
+    return { status: error.status, error: error.message };
+  if (error instanceof NotFound) return { status: 404, error: "Not found" };
+  if (error instanceof Conflict) return { status: 409, error: error.message };
+  if (error instanceof InvalidReference) return { status: 400, error: error.message };
+  if (error instanceof z.ZodError) return { status: 400, error: "配置格式或参数不正确" };
+  const code = error && typeof error === "object" ? (error as { code?: string }).code : undefined;
+  if (code === "23505") return { status: 409, error: "记录已存在或版本冲突" };
+  if (code === "23503") return { status: 400, error: "关联的对象不存在或已被删除" };
+  if (code === "22P02") return { status: 400, error: "配置格式或参数不正确" };
+  return null;
+};
 const rssConfig = z.strictObject({
   url: z.string().trim().max(500),
   locale: locale.default("zh"),
@@ -387,29 +429,143 @@ export class Collectors {
         if (existing.source_id !== id) throw new Conflict("操作标识已用于另一来源");
         return existing;
       }
-      await c.query(runLock, [source.site_id]);
-      const limit = (await siteLimits(c, source.site_id)).collectorRunsPerHour;
-      if (limit === 0)
-        throw new HttpError(429, "该站点已停用采集（每小时采集次数配额为 0）");
-      const used = (await c.query(runsLastHour, [source.site_id])).rows[0].n;
-      if (used >= limit)
-        throw new HttpError(
-          429,
-          `该站点最近一小时已发起 ${used} 次采集，达到每小时 ${limit} 次的上限，请稍后再试`,
-        );
-      const task = (
-        await c.query(
-          "INSERT INTO collector_task(id,source_id,source_version) VALUES($1,$2,$3) RETURNING *",
-          [operationId, id, source.version],
-        )
-      ).rows[0];
-      await c.query(
-        "UPDATE collector_source SET next_run_at=now()+interval_seconds*interval '1 second' WHERE id=$1",
-        [id],
-      );
+      const task = await this.createTask(c, source, operationId, null);
       await c.query(
         "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'collector.sync.enqueue',$3)",
         [actor.id, source.site_id, { taskId: task.id }],
+      );
+      return task;
+    });
+  }
+  // Shared by manual sync and retry: applies the site's hourly run limit and
+  // inserts the task. The caller must hold the source row lock (FOR UPDATE).
+  private async createTask(
+    c: PoolClient,
+    source: { id: string; site_id: string; version: number },
+    operationId: string,
+    retryOf: string | null,
+  ) {
+    await c.query(runLock, [source.site_id]);
+    const limit = (await siteLimits(c, source.site_id)).collectorRunsPerHour;
+    if (limit === 0)
+      throw new HttpError(429, "该站点已停用采集（每小时采集次数配额为 0）");
+    const used = (await c.query(runsLastHour, [source.site_id])).rows[0].n;
+    if (used >= limit)
+      throw new HttpError(
+        429,
+        `该站点最近一小时已发起 ${used} 次采集，达到每小时 ${limit} 次的上限，请稍后再试`,
+      );
+    const task = (
+      await c.query(
+        "INSERT INTO collector_task(id,source_id,source_version,retry_of) VALUES($1,$2,$3,$4) RETURNING *",
+        [operationId, source.id, source.version, retryOf],
+      )
+    ).rows[0];
+    await c.query(
+      "UPDATE collector_source SET next_run_at=now()+interval_seconds*interval '1 second' WHERE id=$1",
+      [source.id],
+    );
+    return task;
+  }
+  // Task history for the operations UI, newest first, 50 per page.
+  async tasks(actor: Operator, input: unknown) {
+    const value = taskQuery.parse(input);
+    await this.operators.require(actor, value.site, false);
+    const params: unknown[] = [value.site, TASK_PAGE + 1, (value.page - 1) * TASK_PAGE];
+    let filter = "";
+    if (value.status) {
+      params.push(value.status);
+      filter = " AND t.status=$4";
+    }
+    const rows = (
+      await this.pool.query(
+        `SELECT t.id,t.source_id,s.kind,s.config,t.status,t.attempts,t.error_code,t.result,t.retry_of,t.created_at,t.completed_at
+         FROM collector_task t JOIN collector_source s ON s.id=t.source_id
+         WHERE s.site_id=$1${filter} ORDER BY t.created_at DESC,t.id DESC LIMIT $2 OFFSET $3`,
+        params,
+      )
+    ).rows;
+    return {
+      items: rows.slice(0, TASK_PAGE).map((row) => ({
+        id: row.id,
+        sourceId: row.source_id,
+        kind: row.kind,
+        source: sourceLabel(row.kind, row.config),
+        status: row.status,
+        attempts: row.attempts,
+        error: row.error_code,
+        result: row.result,
+        retryOf: row.retry_of,
+        createdAt: row.created_at,
+        completedAt: row.completed_at,
+      })),
+      page: value.page,
+      hasMore: rows.length > TASK_PAGE,
+    };
+  }
+  // Retries a failed task by creating a new task (retry_of = original); the
+  // original row is left untouched for audit. Cancelled tasks are not
+  // retryable: cancellation means the source changed after they were queued.
+  async retry(actor: Operator, taskId: string, input: unknown) {
+    z.uuid().parse(taskId);
+    const value = z
+      .strictObject({ site: siteParam, operationId: z.uuid() })
+      .parse(input);
+    // Retrying triggers an outbound fetch, so it follows manual sync: global operators only.
+    await this.operators.require(actor);
+    await this.operators.require(actor, value.site, true);
+    return transaction(this.pool, async (c) => {
+      const found = (
+        await c.query(
+          "SELECT t.source_id FROM collector_task t JOIN collector_source s ON s.id=t.source_id WHERE t.id=$1 AND s.site_id=$2",
+          [taskId, value.site],
+        )
+      ).rows[0];
+      if (!found) throw new HttpError(404, "采集任务不存在");
+      await this.operators.require(actor, value.site, true, c);
+      // The source row lock serializes retries and manual syncs of one source,
+      // so concurrent retries see each other's open task.
+      const source = (
+        await c.query(
+          "SELECT * FROM collector_source WHERE id=$1 AND site_id=$2 FOR UPDATE",
+          [found.source_id, value.site],
+        )
+      ).rows[0];
+      if (!source) throw new HttpError(404, "采集来源不存在");
+      const existing = (
+        await c.query("SELECT * FROM collector_task WHERE id=$1", [
+          value.operationId,
+        ])
+      ).rows[0];
+      if (existing) {
+        if (existing.retry_of !== taskId)
+          throw new Conflict("操作标识已用于另一操作");
+        return existing;
+      }
+      const original = (
+        await c.query("SELECT status FROM collector_task WHERE id=$1", [taskId])
+      ).rows[0];
+      if (!original) throw new HttpError(404, "采集任务不存在");
+      if (original.status !== "failed")
+        throw new HttpError(
+          409,
+          original.status === "cancelled"
+            ? "任务因来源配置改变而取消，不能重试；请对来源发起同步"
+            : "只有失败的任务可以重试",
+        );
+      if (!source.enabled) throw new HttpError(409, "来源已停用");
+      const open = (
+        await c.query(
+          "SELECT 1 FROM collector_task WHERE source_id=$1 AND status IN ('pending','processing') LIMIT 1",
+          [source.id],
+        )
+      ).rowCount;
+      if (open)
+        throw new HttpError(409, "该来源已有排队或处理中的任务，请等待其完成");
+      const task = await this.createTask(c, source, value.operationId, taskId);
+      await c.query(
+        "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'collector.task.retry',$3)",
+        [actor.id, value.site, { taskId: task.id, retryOf: taskId }],
       );
       return task;
     });
@@ -455,6 +611,38 @@ export class Collectors {
       );
       return { resourceId: null };
     });
+  }
+  // Batch review is NOT atomic: items are processed one by one through the
+  // single-item path, each in its own transaction. An item that fails with a
+  // client error (403/404/409/400) is reported and the rest still run; any
+  // other error aborts the batch, leaving earlier items committed.
+  async batchReview(actor: Operator, input: unknown) {
+    const value = batchInput.parse(input);
+    await this.operators.require(actor, value.site, true);
+    const results: Array<
+      | { id: string; ok: true; resourceId: string | null }
+      | { id: string; ok: false; status: number; error: string }
+    > = [];
+    for (const item of value.items) {
+      try {
+        const result = await this.review(actor, value.site, item.id, {
+          decision: value.decision,
+          expectedVersion: item.expectedVersion,
+        });
+        results.push({ id: item.id, ok: true, resourceId: result.resourceId });
+      } catch (error) {
+        const failure = clientFailure(error);
+        if (!failure) throw error;
+        results.push({ id: item.id, ok: false, ...failure });
+      }
+    }
+    const succeeded = results.filter((result) => result.ok).length;
+    return {
+      results,
+      accepted: value.decision === "accept" ? succeeded : 0,
+      rejected: value.decision === "reject" ? succeeded : 0,
+      failed: results.length - succeeded,
+    };
   }
 }
 type Fetch = typeof fetchPublicText;
@@ -665,4 +853,3 @@ export async function pruneCollectors(
   );
   return { deletedTasks, deletedSuperseded, compacted };
 }
-

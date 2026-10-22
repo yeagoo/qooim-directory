@@ -25,6 +25,24 @@ export async function collectorsHttp(
       .parse(new URL(request.url).searchParams.get("site"));
     return Response.json(await collectors.usage(actor, site));
   }
+  // Literal sub-paths are matched before the /collectors/<uuid> patterns.
+  if (action === "/collectors/tasks" && request.method === "GET") {
+    const params = new URL(request.url).searchParams;
+    return Response.json(
+      await collectors.tasks(actor, {
+        site: params.get("site"),
+        status: params.get("status") || undefined,
+        page: params.get("page") ?? undefined,
+      }),
+    );
+  }
+  const retry = action.match(new RegExp(`^/collectors/tasks/(${uuid})/retry$`));
+  if (retry && request.method === "POST")
+    return Response.json(await collectors.retry(actor, retry[1]!, await body()), {
+      status: 202,
+    });
+  if (action === "/collector-candidates/batch-review" && request.method === "POST")
+    return Response.json(await collectors.batchReview(actor, await body()));
   if (action === "/collector-candidates" && request.method === "GET") {
     const site = z
       .string()
