@@ -1,6 +1,6 @@
 # 媒体/图片管理
 
-状态：M3 已实现，M6 加入站点配额与孤儿文件清理。站点级媒体库，不做跨站共享；不引入 `sharp`/libvips。
+状态：M3 已实现，M6 加入站点配额与孤儿文件清理，M8 加入替换、版本历史与批量上传。站点级媒体库，不做跨站共享；不引入 `sharp`/libvips。
 
 ## 存储与限额
 
@@ -34,7 +34,8 @@
 | `GET /admin/api/media/usage?site=<id>` | 已用字节/文件数与配额（M6） |
 | `GET /admin/api/media/<id>/file` | 管理员预览（登录+站点权限） |
 | `DELETE /admin/api/media/<id>` | 删除；需 Origin，引用中返回 409 |
-| `GET /media/<id>` | 公开原图；仅被 `public_listing` 引用时 200 |
+| `GET /media/<id>/<version>` | 公开原图；该版本被本站公开内容发布时 200，长期缓存（M8） |
+| `GET /media/<id>` | M8 前的旧地址；302 跳转到当前已发布的最新版本，响应不缓存 |
 
 发布时 `Content.material` 校验媒体属于本站；`publication.image` 保存 `{mediaId,alt}`，视图输出 `/media/<id>`。公开图片有内容哈希 ETag 和 `public, max-age=31536000, immutable`；未发布/下架/分类不可用/跨站均 404。
 
@@ -73,11 +74,32 @@ node --env-file=.env --env-file=.local/backup.env \
   - 每次最多扫描 1 万个文件。
 - 不会自动删除“已登记但未被引用”的媒体：这些是运营者主动上传的内容。
 
+## 替换与版本历史（M8）
+
+- `media` 是一个逻辑素材，记录里的文件信息始终等于当前版本；`media_version` 保存全部历史版本。文件仍按内容哈希存放，所以多个版本、多个素材可以共用同一个文件。
+- **发布冻结**：发布时把当时的版本号写进 `publication.image.version`，公开地址是 `/media/<id>/<version>`。
+  - 替换图片后，草稿立即使用新版本；
+  - 已发布页面继续显示发布时的版本，重新发布后才切换（内容页的差异比较会显示图片变化）；
+  - 未发布的版本访问返回 404。
+- 迁移 `012-media-versions.sql` 会给现有媒体补上 v1 历史版本，给已有发布记录补上 `version: 1`。
+- 接口：
+
+| 方法/路径 | 用途 |
+| --- | --- |
+| `GET /admin/api/media/<id>/versions` | 历史版本：是否当前版本、是否已发布、是否被发布记录引用 |
+| `GET /admin/api/media/<id>/versions/<v>/file` | 管理员预览指定版本 |
+| `POST /admin/api/media/<id>/replace` | 上传新版本；与当前版本相同时返回 409 |
+| `POST /admin/api/media/<id>/versions/<v>/restore` | 把旧版本设为当前版本：新建一个版本并记录 `restored_from`，不复制文件 |
+| `DELETE /admin/api/media/<id>/versions/<v>` | 删除历史版本；当前版本、被发布记录引用的版本不能删除 |
+
+- 配额：文件数按素材计算，替换不增加；容量按本站去重后的文件计算，所以恢复旧版本、或上传与已有历史版本相同的图片，都不再占用容量。
+- 删除文件（删除版本、删除素材、孤儿清理）前，都会在站点锁内确认本站没有其他版本还在引用这个文件。
+- 批量上传：后台逐个文件调用普通上传接口，每个文件单独计入配额、单独显示结果；遇到配额不足时停止剩余文件。
+
 ## 未做
 
 - 服务端缩放/裁剪/转码、AVIF、动图。
 - 对象存储/S3、CDN 签名 URL。
-- 媒体替换、版本历史、批量上传（M8，见 [M6–M10 方案](FEATURE-PLAN-M6-M10.md)）。
 - 真实恶意图片解码器/浏览器兼容性矩阵；当前只做头部校验，不承诺解码安全性。
 
 ## 验收

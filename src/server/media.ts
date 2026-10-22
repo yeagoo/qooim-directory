@@ -39,7 +39,7 @@ const extensionMime: Record<string, Mime> = {
 const CLEANUP_MAX_FILES = 10_000,
   CLEANUP_LOCK_BATCH = 200;
 const COLUMNS =
-  "id,site_id,filename,mime,bytes,width,height,sha256,alt,created_at";
+  "id,site_id,filename,mime,bytes,width,height,sha256,alt,created_at,version";
 function formatBytes(bytes: number) {
   if (bytes >= 1024 ** 3 && bytes % 1024 ** 3 === 0) return `${bytes / 1024 ** 3} GiB`;
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GiB`;
@@ -55,6 +55,26 @@ const uploadSchema = z.strictObject({
   alt: z.string().trim().min(1).max(200),
   data: z.string().min(1),
 });
+
+const replaceSchema = z.strictObject({
+  filename: z.string().trim().min(1).max(255),
+  mime: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  alt: z.string().trim().min(1).max(200).optional(),
+  data: z.string().min(1),
+});
+type MediaRow = {
+  id: string;
+  site_id: string;
+  filename: string;
+  mime: Mime;
+  bytes: number;
+  width: number;
+  height: number;
+  sha256: string;
+  alt: string;
+  created_at: string;
+  version: number;
+};
 
 function u24(b: Buffer, offset: number) {
   return b[offset] | (b[offset + 1] << 8) | (b[offset + 2] << 16);
@@ -140,13 +160,12 @@ export class Media {
   private path(site: string, sha: string, mime: Mime) {
     return join(this.root, site, `${sha}.${mimeExtension[mime]}`);
   }
-  async upload(actor: Operator, input: unknown) {
-    const value = uploadSchema.parse(input);
-    await this.operators.require(actor, value.site, true);
-    const data = decodeBase64(value.data);
+  // Shared upload/replace validation: trusts only magic bytes and parsed dimensions.
+  private image(input: { mime: string; data: string }) {
+    const data = decodeBase64(input.data);
     const info = dimensions(data);
     if (!info) throw new HttpError(415, "仅支持 JPEG、PNG 或 WebP 图片");
-    if (info.mime !== value.mime)
+    if (info.mime !== input.mime)
       throw new HttpError(415, "图片类型与文件内容不一致");
     if (
       info.width < 1 ||
@@ -156,25 +175,39 @@ export class Media {
       info.width * info.height > MAX_PIXELS
     )
       throw new HttpError(400, "图片尺寸过大");
-    const sha = createHash("sha256").update(data).digest("hex"),
-      target = this.path(value.site, sha, info.mime);
+    return { data, info, sha: createHash("sha256").update(data).digest("hex") };
+  }
+  private bytesError(limit: number, used: number, size: number) {
+    return new HttpError(
+      413,
+      `媒体存储空间不足：本站上限 ${formatBytes(limit)}，已用 ${formatBytes(used)}，本次图片 ${formatBytes(size)}`,
+    );
+  }
+  async upload(actor: Operator, input: unknown) {
+    const value = uploadSchema.parse(input);
+    await this.operators.require(actor, value.site, true);
+    const { data, info, sha } = this.image(value);
+    const target = this.path(value.site, sha, info.mime);
     await mkdir(join(this.root, value.site), { recursive: true, mode: 0o700 });
     // Quota check, file placement and insert are serialized per site; orphan cleanup
     // takes the same lock before deciding a file is unreferenced.
     const row = await this.locked(value.site, async (client) => {
       const existing = (
         await client.query(
-          `SELECT ${COLUMNS} FROM media WHERE site_id=$1 AND sha256=$2`,
+          `SELECT ${COLUMNS} FROM media WHERE site_id=$1 AND sha256=$2 ORDER BY created_at,id LIMIT 1`,
           [value.site, sha],
         )
       ).rows[0];
       if (existing) {
-        // Identical content is already stored: reuse it without consuming quota,
-        // restoring the file if it went missing.
+        // Identical content is already some media's current version: reuse it without
+        // consuming quota, restoring the file if it went missing.
         if (!(await this.regularFile(target)))
           await this.place(value.site, target, data);
         return existing;
       }
+      // Content kept only as a historical version still gets a new media row, but its
+      // file is already stored and its bytes already counted.
+      const stored = await this.referenced(client, value.site, sha, info.mime);
       const usage = await this.usageOf(client, value.site);
       const limits = await siteLimits(client, value.site);
       if (usage.files + 1 > limits.mediaFiles)
@@ -182,15 +215,12 @@ export class Media {
           413,
           `媒体文件数量已达上限：本站最多 ${limits.mediaFiles} 个文件，已有 ${usage.files} 个`,
         );
-      if (usage.bytes + data.length > limits.mediaBytes)
-        throw new HttpError(
-          413,
-          `媒体存储空间不足：本站上限 ${formatBytes(limits.mediaBytes)}，已用 ${formatBytes(usage.bytes)}，本次图片 ${formatBytes(data.length)}`,
-        );
-      await this.place(value.site, target, data);
-      await client.query("SAVEPOINT media_insert");
-      try {
-        return (
+      if (!stored && usage.bytes + data.length > limits.mediaBytes)
+        throw this.bytesError(limits.mediaBytes, usage.bytes, data.length);
+      if (!stored || !(await this.regularFile(target)))
+        await this.place(value.site, target, data);
+      return this.guarded(client, value.site, sha, info.mime, async () => {
+        const created = (
           await client.query(
             `INSERT INTO media(site_id,filename,mime,bytes,width,height,sha256,alt,created_by)
              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
@@ -198,19 +228,166 @@ export class Media {
             [value.site, value.filename, info.mime, data.length, info.width, info.height, sha, value.alt, actor.id],
           )
         ).rows[0];
-      } catch (error) {
-        await client.query("ROLLBACK TO SAVEPOINT media_insert");
-        const referenced = (
-          await client.query(
-            "SELECT 1 FROM media WHERE site_id=$1 AND sha256=$2 AND mime=$3",
-            [value.site, sha, info.mime],
-          )
-        ).rowCount;
-        if (!referenced) await rm(target, { force: true });
-        throw error;
-      }
+        // media mirrors its current version; media_version keeps the history.
+        await client.query(
+          `INSERT INTO media_version(media_id,version,filename,mime,bytes,width,height,sha256,created_by)
+           SELECT id,version,filename,mime,bytes,width,height,sha256,created_by FROM media WHERE id=$1`,
+          [created.id],
+        );
+        return created;
+      });
     });
     return this.dto(row);
+  }
+  // Uploads new content as the next version of an existing media. Drafts follow the
+  // current version at once; published content keeps its frozen version until republished.
+  async replace(actor: Operator, id: string, input: unknown) {
+    const current = await this.row(id);
+    await this.operators.require(actor, current.site_id, true);
+    const value = replaceSchema.parse(input);
+    const { data, info, sha } = this.image(value);
+    const site = current.site_id,
+      target = this.path(site, sha, info.mime);
+    await mkdir(join(this.root, site), { recursive: true, mode: 0o700 });
+    const row = await this.locked(site, async (client) => {
+      const media = await this.lockRow(client, id);
+      if (media.sha256 === sha)
+        throw new HttpError(409, "新图片与当前版本内容相同，无需替换");
+      // The file count is unchanged; bytes count only for content new to this site.
+      const stored = await this.referenced(client, site, sha, info.mime);
+      if (!stored) {
+        const usage = await this.usageOf(client, site);
+        const limits = await siteLimits(client, site);
+        if (usage.bytes + data.length > limits.mediaBytes)
+          throw this.bytesError(limits.mediaBytes, usage.bytes, data.length);
+      }
+      if (!stored || !(await this.regularFile(target)))
+        await this.place(site, target, data);
+      return this.guarded(client, site, sha, info.mime, async () => {
+        const updated = await this.newVersion(client, actor, media, {
+          filename: value.filename,
+          mime: info.mime,
+          bytes: data.length,
+          width: info.width,
+          height: info.height,
+          sha256: sha,
+          restoredFrom: null,
+          alt: value.alt,
+        });
+        await this.audit(client, actor, site, "media.replace", {
+          mediaId: id,
+          version: updated.version,
+          previousVersion: media.version,
+          filename: value.filename,
+          sha256: sha,
+          bytes: data.length,
+          ...(value.alt === undefined ? {} : { alt: value.alt }),
+        });
+        return updated;
+      });
+    });
+    return this.dto(row);
+  }
+  // Makes an old version current again by copying it as a new version; history is never rewritten.
+  async restore(actor: Operator, id: string, version: number) {
+    const current = await this.row(id);
+    await this.operators.require(actor, current.site_id, true);
+    const site = current.site_id;
+    const row = await this.locked(site, async (client) => {
+      const media = await this.lockRow(client, id);
+      const source = (
+        await client.query(
+          "SELECT filename,mime,bytes,width,height,sha256 FROM media_version WHERE media_id=$1 AND version=$2",
+          [id, version],
+        )
+      ).rows[0];
+      if (!source) throw new HttpError(404, "媒体版本不存在");
+      if (media.version === version)
+        throw new HttpError(409, "该版本已是当前版本");
+      if (!(await this.regularFile(this.path(site, source.sha256, source.mime))))
+        throw new HttpError(409, "该版本的图片文件已丢失，无法设为当前版本");
+      const updated = await this.newVersion(client, actor, media, {
+        ...source,
+        bytes: Number(source.bytes),
+        restoredFrom: version,
+      });
+      await this.audit(client, actor, site, "media.restore", {
+        mediaId: id,
+        version: updated.version,
+        previousVersion: media.version,
+        restoredFrom: version,
+        sha256: source.sha256,
+      });
+      return updated;
+    });
+    return this.dto(row);
+  }
+  // Deletes one non-current version. The caller has already checked publications do
+  // not pin it; the stored file goes only when no other version in the site uses it.
+  async removeVersion(actor: Operator, id: string, version: number) {
+    const current = await this.row(id);
+    await this.operators.require(actor, current.site_id, true);
+    const site = current.site_id;
+    await this.locked(site, async (client) => {
+      const media = await this.lockRow(client, id);
+      const target = (
+        await client.query(
+          "DELETE FROM media_version WHERE media_id=$1 AND version=$2 AND version<>$3 RETURNING sha256,mime",
+          [id, version, media.version],
+        )
+      ).rows[0] as { sha256: string; mime: Mime } | undefined;
+      if (!target) {
+        if (media.version === version) throw new HttpError(409, "不能删除当前版本");
+        throw new HttpError(404, "媒体版本不存在");
+      }
+      const fileRemoved = await this.removeIfUnreferenced(client, site, target.sha256, target.mime);
+      await this.audit(client, actor, site, "media.version.delete", {
+        mediaId: id,
+        version,
+        sha256: target.sha256,
+        fileRemoved,
+      });
+    });
+  }
+  async versions(actor: Operator, id: string) {
+    const current = await this.row(id);
+    await this.operators.require(actor, current.site_id, false);
+    const { rows } = await this.pool.query(
+      `SELECT v.version,v.filename,v.mime,v.bytes,v.width,v.height,v.sha256,v.restored_from,v.created_at,o.email
+       FROM media_version v LEFT JOIN operator_user o ON o.id=v.created_by
+       WHERE v.media_id=$1 ORDER BY v.version DESC`,
+      [id],
+    );
+    return {
+      media: this.dto(current),
+      versions: rows.map((row) => ({
+        version: Number(row.version),
+        filename: String(row.filename),
+        mime: String(row.mime),
+        bytes: Number(row.bytes),
+        width: Number(row.width),
+        height: Number(row.height),
+        sha256: String(row.sha256),
+        restoredFrom: row.restored_from === null ? null : Number(row.restored_from),
+        createdAt: String(row.created_at),
+        createdBy: row.email === null ? null : String(row.email),
+        current: Number(row.version) === current.version,
+        adminUrl: `/admin/api/media/${id}/versions/${Number(row.version)}/file`,
+      })),
+    };
+  }
+  async versionFile(actor: Operator, id: string, version: number) {
+    const current = await this.row(id);
+    await this.operators.require(actor, current.site_id, false);
+    const row = (
+      await this.pool.query(
+        "SELECT mime,sha256 FROM media_version WHERE media_id=$1 AND version=$2",
+        [id, version],
+      )
+    ).rows[0];
+    if (!row) throw new HttpError(404, "媒体版本不存在");
+    const file = { site_id: current.site_id, sha256: String(row.sha256), mime: row.mime as Mime };
+    return { row: file, data: await this.read(file) };
   }
   async usage(actor: Operator, site: string) {
     await this.operators.require(actor, site, false);
@@ -232,20 +409,30 @@ export class Media {
     );
     return rows.map((row) => this.dto(row));
   }
-  async get(actor: Operator, id: string) {
+  async get(actor: Operator, id: string, write = false) {
     const row = await this.row(id);
-    await this.operators.require(actor, row.site_id, false);
+    await this.operators.require(actor, row.site_id, write);
     return this.dto(row);
   }
   async remove(actor: Operator, id: string) {
     const row = await this.row(id);
     await this.operators.require(actor, row.site_id, true);
     // Under the upload lock so a concurrent re-upload of the same image keeps its file.
+    // Files are shared between versions and media, so each is re-checked before removal.
     await this.locked(row.site_id, async (client) => {
+      const files = (
+        await client.query(
+          `SELECT sha256,mime FROM media WHERE id=$1
+           UNION SELECT sha256,mime FROM media_version WHERE media_id=$1`,
+          [id],
+        )
+      ).rows as { sha256: string; mime: Mime }[];
       const deleted = (
         await client.query("DELETE FROM media WHERE id=$1", [id])
       ).rowCount;
-      if (deleted) await rm(this.path(row.site_id, row.sha256, row.mime), { force: true });
+      if (!deleted) return;
+      for (const file of files)
+        await this.removeIfUnreferenced(client, row.site_id, file.sha256, file.mime);
     });
   }
   async adminFile(actor: Operator, id: string) {
@@ -253,8 +440,18 @@ export class Media {
     await this.operators.require(actor, row.site_id, false);
     return { row, data: await this.read(row) };
   }
-  async publicFile(id: string) {
-    const row = await this.row(id);
+  // Reads one frozen version; the caller has already checked it is published.
+  async publicFile(id: string, version: number) {
+    if (!z.uuid().safeParse(id).success) throw new HttpError(404, "媒体不存在");
+    const row = (
+      await this.pool.query(
+        "SELECT m.site_id,v.version,v.mime,v.bytes,v.sha256 FROM media m JOIN media_version v ON v.media_id=m.id WHERE m.id=$1 AND v.version=$2",
+        [id, version],
+      )
+    ).rows[0] as
+      | { site_id: string; version: number; mime: Mime; bytes: number; sha256: string }
+      | undefined;
+    if (!row) throw new HttpError(404, "媒体不存在");
     return { row, data: await this.read(row) };
   }
   // Removes stale temporary files and stored images without a matching media row.
@@ -316,7 +513,9 @@ export class Media {
           const referenced = new Set(
             (
               await client.query(
-                "SELECT sha256,mime FROM media WHERE site_id=$1 AND sha256=ANY($2::text[])",
+                `SELECT sha256,mime FROM media WHERE site_id=$1 AND sha256=ANY($2::text[])
+                 UNION SELECT v.sha256,v.mime FROM media_version v JOIN media m ON m.id=v.media_id
+                 WHERE m.site_id=$1 AND v.sha256=ANY($2::text[])`,
                 [site, batch.map((item) => item.sha)],
               )
             ).rows.map((row) => `${row.sha256}:${row.mime}`),
@@ -332,9 +531,12 @@ export class Media {
         });
       }
     }
-    // Report rows whose file is gone; rows are kept so references stay auditable.
+    // Report stored files (current or historical versions) that are gone; rows are kept
+    // so references stay auditable.
     const { rows } = await this.pool.query(
-      "SELECT site_id,sha256,mime FROM media ORDER BY site_id,sha256 LIMIT $1",
+      `SELECT site_id,sha256,mime FROM media
+       UNION SELECT m.site_id,v.sha256,v.mime FROM media_version v JOIN media m ON m.id=v.media_id
+       ORDER BY site_id,sha256 LIMIT $1`,
       [CLEANUP_MAX_FILES],
     );
     for (const row of rows)
@@ -348,14 +550,115 @@ export class Media {
       return work(client);
     });
   }
+  // files = media rows; bytes = each distinct stored content once, across all versions.
   private async usageOf(executor: Pool | PoolClient, site: string) {
     const row = (
       await executor.query(
-        "SELECT count(*)::int AS files,coalesce(sum(bytes),0)::bigint AS bytes FROM media WHERE site_id=$1",
+        `SELECT (SELECT count(*)::int FROM media WHERE site_id=$1) AS files,
+                (SELECT coalesce(sum(bytes),0)::bigint FROM (
+                   SELECT DISTINCT ON (sha256) sha256,bytes FROM (
+                     SELECT sha256,bytes FROM media WHERE site_id=$1
+                     UNION ALL SELECT v.sha256,v.bytes FROM media_version v JOIN media m ON m.id=v.media_id WHERE m.site_id=$1
+                   ) a ORDER BY sha256
+                 ) d) AS bytes`,
         [site],
       )
     ).rows[0];
     return { files: Number(row.files), bytes: Number(row.bytes) };
+  }
+  // A stored file is referenced while any media (current) or version row of the site uses it.
+  private async referenced(client: PoolClient, site: string, sha: string, mime: string) {
+    return Boolean(
+      (
+        await client.query(
+          `SELECT 1 FROM media WHERE site_id=$1 AND sha256=$2 AND mime=$3
+           UNION ALL SELECT 1 FROM media_version v JOIN media m ON m.id=v.media_id
+           WHERE m.site_id=$1 AND v.sha256=$2 AND v.mime=$3 LIMIT 1`,
+          [site, sha, mime],
+        )
+      ).rowCount,
+    );
+  }
+  // Callers hold the site lock, so no concurrent upload can start referencing the file.
+  private async removeIfUnreferenced(client: PoolClient, site: string, sha: string, mime: Mime) {
+    if (await this.referenced(client, site, sha, mime)) return false;
+    await rm(this.path(site, sha, mime), { force: true });
+    return true;
+  }
+  // Runs the row writes after a file was placed; on failure the file goes unless still referenced.
+  private async guarded<T>(
+    client: PoolClient,
+    site: string,
+    sha: string,
+    mime: Mime,
+    work: () => Promise<T>,
+  ) {
+    await client.query("SAVEPOINT media_write");
+    try {
+      return await work();
+    } catch (error) {
+      await client.query("ROLLBACK TO SAVEPOINT media_write");
+      await this.removeIfUnreferenced(client, site, sha, mime);
+      throw error;
+    }
+  }
+  private async lockRow(client: PoolClient, id: string) {
+    const row = (
+      await client.query(`SELECT ${COLUMNS} FROM media WHERE id=$1 FOR UPDATE`, [id])
+    ).rows[0];
+    if (!row) throw new HttpError(404, "媒体不存在");
+    return { ...row, version: Number(row.version) } as MediaRow;
+  }
+  // Appends the next version and points the media row at it in the same transaction.
+  private async newVersion(
+    client: PoolClient,
+    actor: Operator,
+    media: MediaRow,
+    file: {
+      filename: string;
+      mime: Mime;
+      bytes: number;
+      width: number;
+      height: number;
+      sha256: string;
+      restoredFrom: number | null;
+      alt?: string;
+    },
+  ) {
+    const next =
+      Number(
+        (
+          await client.query(
+            "SELECT coalesce(max(version),0) AS v FROM media_version WHERE media_id=$1",
+            [media.id],
+          )
+        ).rows[0].v,
+      ) + 1;
+    const version = Math.max(next, media.version + 1);
+    await client.query(
+      `INSERT INTO media_version(media_id,version,filename,mime,bytes,width,height,sha256,restored_from,created_by)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [media.id, version, file.filename, file.mime, file.bytes, file.width, file.height, file.sha256, file.restoredFrom, actor.id],
+    );
+    return (
+      await client.query(
+        `UPDATE media SET version=$2,filename=$3,mime=$4,bytes=$5,width=$6,height=$7,sha256=$8,alt=coalesce($9,alt)
+         WHERE id=$1 RETURNING ${COLUMNS}`,
+        [media.id, version, file.filename, file.mime, file.bytes, file.width, file.height, file.sha256, file.alt ?? null],
+      )
+    ).rows[0] as Record<string, unknown>;
+  }
+  private async audit(
+    client: PoolClient,
+    actor: Operator,
+    site: string,
+    action: string,
+    detail: unknown,
+  ) {
+    await client.query(
+      "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,$3,$4)",
+      [actor.id, site, action, detail],
+    );
   }
   // Writes to a private temporary name first so readers never see a partial image.
   private async place(site: string, target: string, data: Buffer) {
@@ -390,23 +693,9 @@ export class Media {
   }
   private async row(id: string) {
     if (!z.uuid().safeParse(id).success) throw new HttpError(404, "媒体不存在");
-    const { rows } = await this.pool.query(
-      "SELECT id,site_id,filename,mime,bytes,width,height,sha256,alt,created_at FROM media WHERE id=$1",
-      [id],
-    );
+    const { rows } = await this.pool.query(`SELECT ${COLUMNS} FROM media WHERE id=$1`, [id]);
     if (!rows[0]) throw new HttpError(404, "媒体不存在");
-    return rows[0] as {
-      id: string;
-      site_id: string;
-      filename: string;
-      mime: Mime;
-      bytes: number;
-      width: number;
-      height: number;
-      sha256: string;
-      alt: string;
-      created_at: string;
-    };
+    return { ...rows[0], version: Number(rows[0].version) } as MediaRow;
   }
   private async read(row: { site_id: string; sha256: string; mime: Mime }) {
     try {
@@ -426,6 +715,7 @@ export class Media {
     sha256: string;
     alt: string;
     createdAt: string;
+    version: number;
     url: string;
     adminUrl: string;
   } {
@@ -441,9 +731,10 @@ export class Media {
       sha256: String(row.sha256),
       alt: String(row.alt),
       createdAt: String(row.created_at),
-      url: `/media/${id}`,
+      version: Number(row.version),
+      // Public URL of the current version; it serves only once that version is published.
+      url: `/media/${id}/${Number(row.version)}`,
       adminUrl: `/admin/api/media/${id}/file`,
     };
   }
 }
-

@@ -162,7 +162,7 @@ const request = (index: number, path: string) =>
 test("P2 upgrade preserves legacy publications, notes and original migration checksums", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "11",
+    "12",
   );
   const context = await app.catalog.resolve("legacy.test");
   assert.equal((await app.catalog.list(context, "zh"))[0].title, "Old content");
@@ -466,7 +466,7 @@ test("P2 media upload, publication reference, public serving and delete guards",
   assert.equal(item.mime, "image/png");
   assert.equal(item.width, 1);
   assert.equal(item.height, 1);
-  assert.match(item.url, /^\/media\/[0-9a-f-]{36}$/);
+  assert.match(item.url, /^\/media\/[0-9a-f-]{36}\/1$/);
   assert.equal(
     (
       await app.respond(

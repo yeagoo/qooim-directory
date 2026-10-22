@@ -166,7 +166,7 @@ export class Application {
     // with another Response would make the original body unusable.
     const path = new URL(request.url).pathname;
     const publicAsset = path.startsWith("/assets/");
-    const publicMedia = /^\/media\/[0-9a-f-]{36}$/.test(path);
+    const publicMedia = /^\/media\/[0-9a-f-]{36}\/[1-9][0-9]{0,8}$/.test(path);
     const publicPage =
       path === "/" ||
       path === "/sitemap.xml" ||
@@ -279,11 +279,26 @@ export class Application {
     }
     if (path.startsWith("/media/") && request.method === "GET") {
       if (!mediaContext) throw new NotFound();
-      const mediaMatch = path.match(/^\/media\/([0-9a-f-]{36})$/);
+      const mediaMatch = path.match(
+        /^\/media\/([0-9a-f-]{36})(?:\/([1-9][0-9]{0,8}))?$/,
+      );
       if (!mediaMatch) throw new NotFound();
-      const usage = await this.content.mediaUsage(mediaContext.siteId, mediaMatch[1]);
-      if (!usage.published) throw new NotFound();
-      const { row, data } = await this.media.publicFile(mediaMatch[1]);
+      const published = await this.content.publishedMediaVersions(
+        mediaContext.siteId,
+        mediaMatch[1],
+      );
+      // Pre-M8 URLs had no version: send them to the newest published version.
+      // The target changes on republish, so respond() marks the redirect no-store.
+      if (!mediaMatch[2]) {
+        if (!published.length) throw new NotFound();
+        return new Response(null, {
+          status: 302,
+          headers: { location: `/media/${mediaMatch[1]}/${published[0]}` },
+        });
+      }
+      const version = Number(mediaMatch[2]);
+      if (!published.includes(version)) throw new NotFound();
+      const { row, data } = await this.media.publicFile(mediaMatch[1], version);
       if (row.site_id !== mediaContext.siteId) throw new NotFound();
       const etag = `"${row.sha256}"`;
       const headers = {

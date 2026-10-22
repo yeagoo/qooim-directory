@@ -474,15 +474,18 @@ export class Content {
       ).rowCount
     )
       throw new HttpError(400, "分类不属于本站");
-    if (
-      candidate.overrides.image &&
-      !(
-        await c.query("SELECT 1 FROM media WHERE site_id=$1 AND id=$2", [
-          site,
-          candidate.overrides.image.mediaId,
-        ])
-      ).rowCount
-    )
+    // Drafts follow the media's current version; publishing freezes that version.
+    const media = candidate.overrides.image
+      ? (
+          await c.query(
+            // FOR SHARE: a concurrent replace waits, so the version frozen here
+            // cannot become a deletable non-current version before this commits.
+            "SELECT version FROM media WHERE site_id=$1 AND id=$2 FOR SHARE",
+            [site, candidate.overrides.image.mediaId],
+          )
+        ).rows[0]
+      : undefined;
+    if (candidate.overrides.image && !media)
       throw new HttpError(400, "图片不属于本站");
     return {
       slug: candidate.slug,
@@ -491,7 +494,9 @@ export class Content {
       url: candidate.overrides.url ?? data.url,
       seoTitle: candidate.overrides.seoTitle ?? "",
       seoDescription: candidate.overrides.seoDescription ?? "",
-      image: candidate.overrides.image ?? null,
+      image: candidate.overrides.image
+        ? { ...candidate.overrides.image, version: media.version as number }
+        : null,
       categoryId: candidate.categoryId,
       rank: candidate.rank,
       sourceVersion: candidate.resourceVersion,
@@ -502,11 +507,28 @@ export class Content {
   }
   async mediaUsage(site: string, mediaId: string) {
     const { rows } = await this.pool.query(
-      `SELECT EXISTS(SELECT 1 FROM public_listing WHERE site_id=$1 AND image->>'url'='/media/'||$2) AS published,
-              EXISTS(SELECT 1 FROM content_draft WHERE site_id=$1 AND candidate->'overrides'->'image'->>'mediaId'=$2) AS draft`,
+      `SELECT EXISTS(SELECT 1 FROM public_listing WHERE site_id=$1 AND image_media_id=$2::uuid) AS published,
+              EXISTS(SELECT 1 FROM content_draft WHERE site_id=$1 AND candidate->'overrides'->'image'->>'mediaId'=$2::text) AS draft`,
       [site, mediaId],
     );
     return rows[0] as { published: boolean; draft: boolean };
+  }
+  // Versions currently served publicly on this site, highest first.
+  async publishedMediaVersions(site: string, mediaId: string) {
+    const { rows } = await this.pool.query(
+      "SELECT DISTINCT image_version FROM public_listing WHERE site_id=$1 AND image_media_id=$2::uuid ORDER BY image_version DESC",
+      [site, mediaId],
+    );
+    return rows.map((row) => Number(row.image_version));
+  }
+  // A version is pinned by any publication row (any status) so republish/unpublish
+  // history never points at a deleted file.
+  async mediaVersionPinned(site: string, mediaId: string, version: number) {
+    const { rowCount } = await this.pool.query(
+      "SELECT 1 FROM publication WHERE site_id=$1 AND image->>'mediaId'=$2 AND coalesce((image->>'version')::int,1)=$3 LIMIT 1",
+      [site, mediaId, version],
+    );
+    return Boolean(rowCount);
   }
   async stage(
     actor: Operator,
