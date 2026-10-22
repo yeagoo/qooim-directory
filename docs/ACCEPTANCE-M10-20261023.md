@@ -25,6 +25,23 @@ pnpm release:check:image   通过（package.json / compose.yaml 未改动）
 
 全量回归按顺序运行，第一次就全部通过。
 
+## Docker 验收（覆盖 M6–M10）
+
+M10 提交后（`f34bf54`）补跑了 `pnpm test:docker`，通过：
+
+```text
+Content master, frozen site publication and public detail passed
+Media, search, AI config and collector integration passed
+Empty database, HTTPS routing and operator login passed
+Shared browser login passed; verifying process and database recovery
+GitHub candidate, manual review and frozen project publication passed with an owned API fixture
+Docker acceptance passed: empty database, three sites, HTTPS shared browser login, operator login,
+persistent configuration/template/content/favorites/session, SMTP verification, GitHub project
+persistence, worker restart, database recovery
+```
+
+这是 M6 以来第一次运行 Docker 验收，覆盖了：在空库上依次应用迁移 010–014、M8 的带版本号媒体地址（Docker 测试使用接口返回的 `url` 字段）、M10 的 GitHub 统一表。M6–M9 各自验收记录里写的“未运行 `pnpm test:docker`”，至此已补齐。
+
 ## 范围决定
 
 开发前与用户确认：统一的是**来源与任务层**，审核模型保持两套。
@@ -69,5 +86,4 @@ pnpm release:check:image   通过（package.json / compose.yaml 未改动）
 ## 未验证 / 保留
 
 - 没有用真实 GitHub API 联调（与 P4 相同，使用受控测试服务器）。
-- 未运行 `pnpm test:docker`；Docker 验收里的 GitHub 持久化链路通过接口完成，预期不受表结构变化影响，但没有实测。
 - `/admin/api/github/*` 兼容层计划保留一个版本，删除时间待定。

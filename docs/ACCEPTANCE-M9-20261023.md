@@ -61,3 +61,5 @@ pnpm release:check:image   通过（package.json / compose.yaml 未改动）
 - 自定义提示词的生成质量没有用真实模型评估。
 - 余额检查期间，Worker 会在数据库里锁住该行最多约 10 秒（靠这个锁让并发的手动检查返回 409），不影响其他站点。
 - 未运行 `pnpm test:docker`。
+
+> 补记（2026-10-23）：M10 提交后补跑了 `pnpm test:docker`，通过，见 [M10 验收](ACCEPTANCE-M10-20261023.md#docker-验收覆盖-m6m10)。

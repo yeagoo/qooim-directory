@@ -54,3 +54,5 @@ pnpm release:check:image   通过（package.json / compose.yaml 未改动）
 - 站点编辑者在采集页仍然能看到“立即同步”“重试”按钮，点击后返回 403 提示（与 M5 同步按钮的现状一致），没有按角色隐藏。
 - P6/P7 仍然需要直接运行：`node scripts/test-p0.mjs tests/p6/*.test.ts tests/p7/*.test.ts`（原因见 [M6 验收](ACCEPTANCE-M6-20261022.md)）。
 - 主机上有一个本次会话之前遗留的测试数据库容器 `navigation-p0-037a9361…`（已运行 47 小时），没有清理。
+
+> 补记（2026-10-23）：M10 提交后补跑了 `pnpm test:docker`，通过，见 [M10 验收](ACCEPTANCE-M10-20261023.md#docker-验收覆盖-m6m10)。

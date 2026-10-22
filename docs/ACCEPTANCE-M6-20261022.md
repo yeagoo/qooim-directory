@@ -38,3 +38,5 @@ pnpm release:check:image   通过（未改动镜像 evidence 固定的输入文�
   - 采集任务删除后，仍在待审核的候选的 `task_id` 会被置空；
   - 额度调为 0 前已经排队的采集任务仍会执行；
   - `completed_at` 为空的已结束采集任务不会被清理（当前代码总会写入该字段）。
+
+> 补记（2026-10-23）：M10 提交后补跑了 `pnpm test:docker`，通过，见 [M10 验收](ACCEPTANCE-M10-20261023.md#docker-验收覆盖-m6m10)。
