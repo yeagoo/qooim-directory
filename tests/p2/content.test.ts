@@ -162,7 +162,7 @@ const request = (index: number, path: string) =>
 test("P2 upgrade preserves legacy publications, notes and original migration checksums", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "13",
+    "14",
   );
   const context = await app.catalog.resolve("legacy.test");
   assert.equal((await app.catalog.list(context, "zh"))[0].title, "Old content");
@@ -4244,8 +4244,8 @@ async function managementBusinessSnapshot() {
     "content_draft",
     "publication",
     "submission",
-    "github_source",
-    "github_task",
+    "collector_source",
+    "collector_task",
     "github_candidate",
     "github_request",
     "auth_instance",
@@ -4405,14 +4405,14 @@ for (const action of [
           });
       } else if (action === "github-enqueue") {
         lock = (c) =>
-          c.query("SELECT id FROM github_source WHERE id=$1 FOR UPDATE", [
+          c.query("SELECT id FROM collector_source WHERE id=$1 FOR UPDATE", [
             source.id,
           ]);
         write = () => app.github.enqueue(actor, source.id, randomUUID());
       } else {
         const task = await app.github.enqueue(admin, source.id, randomUUID());
         await pool.query(
-          "UPDATE github_task SET status='done',completed_at=now() WHERE id=$1",
+          "UPDATE collector_task SET status='done',completed_at=now() WHERE id=$1",
           [task.id],
         );
         const data = {

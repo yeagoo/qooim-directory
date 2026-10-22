@@ -493,7 +493,7 @@ test("P4 rate limits create durable provider cooldown shared by restarted worker
     ).rows[0].blocked,
   );
   await pool.query(
-    "UPDATE github_task SET available_at=now()-interval '1 second' WHERE id=$1",
+    "UPDATE collector_task SET available_at=now()-interval '1 second' WHERE id=$1",
     [task.id],
   );
   await pool.query(
@@ -537,7 +537,7 @@ test("P4 lost leases reject stale success/failure and permit one durable retry a
   const stale = await worker.claim();
   assert.ok(stale);
   await pool.query(
-    "UPDATE github_task SET lease_until=now()-interval '1 second' WHERE id=$1",
+    "UPDATE collector_task SET lease_until=now()-interval '1 second' WHERE id=$1",
     [stale.id],
   );
   const result = await client.repository(stale.repository);
@@ -696,7 +696,7 @@ test("P4 periodic scheduling coalesces work and exhaustion ends a run without an
   let detail = await app.github.detail(admin, s.id);
   assert.equal(detail.tasks.filter((t) => t.status === "pending").length, 1);
   const task = detail.tasks[0];
-  await pool.query("UPDATE github_task SET attempts=5 WHERE id=$1", [task.id]);
+  await pool.query("UPDATE collector_task SET attempts=5 WHERE id=$1", [task.id]);
   assert.equal(await worker.runOnce(), "idle");
   await worker.schedule();
   detail = await app.github.detail(admin, s.id);
@@ -884,7 +884,7 @@ test("P4 concurrent workers create one candidate; database failure rolls back ca
   const job = jobs.find(Boolean)!;
   const result = await client.repository(job.repository);
   await pool.query(
-    "CREATE FUNCTION reject_github_done() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.result='candidate_created' THEN RAISE EXCEPTION 'test failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_github_done BEFORE UPDATE ON github_task FOR EACH ROW EXECUTE FUNCTION reject_github_done()",
+    "CREATE FUNCTION reject_github_done() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.result='candidate_created' THEN RAISE EXCEPTION 'test failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_github_done BEFORE UPDATE ON collector_task FOR EACH ROW EXECUTE FUNCTION reject_github_done()",
   );
   try {
     await assert.rejects(worker.complete(job, result));
@@ -894,7 +894,7 @@ test("P4 concurrent workers create one candidate; database failure rolls back ca
     assert.equal(detail.tasks[0].status, "processing");
   } finally {
     await pool.query(
-      "DROP TRIGGER reject_github_done ON github_task; DROP FUNCTION reject_github_done()",
+      "DROP TRIGGER reject_github_done ON collector_task; DROP FUNCTION reject_github_done()",
     );
   }
   assert.equal(await worker.complete(job, result), true);

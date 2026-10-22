@@ -634,7 +634,7 @@ export class Application {
         return this.json({
           github: (
             await this.pool.query(
-              "SELECT status,count(*)::int AS count FROM github_task GROUP BY status",
+              "SELECT t.status,count(*)::int AS count FROM collector_task t JOIN collector_source s ON s.id=t.source_id WHERE s.kind='github' GROUP BY t.status",
             )
           ).rows,
           mail: (
@@ -672,7 +672,7 @@ export class Application {
           ).rows,
           collectors: (
             await this.pool.query(
-              "SELECT status,count(*)::int AS count FROM collector_task GROUP BY status",
+              "SELECT t.status,count(*)::int AS count FROM collector_task t JOIN collector_source s ON s.id=t.source_id WHERE s.kind<>'github' GROUP BY t.status",
             )
           ).rows,
           retention: this.config.retention ?? DEFAULT_RETENTION,

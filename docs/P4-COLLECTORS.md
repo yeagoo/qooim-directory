@@ -1,6 +1,6 @@
 # 垂直采集器：RSS / npm / 通用 JSON
 
-状态：M5 已实现。新增统一采集队列，不替换既有 GitHub 专用同步；GitHub 行为保持不变。
+状态：M5 已实现；M10 起 GitHub 也运行在同一套来源/任务表和 Worker 上（作为“绑定型” adapter，见 [P4 GitHub](P4-GITHUB.md#统一来源与任务m10)），本页描述的是“发现型”来源。
 
 ## 支持类型
 
@@ -71,7 +71,6 @@
 - RSS 拒绝 DOCTYPE/ENTITY，避免外部实体；正则解析不是通用 XML 解析器，畸形 feed 会失败而不执行内容。
 - 候选内容按纯文本/转义渲染；标题/说明截断，URL 只允许 http(s)。
 - 没有采集凭据、代理、Webhook；没有 YouTube/Product Hunt/社交平台。
-- 当前 GitHub 仍用 `github_source`/`github_worker`，未迁移到新采集表；两套入口并存是兼容性选择，不是统一适配器完成。
 
 ## 测试
 

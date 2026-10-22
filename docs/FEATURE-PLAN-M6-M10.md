@@ -106,6 +106,8 @@ M10 放最后：改动面最大，并且需要 M6/M7 先把统一采集器的配
 
 ## M10 GitHub 迁到统一采集器
 
+状态：代码已完成，本地回归通过（2026-10-23，见 [M10 验收](ACCEPTANCE-M10-20261023.md)）；尚未发布。范围由用户确认为“统一来源与任务层”：GitHub 作为绑定型 adapter 共用来源、任务、Worker、配额、保留期和任务列表；审核模型保持两套（发现型 `collector_candidate`，绑定型 `github_candidate`），而不是把 GitHub 候选也并入 `collector_candidate`。
+
 - 定义 adapter 接口：`validateConfig`、`fetch`、`normalize`、`contentHash`、`statsFields`、`reviewFields`。RSS、npm、JSON 先改成 adapter（不改变行为），GitHub 作为第四个 adapter。
 - 迁移 `github_source/task/candidate` 数据到 `collector_*`，保留 ID、版本、etag、last_hash 和待审候选。需要补的统一表字段：`resource_id`（绑定已有主档）、`last_hash`、`remote_id`。
 - 保留 GitHub 现有语义：统计字段自动更新，内容字段逐字段审核；全局 `github_budget` 速率预算继续生效。

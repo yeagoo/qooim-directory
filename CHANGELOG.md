@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — M6 配额与保留期、M7 运维 UI、M8 媒体版本、M9 AI 治理
+## Unreleased — M6 配额与保留期、M7 运维 UI、M8 媒体版本、M9 AI 治理、M10 统一采集器
 
 开发方案见 [M6–M10](docs/FEATURE-PLAN-M6-M10.md)。
 
@@ -37,13 +37,21 @@
 - 新增“AI 对账”页面；AI 任务列表显示提示词版本。
 - 迁移 `013-ai-governance.sql`；新增测试 `tests/p9/`。
 
+### Changed（M10 统一采集器）
+
+- GitHub 改为统一采集器上的“绑定型” adapter：来源和任务迁入 `collector_source`/`collector_task`（迁移 `014-unified-sources.sql` 保留 ID、版本、游标、任务状态，删除 `github_source`/`github_task`），所有来源共用同一个 Worker 实现；逐字段审核仍用 `github_candidate`，全局限速仍用 `github_budget`。
+- `/admin/api/github/*`、CLI、`GithubWorker`/`CollectorWorker` 作为兼容层保持原有接口和返回结构；P4 的 30 项 GitHub 回归在新链路上全部通过，断言没有改动。
+- GitHub 来源从此适用共用规则：站点来源配额、每小时采集次数（合并到已有任务不计入）、每站调度额度、保留期（旧任务、已作废候选），以及采集页的任务列表与失败重试。
+- 通用采集接口不能新建、编辑或同步 GitHub 来源（返回 400），采集页的 GitHub 行改为链接到“开源项目”页。
+- 新增 adapter 注册表（`collector-adapters.ts`）和统一 Worker（`collector-worker.ts`）；新增测试 `tests/p10/`（含基于 v0.2 数据的迁移演练）。
+
 ### Changed（M8）
 
 - 媒体对象的 `url` 字段改为当前版本的地址 `/media/<id>/<version>`。外部如果直接引用了旧的 `/media/<id>`，仍可通过跳转访问。
 
 ### Upgrade
 
-- 应用迁移 `010-quota-retention.sql`、`011-operations-ui.sql`、`012-media-versions.sql`（会给现有媒体补上 v1，给已有发布记录补上 `version: 1`）、`013-ai-governance.sql`。现有站点使用默认配额；如果已经超出默认配额，只会阻止新增，不删除任何数据。
+- 应用迁移 `010-quota-retention.sql`、`011-operations-ui.sql`、`012-media-versions.sql`（会给现有媒体补上 v1，给已有发布记录补上 `version: 1`）、`013-ai-governance.sql`、`014-unified-sources.sql`（GitHub 数据迁入统一表，旧表删除；升级前请先备份）。现有站点使用默认配额；如果已经超出默认配额，只会阻止新增，不删除任何数据。
 - 首次运行保留期清理时，会处理历史上积累的数据（每类每次最多 10 万行，下一小时继续）。
 
 ## v0.2.0-rc.1 — 2026-10-21 (release candidate)

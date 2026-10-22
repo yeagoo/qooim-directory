@@ -160,8 +160,9 @@ export class Content {
         }
       | undefined;
   }
-  // GitHub sync is a system writer. Stats are the only fields allowed to
-  // bypass human review; content changes still go through github_candidate.
+  // GitHub sync (binding collector source, collector_source kind 'github') is a
+  // system writer. Stats are the only fields allowed to bypass human review;
+  // content changes still go through github_candidate.
   async applySourceStats(
     c: PoolClient,
     source: { id: string; site_id: string; resource_id: string },
@@ -228,14 +229,14 @@ export class Content {
     return transaction(this.pool, async (c) => {
       const initial = (
         await c.query(
-          "SELECT s.site_id,s.id FROM github_candidate gc JOIN github_source s ON s.id=gc.source_id WHERE gc.id=$1",
+          "SELECT s.site_id,s.id FROM github_candidate gc JOIN collector_source s ON s.id=gc.source_id AND s.kind='github' WHERE gc.id=$1",
           [v.candidateId],
         )
       ).rows[0];
       if (!initial) throw new HttpError(404, "同步候选不存在");
       await activeProjectSite(c, initial.site_id);
       const source = (
-        await c.query("SELECT * FROM github_source WHERE id=$1 FOR UPDATE", [
+        await c.query("SELECT * FROM collector_source WHERE id=$1 FOR UPDATE", [
           initial.id,
         ])
       ).rows[0];

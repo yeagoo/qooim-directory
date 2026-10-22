@@ -99,6 +99,26 @@ pnpm cli github-review .local/review.json
 
 列表每页 50 项，候选/任务详情保留最近 30 项展示；数据库历史未据此删除。运营接口继续要求登录、全局权限和同源 POST。没有自动批量发布或站点间自动复制覆盖规则。
 
+## 统一来源与任务（M10）
+
+M10 起，GitHub 是统一采集器上的一个“绑定型”来源（adapter），RSS/npm/通用 JSON 是“发现型”来源：
+
+| | 绑定型（GitHub） | 发现型（RSS/npm/JSON） |
+| --- | --- | --- |
+| 来源 | `collector_source`，`kind='github'`，配置 `{"repository":"owner/repo"}`，`resource_id` 绑定一个主档（每个主档最多一个） | `collector_source`，`resource_id` 为空 |
+| 任务 | `collector_task`（共用租约、重试、保留期） | 同左 |
+| 审核 | `github_candidate`：基于主档版本逐字段审核，接受后写入主档 | `collector_candidate`：按 `external_id` 去重，接受后创建草稿 |
+
+- 迁移 `014-unified-sources.sql` 原样搬迁 `github_source`、`github_task` 的数据（ID、版本、etag、内容哈希、远端 ID、任务状态与租约都不变），然后删除这两张旧表。`github_candidate`、`github_request` 保留，改为关联新表；`github_budget`（全局 GitHub API 限速）不变。
+- 本文的接口、CLI、后台“开源项目”页和审核语义都保持不变：`/admin/api/github/*` 作为兼容层，读写统一表。
+- GitHub 来源从此也适用 M6/M7 的共用规则：
+  - 新建 GitHub 来源计入站点“采集来源数”配额；
+  - 手动同步如果需要新建任务，计入“每小时采集次数”（合并到已有的进行中任务不计入）；
+  - 定时调度使用同一套每站额度；
+  - GitHub 任务出现在后台采集页的任务列表里，失败任务可以重试（仅站群管理员）；
+  - 保留期清理会删除旧任务和超过 `RETENTION_COLLECTOR_SUPERSEDED_DAYS` 的已作废候选。已接受、已拒绝的候选是主档变更记录，会一直保留。
+- 通用采集器的来源编辑器不能新建或编辑 GitHub 来源，GitHub 来源仍在“开源项目”页管理。
+
 ## 统计自动更新
 
 `stars`、`forks`、`openIssues`、`pushedAt` 变化不再生成人工候选。同步事务会直接更新主档与已发布站点快照，并把 pending 候选的基线前移；URL、标题、描述、语言、许可、topics、archived 等字段变化仍进入人工审核。审计动作记为 `github.stats`。

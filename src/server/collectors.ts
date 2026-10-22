@@ -1,16 +1,30 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { transaction } from "../domain/transaction.js";
 import { Conflict, InvalidReference } from "../domain/config.js";
 import { NotFound } from "../domain/catalog.js";
-import { Content, identifier, resourceData } from "./content.js";
+import { Content, identifier } from "./content.js";
 import { HttpError, Operators, type Operator } from "./operators.js";
-import { DEFAULT_LIMITS, siteLimits } from "./limits.js";
-import { fetchPublicText, publicUrl } from "./outbound.js";
+import { siteLimits } from "./limits.js";
+import { fetchPublicText } from "./outbound.js";
 import type { RetentionPolicy } from "./retention.js";
+import {
+  adapter,
+  adapters,
+  discoveryKinds,
+  sourceLabel,
+  type Fetch,
+} from "./collector-adapters.js";
+import { CollectorTaskWorker } from "./collector-worker.js";
 
-const locale = z.enum(["zh", "en"]);
+// Parsers and config schemas moved to the adapter registry; re-exported for existing imports.
+export {
+  parseJsonFeed,
+  parseNpm,
+  parseRss,
+  type CollectedItem,
+} from "./collector-adapters.js";
 // Per-site advisory locks serialize quota checks with the insert they guard.
 const sourceLock = "SELECT pg_advisory_xact_lock(hashtext('collector-source:'||$1))";
 const runLock = "SELECT pg_advisory_xact_lock(hashtext('collector-run:'||$1))";
@@ -42,8 +56,6 @@ const batchInput = z.strictObject({
       message: "候选 ID 不能重复",
     }),
 });
-const sourceLabel = (kind: string, config: Record<string, unknown> | null) =>
-  kind === "npm" ? "npm: " + String(config?.query ?? "") : String(config?.url ?? "");
 // Mirrors the status mapping in http.ts for errors a single review reports to
 // the client; anything else is unexpected and must abort a batch.
 const clientFailure = (error: unknown): { status: number; error: string } | null => {
@@ -59,23 +71,6 @@ const clientFailure = (error: unknown): { status: number; error: string } | null
   if (code === "22P02") return { status: 400, error: "配置格式或参数不正确" };
   return null;
 };
-const rssConfig = z.strictObject({
-  url: z.string().trim().max(500),
-  locale: locale.default("zh"),
-});
-const npmConfig = z.strictObject({
-  query: z.string().trim().min(1).max(100),
-  locale: locale.default("zh"),
-});
-const jsonConfig = z.strictObject({
-  url: z.string().trim().max(500),
-  itemsPath: z.string().trim().max(120).default(""),
-  idField: z.string().trim().min(1).max(80).default("id"),
-  titleField: z.string().trim().min(1).max(80).default("title"),
-  descriptionField: z.string().trim().min(1).max(80).default("description"),
-  urlField: z.string().trim().min(1).max(80).default("url"),
-  locale: locale.default("zh"),
-});
 const sourceInput = z.strictObject({
   id: z.uuid().optional(),
   siteId: identifier,
@@ -85,186 +80,57 @@ const sourceInput = z.strictObject({
   intervalSeconds: z.number().int().min(3600).max(604800).default(86400),
   expectedVersion: z.number().int().nonnegative(),
 });
-const configFor = (kind: "rss" | "npm" | "json", input: unknown) => {
-  if (kind === "rss") {
-    const config = rssConfig.parse(input);
-    try { publicUrl(config.url); } catch (error) {
-      throw new HttpError(400, error instanceof Error ? error.message : "URL 不合法");
-    }
-    return config;
-  }
-  if (kind === "npm") return npmConfig.parse(input);
-  const config = jsonConfig.parse(input);
-  try { publicUrl(config.url); } catch (error) {
-    throw new HttpError(400, error instanceof Error ? error.message : "URL 不合法");
-  }
-  return config;
-};
-const decode = (value: string) =>
-  value
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
-      String.fromCodePoint(parseInt(hex, 16)),
+// Binding sources (GitHub) live in the same table but are managed on their own page.
+const bindingManagedElsewhere = () =>
+  new HttpError(400, "GitHub 来源请在“开源项目”页面管理");
+// Source quota check for a new source of any kind; holds the per-site lock
+// until the caller's transaction ends so the insert stays within the quota.
+export async function assertSourceQuota(c: PoolClient, siteId: string) {
+  await c.query(sourceLock, [siteId]);
+  const limit = (await siteLimits(c, siteId)).collectorSources;
+  const count = (
+    await c.query(
+      "SELECT count(*)::int AS n FROM collector_source WHERE site_id=$1",
+      [siteId],
     )
-    .replace(/&#([0-9]+);/g, (_, number) =>
-      String.fromCodePoint(parseInt(number, 10)),
-    )
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, "&");
-const plain = (value: string) =>
-  decode(value)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-const tag = (block: string, name: string) =>
-  new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, "i").exec(block)?.[1] ??
-  "";
-const attr = (block: string, name: string, key = "href") =>
-  new RegExp(`<${name}[^>]*\\s${key}=["']([^"']+)["'][^>]*>`, "i").exec(block)?.[1] ??
-  "";
-export type CollectedItem = {
-  externalId: string;
-  locale: "zh" | "en";
-  data: z.infer<typeof resourceData>;
-};
-export function parseRss(xml: string, baseUrl: string, target: "zh" | "en") {
-  if (/<!doctype|<!entity/i.test(xml)) throw new Error("unsafe_feed");
-  if (Buffer.byteLength(xml) > 2 * 1024 * 1024) throw new Error("feed_too_large");
-  const blocks = [...xml.matchAll(/<(item|entry)\b[^>]*>([\s\S]*?)<\/\1>/gi)]
-    .map((match) => match[2])
-    .slice(0, 50);
-  if (!blocks.length) throw new Error("empty_feed");
-  const items: CollectedItem[] = [];
-  for (const block of blocks) {
-    const title = plain(tag(block, "title")).slice(0, 200);
-    const link =
-      plain(tag(block, "link")) ||
-      attr(block, "link", "href") ||
-      plain(tag(block, "guid"));
-    let url: string;
-    try {
-      url = new URL(link, baseUrl).toString();
-      if (!["http:", "https:"].includes(new URL(url).protocol)) continue;
-    } catch {
-      continue;
-    }
-    if (!title) continue;
-    const description = plain(
-      tag(block, "description") ||
-        tag(block, "summary") ||
-        tag(block, "content") ||
-        title,
-    ).slice(0, 2000);
-    const externalId = (
-      plain(tag(block, "guid")) ||
-      plain(tag(block, "id")) ||
-      url
-    ).slice(0, 500);
-    const data = resourceData.parse({
-      url,
-      kind: "website",
-      source: "rss:" + new URL(baseUrl).hostname,
-      translations: { [target]: { title, description } },
-    });
-    items.push({ externalId, locale: target, data });
-  }
-  if (!items.length) throw new Error("empty_feed");
-  return items;
+  ).rows[0].n;
+  if (count >= limit)
+    throw new HttpError(
+      409,
+      limit === 0
+        ? "该站点的采集来源配额为 0，不能新建来源；请联系全局管理员调整配额"
+        : `该站点采集来源已达上限（${limit} 个），不能新建来源；可修改现有来源或联系全局管理员调整配额`,
+    );
 }
-export function parseNpm(json: unknown, target: "zh" | "en") {
-  const value = z
-    .object({
-      objects: z.array(
-        z.object({
-          package: z.object({
-            name: z.string().min(1).max(214),
-            description: z.string().max(2000).optional(),
-            links: z
-              .object({
-                npm: z.string().url().optional(),
-                homepage: z.string().url().optional(),
-                repository: z.string().optional(),
-              })
-              .partial()
-              .optional(),
-          }),
-        }),
-      ),
-    })
-    .parse(json);
-  return value.objects.slice(0, 50).map(({ package: pkg }) => {
-    const candidates = [pkg.links?.homepage, pkg.links?.repository, pkg.links?.npm]
-      .filter((item): item is string => !!item)
-      .filter((item) => /^https?:\/\//.test(item));
-    const url =
-      candidates[0] ||
-      `https://www.npmjs.com/package/${encodeURIComponent(pkg.name)}`;
-    const title = pkg.name.slice(0, 200),
-      description = (pkg.description || "npm package").slice(0, 2000);
-    return {
-      externalId: pkg.name,
-      locale: target,
-      data: resourceData.parse({
-        url,
-        kind: "website",
-        source: "npm",
-        translations: { [target]: { title, description } },
-      }),
-    };
-  });
-}
-export function parseJsonFeed(
-  json: unknown,
-  config: z.infer<typeof jsonConfig>,
+// Shared by manual sync (all kinds) and retry: applies the site's hourly run
+// limit and inserts the task. The caller must hold the source row lock (FOR UPDATE).
+export async function createCollectorTask(
+  c: PoolClient,
+  source: { id: string; site_id: string; version: number },
+  operationId: string,
+  retryOf: string | null,
 ) {
-  const pick = (value: unknown, path: string) => {
-    if (!path) return value;
-    let current: unknown = value;
-    for (const key of path.split(".")) {
-      if (!current || typeof current !== "object") return undefined;
-      current = (current as Record<string, unknown>)[key];
-    }
-    return current;
-  };
-  const rows = pick(json, config.itemsPath);
-  if (!Array.isArray(rows)) throw new Error("items_not_array");
-  return rows.slice(0, 50).flatMap((row, index) => {
-    if (!row || typeof row !== "object") return [];
-    const record = row as Record<string, unknown>;
-    const title = String(pick(record, config.titleField) ?? "").trim().slice(0, 200);
-    const url = String(pick(record, config.urlField) ?? "").trim();
-    if (!title || !url) return [];
-    try {
-      if (!["http:", "https:"].includes(new URL(url).protocol)) return [];
-    } catch {
-      return [];
-    }
-    const description = String(
-      pick(record, config.descriptionField) ?? title,
+  await c.query(runLock, [source.site_id]);
+  const limit = (await siteLimits(c, source.site_id)).collectorRunsPerHour;
+  if (limit === 0)
+    throw new HttpError(429, "该站点已停用采集（每小时采集次数配额为 0）");
+  const used = (await c.query(runsLastHour, [source.site_id])).rows[0].n;
+  if (used >= limit)
+    throw new HttpError(
+      429,
+      `该站点最近一小时已发起 ${used} 次采集，达到每小时 ${limit} 次的上限，请稍后再试`,
+    );
+  const task = (
+    await c.query(
+      "INSERT INTO collector_task(id,source_id,source_version,retry_of) VALUES($1,$2,$3,$4) RETURNING *",
+      [operationId, source.id, source.version, retryOf],
     )
-      .trim()
-      .slice(0, 2000);
-    const externalId = String(
-      pick(record, config.idField) ?? url ?? index,
-    ).slice(0, 500);
-    return [
-      {
-        externalId,
-        locale: config.locale,
-        data: resourceData.parse({
-          url,
-          kind: "website",
-          source: "json:" + new URL(config.url).hostname,
-          translations: {
-            [config.locale]: { title, description: description || title },
-          },
-        }),
-      },
-    ];
-  });
+  ).rows[0];
+  await c.query(
+    "UPDATE collector_source SET next_run_at=now()+interval_seconds*interval '1 second' WHERE id=$1",
+    [source.id],
+  );
+  return task;
 }
 export class Collectors {
   readonly operators: Operators;
@@ -276,8 +142,10 @@ export class Collectors {
   }
   async save(actor: Operator, input: unknown) {
     await this.operators.require(actor);
+    if ((input as { kind?: unknown } | null)?.kind === "github")
+      throw bindingManagedElsewhere();
     const value = sourceInput.parse(input);
-    const config = configFor(value.kind, value.config);
+    const config = adapters[value.kind].validateConfig(value.config);
     return transaction(this.pool, async (c) => {
       const site = (
         await c.query("SELECT active,modules FROM site WHERE id=$1 FOR SHARE", [
@@ -296,6 +164,7 @@ export class Collectors {
           )
         ).rows[0];
         if (!old) throw new HttpError(404, "来源不存在");
+        if (adapter(old.kind).mode !== "discovery") throw bindingManagedElsewhere();
         if (old.version !== value.expectedVersion)
           throw new Conflict("来源版本已改变");
         result = (await c.query(
@@ -313,21 +182,7 @@ export class Collectors {
       } else {
         if (value.expectedVersion !== 0)
           throw new Conflict("新来源版本必须为 0");
-        await c.query(sourceLock, [value.siteId]);
-        const limit = (await siteLimits(c, value.siteId)).collectorSources;
-        const count = (
-          await c.query(
-            "SELECT count(*)::int AS n FROM collector_source WHERE site_id=$1",
-            [value.siteId],
-          )
-        ).rows[0].n;
-        if (count >= limit)
-          throw new HttpError(
-            409,
-            limit === 0
-              ? "该站点的采集来源配额为 0，不能新建来源；请联系全局管理员调整配额"
-              : `该站点采集来源已达上限（${limit} 个），不能新建来源；可修改现有来源或联系全局管理员调整配额`,
-          );
+        await assertSourceQuota(c, value.siteId);
         result = (await c.query(
           "INSERT INTO collector_source(id,site_id,kind,config,enabled,interval_seconds) VALUES($1,$2,$3,$4,$5,$6) RETURNING *",
           [
@@ -421,6 +276,9 @@ export class Collectors {
       ).rows[0];
       if (!source) throw new HttpError(404, "采集来源不存在");
       await this.operators.require(actor, source.site_id, true, c);
+      // GitHub manual sync coalesces requests (github_request) on its own page.
+      if (adapter(source.kind).mode !== "discovery")
+        throw new HttpError(400, "GitHub 来源请在“开源项目”页面同步");
       if (!source.enabled) throw new HttpError(409, "来源已停用");
       const existing = (
         await c.query("SELECT * FROM collector_task WHERE id=$1", [operationId])
@@ -429,43 +287,13 @@ export class Collectors {
         if (existing.source_id !== id) throw new Conflict("操作标识已用于另一来源");
         return existing;
       }
-      const task = await this.createTask(c, source, operationId, null);
+      const task = await createCollectorTask(c, source, operationId, null);
       await c.query(
         "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'collector.sync.enqueue',$3)",
         [actor.id, source.site_id, { taskId: task.id }],
       );
       return task;
     });
-  }
-  // Shared by manual sync and retry: applies the site's hourly run limit and
-  // inserts the task. The caller must hold the source row lock (FOR UPDATE).
-  private async createTask(
-    c: PoolClient,
-    source: { id: string; site_id: string; version: number },
-    operationId: string,
-    retryOf: string | null,
-  ) {
-    await c.query(runLock, [source.site_id]);
-    const limit = (await siteLimits(c, source.site_id)).collectorRunsPerHour;
-    if (limit === 0)
-      throw new HttpError(429, "该站点已停用采集（每小时采集次数配额为 0）");
-    const used = (await c.query(runsLastHour, [source.site_id])).rows[0].n;
-    if (used >= limit)
-      throw new HttpError(
-        429,
-        `该站点最近一小时已发起 ${used} 次采集，达到每小时 ${limit} 次的上限，请稍后再试`,
-      );
-    const task = (
-      await c.query(
-        "INSERT INTO collector_task(id,source_id,source_version,retry_of) VALUES($1,$2,$3,$4) RETURNING *",
-        [operationId, source.id, source.version, retryOf],
-      )
-    ).rows[0];
-    await c.query(
-      "UPDATE collector_source SET next_run_at=now()+interval_seconds*interval '1 second' WHERE id=$1",
-      [source.id],
-    );
-    return task;
   }
   // Task history for the operations UI, newest first, 50 per page.
   async tasks(actor: Operator, input: unknown) {
@@ -554,6 +382,20 @@ export class Collectors {
             : "只有失败的任务可以重试",
         );
       if (!source.enabled) throw new HttpError(409, "来源已停用");
+      // A binding task (GitHub) is only claimable while the site enables its
+      // modules, matching GitHub manual sync. Plain read: the source lock is held.
+      const selected = adapter(source.kind);
+      if (selected.mode === "binding") {
+        const site = (
+          await c.query("SELECT active,modules FROM site WHERE id=$1", [value.site])
+        ).rows[0];
+        if (
+          !site?.active ||
+          !selected.requiredModules.every((m) => site.modules.includes(m))
+        )
+          throw new HttpError(409, "请先启用本站及开源项目模块");
+      }
+      // Also enforces "one open task per GitHub source".
       const open = (
         await c.query(
           "SELECT 1 FROM collector_task WHERE source_id=$1 AND status IN ('pending','processing') LIMIT 1",
@@ -562,7 +404,7 @@ export class Collectors {
       ).rowCount;
       if (open)
         throw new HttpError(409, "该来源已有排队或处理中的任务，请等待其完成");
-      const task = await this.createTask(c, source, value.operationId, taskId);
+      const task = await createCollectorTask(c, source, value.operationId, taskId);
       await c.query(
         "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'collector.task.retry',$3)",
         [actor.id, value.site, { taskId: task.id, retryOf: taskId }],
@@ -645,165 +487,33 @@ export class Collectors {
     };
   }
 }
-type Fetch = typeof fetchPublicText;
+// Compatibility surface: the unified worker restricted to discovery kinds.
 export class CollectorWorker {
+  private worker: CollectorTaskWorker;
   constructor(
-    private pool: Pool,
-    private fetcher: Fetch = fetchPublicText,
-    private leaseMs = 60000,
-  ) {}
-  // Enqueues due sources within each site's hourly allowance. Due sources beyond
-  // the allowance are deferred by 15 minutes instead of being retried every tick.
-  async schedule() {
-    return transaction(this.pool, async (c) => {
-      // Non-blocking per-site locks: a site busy with a manual enqueue is simply
-      // skipped this tick, so the scheduler can never deadlock with it.
-      const sites = (
-        await c.query(
-          `SELECT site_id FROM (SELECT DISTINCT s.site_id FROM collector_source s JOIN site ON site.id=s.site_id
-             WHERE s.enabled AND site.active AND site.modules @> ARRAY['directory']::text[] AND s.next_run_at<=now()
-             ORDER BY s.site_id LIMIT 50) d
-           WHERE pg_try_advisory_xact_lock(hashtext('collector-run:'||site_id))`,
-        )
-      ).rows.map((row) => row.site_id as string);
-      if (!sites.length) return { queued: 0, deferred: 0 };
-      // A new statement (READ COMMITTED) sees every task committed before the locks were taken.
-      const rows = (
-        await c.query(
-          `WITH due AS(
-             SELECT s.id,s.version,s.site_id,s.next_run_at FROM collector_source s JOIN site ON site.id=s.site_id
-             WHERE s.site_id=ANY($1::text[]) AND s.enabled AND site.active AND site.modules @> ARRAY['directory']::text[] AND s.next_run_at<=now()
-             ORDER BY s.next_run_at FOR UPDATE OF s SKIP LOCKED LIMIT 10),
-           used AS(
-             SELECT s.site_id,count(*)::int AS n FROM collector_task t JOIN collector_source s ON s.id=t.source_id
-             WHERE s.site_id=ANY($1::text[]) AND t.created_at>now()-interval '1 hour' GROUP BY s.site_id),
-           ranked AS(
-             SELECT due.id,due.version,
-               row_number() OVER(PARTITION BY due.site_id ORDER BY due.next_run_at,due.id)
-                 <= greatest(coalesce(l.collector_runs_per_hour,$2::int)-coalesce(used.n,0),0) AS allowed
-             FROM due LEFT JOIN site_limit l ON l.site_id=due.site_id LEFT JOIN used ON used.site_id=due.site_id),
-           queued AS(INSERT INTO collector_task(source_id,source_version) SELECT id,version FROM ranked WHERE allowed ON CONFLICT DO NOTHING)
-           UPDATE collector_source s SET next_run_at=CASE WHEN ranked.allowed
-             THEN now()+s.interval_seconds*interval '1 second' ELSE now()+interval '15 minutes' END
-           FROM ranked WHERE s.id=ranked.id RETURNING ranked.allowed`,
-          [sites, DEFAULT_LIMITS.collectorRunsPerHour],
-        )
-      ).rows;
-      const queued = rows.filter((row) => row.allowed).length;
-      return { queued, deferred: rows.length - queued };
+    pool: Pool,
+    fetcher: Fetch = fetchPublicText,
+    leaseMs = 60000,
+  ) {
+    this.worker = new CollectorTaskWorker(pool, {
+      kinds: discoveryKinds,
+      fetcher,
+      leaseMs,
     });
+  }
+  schedule() {
+    return this.worker.schedule();
   }
   async claim() {
-    return transaction(this.pool, async (c) => {
-      await c.query(
-        "UPDATE collector_task SET status='failed',error_code='attempts_exhausted',lease_token=NULL,lease_until=NULL,completed_at=now() WHERE attempts>=5 AND (status='pending' OR (status='processing' AND lease_until<=clock_timestamp()))",
-      );
-      await c.query(
-        "UPDATE collector_task t SET status='cancelled',error_code='source_changed',lease_token=NULL,lease_until=NULL,completed_at=now() FROM collector_source s WHERE t.source_id=s.id AND t.source_version<>s.version AND t.status IN ('pending','processing')",
-      );
-      const row = (
-        await c.query(
-          "SELECT t.id,t.source_id,t.source_version,t.attempts,s.site_id,s.kind,s.config,s.etag FROM collector_task t JOIN collector_source s ON s.id=t.source_id JOIN site ON site.id=s.site_id WHERE s.enabled AND site.active AND site.modules @> ARRAY['directory']::text[] AND t.attempts<5 AND t.source_version=s.version AND ((t.status='pending' AND t.available_at<=clock_timestamp()) OR (t.status='processing' AND t.lease_until<=clock_timestamp())) ORDER BY t.created_at FOR UPDATE OF t SKIP LOCKED LIMIT 1",
-        )
-      ).rows[0];
-      if (!row) return;
-      const token = randomUUID();
-      await c.query(
-        "UPDATE collector_task SET status='processing',attempts=attempts+1,lease_token=$2,lease_until=clock_timestamp()+$3::int*interval '1 millisecond' WHERE id=$1",
-        [row.id, token, this.leaseMs],
-      );
-      return { ...row, lease_token: token, attempts: row.attempts + 1 };
-    });
+    const job = await this.worker.claim();
+    if (!job) return;
+    const { resource_id: _resource, remote_id: _remote, ...delivery } = job;
+    return delivery;
   }
-  async runOnce() {
-    const job = await this.claim();
-    if (!job) return "idle";
-    try {
-      let items: CollectedItem[] = [];
-      let etag: string | null = job.etag ?? null;
-      if (job.kind === "rss") {
-        const config = rssConfig.parse(job.config);
-        const response = await this.fetcher(config.url, { etag });
-        if (response.notModified) {
-          await this.pool.query(
-            "UPDATE collector_task SET status='done',result='not_modified',error_code=NULL,lease_token=NULL,lease_until=NULL,completed_at=now() WHERE id=$1 AND lease_token=$2",
-            [job.id, job.lease_token],
-          );
-          return "not_modified";
-        }
-        etag = response.etag;
-        items = parseRss(response.text, config.url, config.locale);
-      } else if (job.kind === "npm") {
-        const config = npmConfig.parse(job.config);
-        const response = await this.fetcher(
-          "https://registry.npmjs.org/-/v1/search?" +
-            new URLSearchParams({
-              text: "keywords:" + config.query,
-              size: "50",
-            }).toString(),
-          { etag },
-        );
-        if (response.notModified) {
-          await this.pool.query(
-            "UPDATE collector_task SET status='done',result='not_modified',error_code=NULL,lease_token=NULL,lease_until=NULL,completed_at=now() WHERE id=$1 AND lease_token=$2",
-            [job.id, job.lease_token],
-          );
-          return "not_modified";
-        }
-        etag = response.etag;
-        items = parseNpm(JSON.parse(response.text), config.locale);
-      } else {
-        const config = jsonConfig.parse(job.config);
-        const response = await this.fetcher(config.url, { etag });
-        if (response.notModified) {
-          await this.pool.query(
-            "UPDATE collector_task SET status='done',result='not_modified',error_code=NULL,lease_token=NULL,lease_until=NULL,completed_at=now() WHERE id=$1 AND lease_token=$2",
-            [job.id, job.lease_token],
-          );
-          return "not_modified";
-        }
-        etag = response.etag;
-        items = parseJsonFeed(JSON.parse(response.text), config);
-      }
-      await transaction(this.pool, async (c) => {
-        const task = (
-          await c.query(
-            "SELECT 1 FROM collector_task WHERE id=$1 AND lease_token=$2 AND status='processing' AND lease_until>clock_timestamp()",
-            [job.id, job.lease_token],
-          )
-        ).rowCount;
-        if (!task) return;
-        for (const item of items) {
-          const fingerprint = createHash("sha256")
-            .update(JSON.stringify(item.data))
-            .digest("hex");
-          await c.query(
-            `INSERT INTO collector_candidate(source_id,task_id,external_id,locale,data,fingerprint)
-             VALUES($1,$2,$3,$4,$5,$6)
-             ON CONFLICT(source_id,external_id) DO UPDATE SET data=EXCLUDED.data,fingerprint=EXCLUDED.fingerprint,version=collector_candidate.version+1
-             WHERE collector_candidate.status='pending' AND collector_candidate.fingerprint<>EXCLUDED.fingerprint`,
-            [job.source_id, job.id, item.externalId, item.locale, item.data, fingerprint],
-          );
-        }
-        await c.query(
-          "UPDATE collector_source SET etag=$2 WHERE id=$1",
-          [job.source_id, etag],
-        );
-        await c.query(
-          "UPDATE collector_task SET status='done',result=$2,error_code=NULL,lease_token=NULL,lease_until=NULL,completed_at=now() WHERE id=$1",
-          [job.id, `items:${items.length}`],
-        );
-      });
-      return "done";
-    } catch (error) {
-      const raw = error instanceof Error ? error.message : "fetch_failed";
-      const code = /^[a-z0-9_]{1,64}$/.test(raw) ? raw : "fetch_failed";
-      await this.pool.query(
-        "UPDATE collector_task SET status=CASE WHEN attempts>=5 THEN 'failed' ELSE 'pending' END,available_at=clock_timestamp()+interval '30 seconds',error_code=$3,completed_at=CASE WHEN attempts>=5 THEN now() ELSE NULL END,lease_token=NULL,lease_until=NULL WHERE id=$1 AND lease_token=$2",
-        [job.id, job.lease_token, code],
-      );
-      return "failed";
-    }
+  runOnce() {
+    return this.worker.runOnce() as Promise<
+      "idle" | "done" | "not_modified" | "failed"
+    >;
   }
 }
 // Retention for collector history. Each batch is one short autocommit statement
@@ -833,7 +543,18 @@ export async function pruneCollectors(
      DELETE FROM collector_candidate c USING doomed WHERE c.id=doomed.id`,
     policy.collectorSupersededDays,
   );
-  // Candidates survive with task_id NULL (ON DELETE SET NULL).
+  // Superseded GitHub field-review candidates follow the same rule (counted in
+  // deletedSuperseded). Accepted/rejected ones are the resource change history
+  // and are kept as they are.
+  const deletedGithubSuperseded = await batches(
+    `WITH doomed AS(SELECT id FROM github_candidate
+       WHERE status='superseded' AND created_at<now()-$1::int*interval '1 day'
+       ORDER BY created_at LIMIT $2 FOR UPDATE SKIP LOCKED)
+     DELETE FROM github_candidate g USING doomed WHERE g.id=doomed.id`,
+    policy.collectorSupersededDays,
+  );
+  // Candidates of both models survive with task_id NULL (ON DELETE SET NULL);
+  // GitHub request mappings go with their task (ON DELETE CASCADE).
   const deletedTasks = await batches(
     `WITH doomed AS(SELECT id FROM collector_task
        WHERE status IN ('done','failed','cancelled') AND completed_at<now()-$1::int*interval '1 day'
@@ -851,5 +572,9 @@ export async function pruneCollectors(
      UPDATE collector_candidate c SET data='{}'::jsonb,compacted_at=now() FROM doomed WHERE c.id=doomed.id`,
     policy.collectorReviewedDays,
   );
-  return { deletedTasks, deletedSuperseded, compacted };
+  return {
+    deletedTasks,
+    deletedSuperseded: deletedSuperseded + deletedGithubSuperseded,
+    compacted,
+  };
 }
