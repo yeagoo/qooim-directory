@@ -7,9 +7,19 @@ const escape = (value) =>
       ],
   );
 const size = (bytes) =>
-  bytes > 1024 * 1024
-    ? (bytes / 1024 / 1024).toFixed(1) + " MiB"
-    : Math.ceil(bytes / 1024) + " KiB";
+  bytes >= 1024 * 1024 * 1024
+    ? (bytes / 1024 / 1024 / 1024).toFixed(2) + " GiB"
+    : bytes > 1024 * 1024
+      ? (bytes / 1024 / 1024).toFixed(1) + " MiB"
+      : Math.ceil(bytes / 1024) + " KiB";
+const percent = (used, limit) =>
+  limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 100;
+function quota(usage) {
+  if (!usage) return "";
+  const full =
+    usage.files >= usage.limitFiles || usage.bytes >= usage.limitBytes;
+  return `<section class="panel" id="media-usage"><h2>配额</h2><p>存储空间：${size(usage.bytes)} / ${size(usage.limitBytes)}（${percent(usage.bytes, usage.limitBytes)}%）</p><progress style="width:100%" max="100" value="${percent(usage.bytes, usage.limitBytes)}" aria-label="存储空间用量"></progress><p>文件数量：${usage.files} / ${usage.limitFiles}（${percent(usage.files, usage.limitFiles)}%）</p><progress style="width:100%" max="100" value="${percent(usage.files, usage.limitFiles)}" aria-label="文件数量用量"></progress>${full ? '<p class="notice error">已达到配额上限，新图片将无法上传；已有图片不受影响。如需扩容请联系全局管理员。</p>' : ""}</section>`;
+}
 function toBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let result = "";
@@ -19,9 +29,10 @@ function toBase64(buffer) {
   return btoa(result);
 }
 export async function renderMedia(site, workspace, api, notice) {
-  let items = [];
+  let items = [],
+    usage = null;
   const draw = () => {
-    workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / MEDIA</span><h1>媒体库 · ${escape(site)}</h1><p class="muted">只支持 JPEG、PNG、WebP；单文件不超过 10 MiB。图片按内容哈希存储，删除前会检查线上/草稿引用。</p><section class="panel"><h2>上传图片</h2><div class="split"><div><label for="media-file">图片文件</label><input id="media-file" type="file" accept="image/jpeg,image/png,image/webp"></div><div><label for="media-alt">替代文本（必填）</label><input id="media-alt" maxlength="200" placeholder="描述图片内容"></div></div><div class="actions"><button id="upload-media">上传</button><button id="refresh-media" class="secondary">刷新</button></div></section><section class="panel"><h2>已上传 ${items.length} 张</h2><div class="grid">${items.map((item) => `<article class="site-card"><img src="${escape(item.adminUrl)}" alt="${escape(item.alt)}" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px"><h2>${escape(item.filename)}</h2><p class="muted">${escape(item.mime)} · ${item.width}×${item.height} · ${size(item.bytes)}</p><p>${escape(item.alt)}</p><div class="actions"><button class="secondary copy-media" data-id="${escape(item.id)}" data-alt="${escape(item.alt)}">复制引用 JSON</button><button class="secondary delete-media" data-id="${escape(item.id)}">删除</button></div></article>`).join("") || '<p class="muted">还没有上传图片。</p>'}</div></section><p id="message" role="status" aria-live="polite"></p>`;
+    workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / MEDIA</span><h1>媒体库 · ${escape(site)}</h1><p class="muted">只支持 JPEG、PNG、WebP；单文件不超过 10 MiB。图片按内容哈希存储，删除前会检查线上/草稿引用。</p>${quota(usage)}<section class="panel"><h2>上传图片</h2><div class="split"><div><label for="media-file">图片文件</label><input id="media-file" type="file" accept="image/jpeg,image/png,image/webp"></div><div><label for="media-alt">替代文本（必填）</label><input id="media-alt" maxlength="200" placeholder="描述图片内容"></div></div><div class="actions"><button id="upload-media">上传</button><button id="refresh-media" class="secondary">刷新</button></div></section><section class="panel"><h2>已上传 ${items.length} 张</h2><div class="grid">${items.map((item) => `<article class="site-card"><img src="${escape(item.adminUrl)}" alt="${escape(item.alt)}" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px"><h2>${escape(item.filename)}</h2><p class="muted">${escape(item.mime)} · ${item.width}×${item.height} · ${size(item.bytes)}</p><p>${escape(item.alt)}</p><div class="actions"><button class="secondary copy-media" data-id="${escape(item.id)}" data-alt="${escape(item.alt)}">复制引用 JSON</button><button class="secondary delete-media" data-id="${escape(item.id)}">删除</button></div></article>`).join("") || '<p class="muted">还没有上传图片。</p>'}</div></section><p id="message" role="status" aria-live="polite"></p>`;
     workspace.querySelector("#refresh-media")?.addEventListener("click", load);
     workspace
       .querySelector("#upload-media")
@@ -45,7 +56,10 @@ export async function renderMedia(site, workspace, api, notice) {
   };
   const load = async () => {
     try {
-      items = await api("/media?site=" + encodeURIComponent(site));
+      [items, usage] = await Promise.all([
+        api("/media?site=" + encodeURIComponent(site)),
+        api("/media/usage?site=" + encodeURIComponent(site)),
+      ]);
       draw();
     } catch (error) {
       notice(error.message, true);

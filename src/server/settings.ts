@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { authPolicy } from "./auth-policy.js";
+import { retentionPolicy } from "./retention.js";
 export function settings() {
   if (process.env.GITHUB_SYNC_TOKEN)
     z.string()
@@ -25,5 +26,6 @@ export function settings() {
     key,
     development,
     mediaRoot: process.env.MEDIA_ROOT || ".local/media",
+    retention: retentionPolicy(process.env),
   };
 }

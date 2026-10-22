@@ -36,6 +36,7 @@ Key 使用 `AUTH_ENCRYPTION_KEY` 经 AES-256-GCM 封装后存 `ai_config.sealed_
 | `POST /admin/api/ai/config` | 保存配置；`key` 可省略保留 |
 | `POST /admin/api/ai/jobs` | 创建任务 `{site,kind,locale,title?,description?,url?,brief?}` |
 | `GET /admin/api/ai/jobs/<id>?site=<id>` | 轮询状态/输出/用量 |
+| `GET /admin/api/ai/usage?site=<id>` | 近 12 个月用量与当月预算（M6） |
 
 任务状态：`pending → processing → done|failed`。Worker 每次处理一条，失败最多重试 2 次（30 秒退避），超时/失败保留错误码；崩溃遗留的 processing 租约会在下次运行回收。
 
@@ -47,10 +48,16 @@ Key 使用 `AUTH_ENCRYPTION_KEY` 经 AES-256-GCM 封装后存 `ai_config.sealed_
 - 输出经严格 Zod schema 校验，超长/非法 JSON 视为失败；不自动回写。
 - 预算按站点自然月累计已记录 token；超预算拒绝新任务，Worker 再检查一次。
 
+## 保留期（M6）
+
+- Worker 每小时清理一次已结束（`done/failed/cancelled`）的任务。只清理结束超过 `RETENTION_AI_DAYS`（默认 180，最小 35）天、且不在当月的任务。删除前先把 jobs 和 tokens 按“站点 + 月份”加到 `ai_usage_month`；删除和汇总在同一条语句里完成，所以重复运行不会重复计数。
+- 当月预算 = 当月 `ai_job` 加当月 `ai_usage_month`，所以调整保留期不会让预算少算。
+- 后台 AI 设置页显示当月用量占预算的比例，以及近 12 个月的用量表。清理前后，各月总数保持一致。
+
 ## 限制与未验证
 
 - 没有真实 OpenAI/Anthropic 或第三方兼容端点联调；测试使用注入传输，验证队列/校验/预算/人工确认，不证明供应商可用性或内容质量。
-- 没有 token 计费对账、供应商账单同步、提示词版本管理 UI、任务取消/重试 UI、保留期清理。
+- 没有 token 计费对账、供应商账单同步、提示词版本管理 UI（M9）、任务取消/重试 UI（M7）；见 [M6–M10 方案](FEATURE-PLAN-M6-M10.md)。
 - 端点 DNS 固定是尽力而为的 SSRF 缓解，不替代出站防火墙/代理。
 - AI 输出可能不准确；发布者必须核对事实、版权、翻译质量和 SEO 声明。
 

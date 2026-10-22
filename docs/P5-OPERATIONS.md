@@ -49,6 +49,30 @@ node --env-file=.env --env-file=.local/backup.env scripts/backup.mjs restore iso
 4. 启动新 web/worker，检查健康、后台/公众登录、内容、任务和配置传播。
 5. 若需退回旧版，用匹配旧版的备份恢复到新库并校验，再切换；不支持自动向下迁移。
 
+## 保留期与配额
+
+M6 起，Worker 每小时最多执行一次保留期清理。多个 Worker 通过 `maintenance_status` 中名为 `retention` 的行抢占执行权，同一时间只会有一个在清理。结果写入该行的 `detail`，后台“运行任务 → 最近维护”页可以查看。AI、采集器、媒体三部分各自独立执行，其中一部分失败不影响其他部分；失败会记为 `state: failed`，一小时后重试。
+
+| 环境变量 | 默认 | 最小 | 作用 |
+| --- | --- | --- | --- |
+| `RETENTION_AI_DAYS` | 180 | 35 | 已结束的 AI 任务汇总进 `ai_usage_month` 后删除；当月任务不删 |
+| `RETENTION_COLLECTOR_TASK_DAYS` | 30 | 1 | 删除已结束的采集任务 |
+| `RETENTION_COLLECTOR_SUPERSEDED_DAYS` | 30 | 1 | 删除已作废的候选 |
+| `RETENTION_COLLECTOR_REVIEWED_DAYS` | 90 | 1 | 压缩已审核候选（清空内容，保留去重记录） |
+
+非法值会导致 Worker/Web 启动失败。`compose.yaml` 是镜像 evidence 固定的输入文件，所以没有透传这些变量，Docker 部署使用默认值。如需覆盖，在 `compose.override.yaml` 里给 `web` 和 `worker` 的 `environment` 加上这些变量；这样不会改动已签署的输入文件。如果设置了 `MEDIA_ROOT`（Compose 默认 `/app/data/media`），还会清理孤儿媒体文件（宽限 60 分钟）。
+
+站点配额默认是：媒体 1 GiB / 5000 个文件，采集来源 20 个，每小时采集 60 次。只有站群管理员可以修改：
+
+```bash
+pnpm cli site-limit atlas
+echo '{"mediaBytes":5368709120,"collectorRunsPerHour":30}' > .local/limit.json
+pnpm cli site-limit-set atlas .local/limit.json   # 省略的字段保持不变；null 恢复默认
+pnpm cli retention-run                            # 立即执行一次清理（忽略每小时间隔）
+```
+
+后台站点页的“配额”页（`#limits/<site>`）功能相同；非管理员看到的是只读页面。新表 `site_limit`、`ai_usage_month` 已包含在 `pg_dump` 备份中。
+
 ## 源码归档与公开检查
 
 ```bash

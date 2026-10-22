@@ -39,14 +39,29 @@
 | `POST /admin/api/collectors/<id>/sync` | 手动同步（operationId 幂等） |
 | `GET /admin/api/collector-candidates?site=<id>` | 待审核候选 |
 | `POST /admin/api/collector-candidates/<id>/review` | 接受/拒绝，乐观版本 |
+| `GET /admin/api/collectors/usage?site=<id>` | 来源数/配额、最近一小时采集次数/上限（M6） |
+
+## 配额、频率与保留期（M6）
+
+- 来源配额：默认每站 20 个，停用的来源也计入。新建时在站点锁内计数，超限返回 409；编辑已有来源不受影响。
+- 频率限制：默认每站每小时 60 次，统计最近一小时创建的所有任务（手动和定时都算）。
+  - 手动同步超限返回 429；用同一个 `operationId` 重放仍然返回原任务。
+  - 定时调度只排队剩余额度内的来源，其余来源推迟 15 分钟。
+  - 额度设为 0 表示停用本站采集，但已经排队的任务仍会执行。
+- 保留期（Worker 每小时运行，见 [P5 运维](P5-OPERATIONS.md#保留期与配额)）：
+  - 已结束的任务超过 `RETENTION_COLLECTOR_TASK_DAYS`（默认 30）天后删除，候选的 `task_id` 置空；
+  - 已作废（superseded）的候选超过 `RETENTION_COLLECTOR_SUPERSEDED_DAYS`（默认 30）天后删除，之后如果 feed 里还有这一条，会重新进入待审核；
+  - 已接受或已拒绝的候选超过 `RETENTION_COLLECTOR_REVIEWED_DAYS`（默认 90）天后只压缩：清空 `data`，保留去重键和审核结果，所以已拒绝的条目不会再出现。后台“候选历史”里显示为“已归档”；
+  - 待审核候选和未结束的任务永远不会被清理。
+- 10 万条候选的清理验收：用时约 2.4 秒，分 2 次运行完成。
 
 ## 安全与限制
 
 - 不抓网页 HTML、不登录、不绕过 robots/付费墙；仅公开 RSS/API/JSON。
 - RSS 拒绝 DOCTYPE/ENTITY，避免外部实体；正则解析不是通用 XML 解析器，畸形 feed 会失败而不执行内容。
 - 候选内容按纯文本/转义渲染；标题/说明截断，URL 只允许 http(s)。
-- 没有采集源配额、凭据、代理、Webhook；没有 YouTube/Product Hunt/社交平台。
-- 没有候选批量审核、定时编辑 UI、保留期清理、失败重试 UI。
+- 没有采集凭据、代理、Webhook；没有 YouTube/Product Hunt/社交平台。
+- 没有候选批量审核、定时编辑 UI、失败重试 UI（M7）。
 - 当前 GitHub 仍用 `github_source`/`github_worker`，未迁移到新采集表；两套入口并存是兼容性选择，不是统一适配器完成。
 
 ## 测试

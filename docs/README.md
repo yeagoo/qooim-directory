@@ -11,6 +11,7 @@
 | [开发方案](DEVELOPMENT-PLAN.md) | 首版范围、阶段和投入 |
 | [认证实施决策](ADR-001-AUTH.md) | 身份适配基线与边界 |
 | [2026 Q4 功能规划与 Review](FEATURE-PLAN-2026Q4.md) | 独立账号方向、搜索/Passkey/媒体/AI/采集的范围、风险与顺序 |
+| [M6–M10 开发方案](FEATURE-PLAN-M6-M10.md) | 配额与保留期、运维 UI、媒体版本、AI 治理、GitHub 统一采集器 |
 
 ## 操作与协议
 
@@ -38,6 +39,7 @@
 | [发行前检查清单](RELEASE-CHECKLIST.md) | 预检、全量回归、Docker、OAuth、门禁 |
 | [本地验收记录](ACCEPTANCE-20261020.md) | P0–P5、发行与 Docker 实际结果 |
 | [M1 验收记录](ACCEPTANCE-M1-20261021.md) | 独立账号收口、pg_trgm 搜索、测试与 Docker |
+| [M6 验收记录](ACCEPTANCE-M6-20261022.md) | 配额与保留期：P0–P6 回归、10 万候选清理、保留项 |
 | [M2 验收记录](ACCEPTANCE-M2-20261021.md) | 站点级 Passkey、虚拟认证器测试、升级与安全边界 |
 | [M3 验收记录](ACCEPTANCE-M3-20261021.md) | 媒体库、图片发布、加密媒体备份与恢复 |
 | [M4 验收记录](ACCEPTANCE-M4-20261021.md) | AI 配置/任务/预算、人工确认与测试 |

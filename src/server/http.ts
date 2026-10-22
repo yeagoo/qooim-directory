@@ -31,6 +31,7 @@ import { collectorsHttp } from "./collectors-http.js";
 import { aiHttp } from "./ai-http.js";
 import { Media } from "./media.js";
 import { mediaHttp } from "./media-http.js";
+import { Limits, limitsHttp } from "./limits.js";
 import { Personal } from "./personal.js";
 import { AuditLog } from "./audit.js";
 import {
@@ -52,6 +53,7 @@ export class Application {
   readonly media: Media;
   readonly ai: AiService;
   readonly collectors: Collectors;
+  readonly limits: Limits;
   private assets = new Map<string, { body: string; etag: string }>();
   constructor(
     readonly pool: Pool,
@@ -84,6 +86,7 @@ export class Application {
     this.media = new Media(pool, config.mediaRoot ?? ".local/media");
     this.ai = new AiService(pool, config.key);
     this.collectors = new Collectors(pool);
+    this.limits = new Limits(pool);
   }
   async close() {
     await this.auth.close();
@@ -321,6 +324,8 @@ export class Application {
                     ? "ai-admin.js"
                     : path === "/assets/collector-admin.js" && admin
                       ? "collector-admin.js"
+                    : path === "/assets/limits-admin.js" && admin
+                      ? "limits-admin.js"
                   : path === "/assets/github-admin.js" && admin
               ? "github-admin.js"
               : path === "/assets/content-admin.js" && admin
@@ -450,6 +455,14 @@ export class Application {
         () => this.mediaBody(request),
       );
       if (mediaResponse) return mediaResponse;
+      const limitsResponse = await limitsHttp(
+        this.limits,
+        operator,
+        action,
+        request,
+        () => this.body(request),
+      );
+      if (limitsResponse) return limitsResponse;
       const match = action.match(
         /^\/sites\/([a-z][a-z0-9-]{0,47})(?:\/([a-z-]+))?$/,
       );

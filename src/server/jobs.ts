@@ -4,10 +4,13 @@ import { GithubWorker } from "./github.js";
 import { AuthRegistry } from "./auth.js";
 import { AiWorker } from "./ai.js";
 import { CollectorWorker } from "./collectors.js";
+import { runMaintenance } from "./maintenance.js";
+import type { RetentionPolicy } from "./retention.js";
 export async function runJobs(
   pool: Pool,
   auth: AuthRegistry,
   key?: string,
+  options: { mediaRoot?: string; retention?: RetentionPolicy } = {},
 ) {
   const errors: unknown[] = [];
   const attempt = async (task: () => Promise<unknown>) => {
@@ -48,6 +51,12 @@ export async function runJobs(
   });
   await attempt(() => auth.mail.runOnce());
   await attempt(() => auth.maintain());
+  await attempt(() =>
+    runMaintenance(pool, {
+      mediaRoot: options.mediaRoot,
+      policy: options.retention,
+    }),
+  );
   // Keep the last successful heartbeat: partial progress must not hide a failure.
   if (errors.length)
     throw new AggregateError(errors, "Worker iteration failed");

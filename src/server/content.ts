@@ -755,7 +755,7 @@ export class Content {
         ],
       );
       await c.query(
-        "UPDATE collector_candidate SET status='accepted',version=version+1,accepted_resource_id=$2 WHERE id=$1",
+        "UPDATE collector_candidate SET status='accepted',version=version+1,accepted_resource_id=$2,reviewed_at=now() WHERE id=$1",
         [candidateId, resource],
       );
       await this.audit(c, actor, site, "collector.accept", {

@@ -18,6 +18,13 @@ export async function collectorsHttp(
     return Response.json(await collectors.save(actor, await body()), {
       status: 201,
     });
+  if (action === "/collectors/usage" && request.method === "GET") {
+    const site = z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{0,47}$/)
+      .parse(new URL(request.url).searchParams.get("site"));
+    return Response.json(await collectors.usage(actor, site));
+  }
   if (action === "/collector-candidates" && request.method === "GET") {
     const site = z
       .string()

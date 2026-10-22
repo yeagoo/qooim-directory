@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased — M6 配额与保留期
+
+开发方案见 [M6–M10](docs/FEATURE-PLAN-M6-M10.md)。
+
+### Added
+
+- 站点配额：新表 `site_limit`。默认媒体 1 GiB / 5000 个文件，采集来源 20 个，每小时采集 60 次。`GET/POST /admin/api/limits`，后台新增“配额”页，CLI 新增 `site-limit`、`site-limit-set`。只有站群管理员能修改，改动写审计 `site.limit.save`。
+- 媒体：上传强制执行配额（站点锁内检查，超限返回 413），新增用量接口 `/admin/api/media/usage`，媒体页显示配额，Worker 清理孤儿文件。
+- AI：`ai_usage_month` 按月汇总用量；超过保留期的已结束任务汇总后删除，当月任务不删；预算统计包含汇总表；新增用量接口 `/admin/api/ai/usage`，AI 设置页显示近 12 个月用量。
+- 采集器：来源数量配额（409）；每小时频率限制（手动同步返回 429，定时调度推迟 15 分钟）；保留期会删除旧任务和已作废候选，并压缩已审核候选（保留去重记录）；新增 `/admin/api/collectors/usage`，候选历史显示“已归档”。
+- Worker 每小时执行一次保留期清理（多个 Worker 互斥），CLI `retention-run` 可立即执行一次；新增 `RETENTION_*` 环境变量。
+- 迁移 `010-quota-retention.sql`；新增测试 `tests/p6/`，运行方式：`node scripts/test-p0.mjs tests/p6/foundation.test.ts tests/p6/media.test.ts tests/p6/ai.test.ts tests/p6/collectors.test.ts`。`package.json` 属于镜像 evidence 固定的输入文件，所以这次没有加 `test:p6` 脚本；等发布前刷新 evidence 时一并加入。
+
+### Upgrade
+
+- 应用迁移 `010-quota-retention.sql`。现有站点使用默认配额；如果已经超出默认配额，只会阻止新增，不删除任何数据。
+- 首次运行保留期清理时，会处理历史上积累的数据（每类每次最多 10 万行，下一小时继续）。
+
 ## v0.2.0-rc.1 — 2026-10-21 (release candidate)
 
 这是 M1–M5 的发布候选，不是稳定版。真实 OAuth、AI 供应商、RSS/npm 外网源和真实 Passkey 设备尚未验收；公开发布仍为 NO-GO（见 [整合验收](docs/ACCEPTANCE-INTEGRATION-20261021.md)）。

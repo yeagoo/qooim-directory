@@ -4,6 +4,7 @@ import { database } from "./server/database.js";
 import { settings } from "./server/settings.js";
 import { migrate } from "./server/migrate.js";
 import { Application } from "./server/http.js";
+import { runMaintenance } from "./server/maintenance.js";
 const pool = database(),
   config = settings();
 const app = new Application(pool, config);
@@ -154,6 +155,28 @@ try {
           ),
         ),
       );
+    } else if (command === "site-limit") {
+      console.log(JSON.stringify(await app.limits.get(actor, args[0]), null, 2));
+    } else if (command === "site-limit-set") {
+      console.log(
+        JSON.stringify(
+          await app.limits.save(actor, {
+            site: args[0],
+            ...JSON.parse(await readFile(args[1], "utf8")),
+          }),
+        ),
+      );
+    } else if (command === "retention-run") {
+      await app.sites.operators.require(actor);
+      console.log(
+        JSON.stringify(
+          await runMaintenance(pool, {
+            mediaRoot: config.mediaRoot,
+            policy: config.retention,
+            force: true,
+          }),
+        ),
+      );
     } else if (command === "auth-provider-set") {
       console.log(
         JSON.stringify(
@@ -280,7 +303,7 @@ try {
       );
     } else
       throw new Error(
-        "Commands: migrate, bootstrap, seed, export, compare, import, publish, rollback, auth-upgrade",
+        "Commands: migrate, bootstrap, seed, export, compare, import, publish, rollback, auth-upgrade, site-limit, site-limit-set, retention-run",
       );
   }
 } catch (error) {

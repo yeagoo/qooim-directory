@@ -4,6 +4,11 @@ import type { Content } from "./content.js";
 import { HttpError, type Operator } from "./operators.js";
 
 const idPattern = /^\/media\/([0-9a-f-]{36})(?:\/(file))?$/;
+const siteParam = (request: Request) =>
+  z
+    .string()
+    .regex(/^[a-z][a-z0-9-]{0,47}$/)
+    .parse(new URL(request.url).searchParams.get("site"));
 export async function mediaHttp(
   media: Media,
   content: Content,
@@ -12,12 +17,12 @@ export async function mediaHttp(
   request: Request,
   readBody: () => Promise<unknown>,
 ) {
-  if (action === "/media" && request.method === "GET") {
-    const site = z
-      .string()
-      .regex(/^[a-z][a-z0-9-]{0,47}$/)
-      .parse(new URL(request.url).searchParams.get("site"));
-    return Response.json(await media.list(actor, site));
+  if (action === "/media" && request.method === "GET")
+    return Response.json(await media.list(actor, siteParam(request)));
+  // "usage" can never match idPattern, which requires a 36-character id.
+  if (action === "/media/usage") {
+    if (request.method !== "GET") throw new HttpError(405, "Method not allowed");
+    return Response.json(await media.usage(actor, siteParam(request)));
   }
   if (action === "/media" && request.method === "POST")
     return Response.json(await media.upload(actor, await readBody()), {

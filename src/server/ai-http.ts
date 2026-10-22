@@ -16,6 +16,13 @@ export async function aiHttp(
       .parse(new URL(request.url).searchParams.get("site"));
     return Response.json(await ai.config(actor, site));
   }
+  if (action === "/ai/usage" && request.method === "GET") {
+    const site = z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{0,47}$/)
+      .parse(new URL(request.url).searchParams.get("site"));
+    return Response.json(await ai.usage(actor, site));
+  }
   if (action === "/ai/config" && request.method === "POST")
     return Response.json(await ai.saveConfig(actor, await body()));
   if (action === "/ai/jobs" && request.method === "POST")

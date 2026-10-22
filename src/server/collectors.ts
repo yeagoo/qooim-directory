@@ -5,9 +5,18 @@ import { transaction } from "../domain/transaction.js";
 import { Conflict } from "../domain/config.js";
 import { Content, identifier, resourceData } from "./content.js";
 import { HttpError, Operators, type Operator } from "./operators.js";
+import { DEFAULT_LIMITS, siteLimits } from "./limits.js";
 import { fetchPublicText, publicUrl } from "./outbound.js";
+import type { RetentionPolicy } from "./retention.js";
 
 const locale = z.enum(["zh", "en"]);
+// Per-site advisory locks serialize quota checks with the insert they guard.
+const sourceLock = "SELECT pg_advisory_xact_lock(hashtext('collector-source:'||$1))";
+const runLock = "SELECT pg_advisory_xact_lock(hashtext('collector-run:'||$1))";
+// Tasks created during the last hour for any source of the site (manual and scheduled).
+const runsLastHour = `SELECT count(*)::int AS n FROM collector_task t JOIN collector_source s ON s.id=t.source_id
+  WHERE s.site_id=$1 AND t.created_at>now()-interval '1 hour'`;
+const siteParam = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
 const rssConfig = z.strictObject({
   url: z.string().trim().max(500),
   locale: locale.default("zh"),
@@ -256,12 +265,27 @@ export class Collectors {
           [value.id],
         );
         await c.query(
-          "UPDATE collector_candidate SET status='superseded',version=version+1 WHERE source_id=$1 AND status='pending'",
+          "UPDATE collector_candidate SET status='superseded',version=version+1,reviewed_at=now() WHERE source_id=$1 AND status='pending'",
           [value.id],
         );
       } else {
         if (value.expectedVersion !== 0)
           throw new Conflict("新来源版本必须为 0");
+        await c.query(sourceLock, [value.siteId]);
+        const limit = (await siteLimits(c, value.siteId)).collectorSources;
+        const count = (
+          await c.query(
+            "SELECT count(*)::int AS n FROM collector_source WHERE site_id=$1",
+            [value.siteId],
+          )
+        ).rows[0].n;
+        if (count >= limit)
+          throw new HttpError(
+            409,
+            limit === 0
+              ? "该站点的采集来源配额为 0，不能新建来源；请联系全局管理员调整配额"
+              : `该站点采集来源已达上限（${limit} 个），不能新建来源；可修改现有来源或联系全局管理员调整配额`,
+          );
         result = (await c.query(
           "INSERT INTO collector_source(id,site_id,kind,config,enabled,interval_seconds) VALUES($1,$2,$3,$4,$5,$6) RETURNING *",
           [
@@ -296,6 +320,26 @@ export class Collectors {
       )
     ).rows;
   }
+  // Current quota usage for the admin UI.
+  async usage(actor: Operator, site: string) {
+    siteParam.parse(site);
+    await this.operators.require(actor, site, false);
+    const limits = await siteLimits(this.pool, site);
+    const sources = (
+      await this.pool.query(
+        "SELECT count(*)::int AS n FROM collector_source WHERE site_id=$1",
+        [site],
+      )
+    ).rows[0].n;
+    const runs = (await this.pool.query(runsLastHour, [site])).rows[0].n;
+    return {
+      site,
+      sources,
+      sourceLimit: limits.collectorSources,
+      runsLastHour: runs,
+      runsPerHour: limits.collectorRunsPerHour,
+    };
+  }
   async detail(actor: Operator, id: string) {
     await this.operators.require(actor);
     z.uuid().parse(id);
@@ -308,7 +352,7 @@ export class Collectors {
       source,
       candidates: (
         await this.pool.query(
-          "SELECT id,external_id,locale,data,status,version,accepted_resource_id,created_at FROM collector_candidate WHERE source_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100",
+          "SELECT id,external_id,locale,data,status,version,accepted_resource_id,created_at,reviewed_at,compacted_at FROM collector_candidate WHERE source_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100",
           [id],
         )
       ).rows,
@@ -343,6 +387,16 @@ export class Collectors {
         if (existing.source_id !== id) throw new Conflict("操作标识已用于另一来源");
         return existing;
       }
+      await c.query(runLock, [source.site_id]);
+      const limit = (await siteLimits(c, source.site_id)).collectorRunsPerHour;
+      if (limit === 0)
+        throw new HttpError(429, "该站点已停用采集（每小时采集次数配额为 0）");
+      const used = (await c.query(runsLastHour, [source.site_id])).rows[0].n;
+      if (used >= limit)
+        throw new HttpError(
+          429,
+          `该站点最近一小时已发起 ${used} 次采集，达到每小时 ${limit} 次的上限，请稍后再试`,
+        );
       const task = (
         await c.query(
           "INSERT INTO collector_task(id,source_id,source_version) VALUES($1,$2,$3) RETURNING *",
@@ -392,7 +446,7 @@ export class Collectors {
       if (row.status !== "pending" || row.version !== value.expectedVersion)
         throw new Conflict("采集候选已审核或版本已改变");
       await c.query(
-        "UPDATE collector_candidate SET status='rejected',version=version+1 WHERE id=$1",
+        "UPDATE collector_candidate SET status='rejected',version=version+1,reviewed_at=now() WHERE id=$1",
         [candidateId],
       );
       await c.query(
@@ -410,10 +464,46 @@ export class CollectorWorker {
     private fetcher: Fetch = fetchPublicText,
     private leaseMs = 60000,
   ) {}
+  // Enqueues due sources within each site's hourly allowance. Due sources beyond
+  // the allowance are deferred by 15 minutes instead of being retried every tick.
   async schedule() {
-    await this.pool.query(
-      `WITH due AS(SELECT s.* FROM collector_source s JOIN site ON site.id=s.site_id WHERE s.enabled AND site.active AND site.modules @> ARRAY['directory']::text[] AND s.next_run_at<=now() ORDER BY s.next_run_at FOR UPDATE OF s SKIP LOCKED LIMIT 10), queued AS(INSERT INTO collector_task(source_id,source_version) SELECT id,version FROM due ON CONFLICT DO NOTHING) UPDATE collector_source s SET next_run_at=now()+s.interval_seconds*interval '1 second' FROM due WHERE s.id=due.id`,
-    );
+    return transaction(this.pool, async (c) => {
+      // Non-blocking per-site locks: a site busy with a manual enqueue is simply
+      // skipped this tick, so the scheduler can never deadlock with it.
+      const sites = (
+        await c.query(
+          `SELECT site_id FROM (SELECT DISTINCT s.site_id FROM collector_source s JOIN site ON site.id=s.site_id
+             WHERE s.enabled AND site.active AND site.modules @> ARRAY['directory']::text[] AND s.next_run_at<=now()
+             ORDER BY s.site_id LIMIT 50) d
+           WHERE pg_try_advisory_xact_lock(hashtext('collector-run:'||site_id))`,
+        )
+      ).rows.map((row) => row.site_id as string);
+      if (!sites.length) return { queued: 0, deferred: 0 };
+      // A new statement (READ COMMITTED) sees every task committed before the locks were taken.
+      const rows = (
+        await c.query(
+          `WITH due AS(
+             SELECT s.id,s.version,s.site_id,s.next_run_at FROM collector_source s JOIN site ON site.id=s.site_id
+             WHERE s.site_id=ANY($1::text[]) AND s.enabled AND site.active AND site.modules @> ARRAY['directory']::text[] AND s.next_run_at<=now()
+             ORDER BY s.next_run_at FOR UPDATE OF s SKIP LOCKED LIMIT 10),
+           used AS(
+             SELECT s.site_id,count(*)::int AS n FROM collector_task t JOIN collector_source s ON s.id=t.source_id
+             WHERE s.site_id=ANY($1::text[]) AND t.created_at>now()-interval '1 hour' GROUP BY s.site_id),
+           ranked AS(
+             SELECT due.id,due.version,
+               row_number() OVER(PARTITION BY due.site_id ORDER BY due.next_run_at,due.id)
+                 <= greatest(coalesce(l.collector_runs_per_hour,$2::int)-coalesce(used.n,0),0) AS allowed
+             FROM due LEFT JOIN site_limit l ON l.site_id=due.site_id LEFT JOIN used ON used.site_id=due.site_id),
+           queued AS(INSERT INTO collector_task(source_id,source_version) SELECT id,version FROM ranked WHERE allowed ON CONFLICT DO NOTHING)
+           UPDATE collector_source s SET next_run_at=CASE WHEN ranked.allowed
+             THEN now()+s.interval_seconds*interval '1 second' ELSE now()+interval '15 minutes' END
+           FROM ranked WHERE s.id=ranked.id RETURNING ranked.allowed`,
+          [sites, DEFAULT_LIMITS.collectorRunsPerHour],
+        )
+      ).rows;
+      const queued = rows.filter((row) => row.allowed).length;
+      return { queued, deferred: rows.length - queued };
+    });
   }
   async claim() {
     return transaction(this.pool, async (c) => {
@@ -528,3 +618,51 @@ export class CollectorWorker {
     }
   }
 }
+// Retention for collector history. Each batch is one short autocommit statement
+// that skips rows locked by reviewers or workers; pending candidates and
+// pending/processing tasks are never selected.
+export async function pruneCollectors(
+  pool: Pool,
+  policy: RetentionPolicy,
+): Promise<Record<string, number>> {
+  const batches = async (sql: string, days: number) => {
+    let total = 0;
+    for (let i = 0; i < policy.maxBatches; i++) {
+      const count =
+        (await pool.query(sql, [days, policy.batchSize])).rowCount ?? 0;
+      total += count;
+      if (count < policy.batchSize) break;
+    }
+    return total;
+  };
+  // Superseded rows go first so task deletion does not null their task_id needlessly.
+  // Deleting them lets items still present in a feed be proposed again.
+  const deletedSuperseded = await batches(
+    `WITH doomed AS(SELECT id FROM collector_candidate
+       WHERE status='superseded' AND status<>'pending' AND compacted_at IS NULL
+         AND coalesce(reviewed_at,created_at)<now()-$1::int*interval '1 day'
+       ORDER BY coalesce(reviewed_at,created_at) LIMIT $2 FOR UPDATE SKIP LOCKED)
+     DELETE FROM collector_candidate c USING doomed WHERE c.id=doomed.id`,
+    policy.collectorSupersededDays,
+  );
+  // Candidates survive with task_id NULL (ON DELETE SET NULL).
+  const deletedTasks = await batches(
+    `WITH doomed AS(SELECT id FROM collector_task
+       WHERE status IN ('done','failed','cancelled') AND completed_at<now()-$1::int*interval '1 day'
+       ORDER BY completed_at LIMIT $2 FOR UPDATE SKIP LOCKED)
+     DELETE FROM collector_task t USING doomed WHERE t.id=doomed.id`,
+    policy.collectorTaskDays,
+  );
+  // Reviewed rows stay as dedupe records (source_id, external_id, fingerprint,
+  // status, accepted_resource_id); only the payload is dropped.
+  const compacted = await batches(
+    `WITH doomed AS(SELECT id FROM collector_candidate
+       WHERE status IN ('accepted','rejected') AND status<>'pending' AND compacted_at IS NULL
+         AND coalesce(reviewed_at,created_at)<now()-$1::int*interval '1 day'
+       ORDER BY coalesce(reviewed_at,created_at) LIMIT $2 FOR UPDATE SKIP LOCKED)
+     UPDATE collector_candidate c SET data='{}'::jsonb,compacted_at=now() FROM doomed WHERE c.id=doomed.id`,
+    policy.collectorReviewedDays,
+  );
+  return { deletedTasks, deletedSuperseded, compacted };
+}
+

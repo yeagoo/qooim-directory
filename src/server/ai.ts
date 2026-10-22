@@ -6,6 +6,7 @@ import { z } from "zod";
 import { unseal, seal } from "./crypto.js";
 import { HttpError, Operators, type Operator } from "./operators.js";
 import { privateAddress } from "./outbound.js";
+import type { RetentionPolicy } from "./retention.js";
 
 const MAX_INPUT = 4000,
   MAX_BRIEF = 500,
@@ -256,12 +257,7 @@ export class AiService {
       )
     ).rows[0];
     if (!config?.enabled) throw new HttpError(409, "本站未启用 AI");
-    const used = (
-      await this.pool.query(
-        "SELECT coalesce(sum(tokens_in+tokens_out),0)::int AS used FROM ai_job WHERE site_id=$1 AND created_at>=date_trunc('month',now())",
-        [value.site],
-      )
-    ).rows[0].used as number;
+    const used = await monthlyTokensUsed(this.pool, value.site);
     if (used >= config.monthly_tokens)
       throw new HttpError(429, "本月 AI token 预算已用完");
     const { rows } = await this.pool.query(
@@ -306,6 +302,53 @@ export class AiService {
       completedAt: row.completed_at,
     };
   }
+  // Last 12 months, newest first: rolled-up history plus live jobs (any status, like the budget).
+  async usage(actor: Operator, site: string) {
+    await this.operators.require(actor, site, false);
+    const exists = (
+      await this.pool.query(
+        "SELECT (SELECT monthly_tokens FROM ai_config WHERE site_id=$1) AS monthly_tokens FROM site WHERE id=$1",
+        [site],
+      )
+    ).rows[0];
+    if (!exists) throw new HttpError(404, "站点不存在");
+    const { rows } = await this.pool.query(
+      `WITH months AS (
+         SELECT generate_series(date_trunc('month',now())-interval '11 months',date_trunc('month',now()),interval '1 month')::date AS month
+       ), live AS (
+         SELECT date_trunc('month',created_at)::date AS month,count(*) AS jobs,sum(tokens_in) AS tokens_in,sum(tokens_out) AS tokens_out
+         FROM ai_job WHERE site_id=$1 AND created_at>=date_trunc('month',now())-interval '11 months'
+         GROUP BY 1
+       )
+       SELECT to_char(m.month,'YYYY-MM') AS month,
+         (coalesce(l.jobs,0)+coalesce(u.jobs,0))::float8 AS jobs,
+         (coalesce(l.tokens_in,0)+coalesce(u.tokens_in,0))::float8 AS tokens_in,
+         (coalesce(l.tokens_out,0)+coalesce(u.tokens_out,0))::float8 AS tokens_out
+       FROM months m
+       LEFT JOIN live l ON l.month=m.month
+       LEFT JOIN ai_usage_month u ON u.site_id=$1 AND u.month=m.month
+       ORDER BY m.month DESC`,
+      [site],
+    );
+    const months = rows.map((row) => ({
+      month: row.month as string,
+      jobs: Number(row.jobs),
+      tokensIn: Number(row.tokens_in),
+      tokensOut: Number(row.tokens_out),
+    }));
+    const current = months[0]!;
+    return {
+      site,
+      monthlyTokens: (exists.monthly_tokens as number | null) ?? null,
+      currentMonth: {
+        jobs: current.jobs,
+        tokensIn: current.tokensIn,
+        tokensOut: current.tokensOut,
+        used: current.tokensIn + current.tokensOut,
+      },
+      months,
+    };
+  }
 }
 export class AiWorker {
   private operators: Operators;
@@ -336,12 +379,7 @@ export class AiWorker {
         )
       ).rows[0];
       if (!config?.enabled) throw new Error("disabled");
-      const used = (
-        await this.pool.query(
-          "SELECT coalesce(sum(tokens_in+tokens_out),0)::int AS used FROM ai_job WHERE site_id=$1 AND created_at>=date_trunc('month',now()) AND id<>$2",
-          [row.site_id, row.id],
-        )
-      ).rows[0].used as number;
+      const used = await monthlyTokensUsed(this.pool, row.site_id, row.id);
       if (used >= config.monthly_tokens) throw new Error("budget_exceeded");
       const secret = unseal<{ key: string }>(config.sealed_key, this.key);
       const result = await this.transport({
@@ -375,3 +413,66 @@ export class AiWorker {
     return true;
   }
 }
+// Tokens charged to the site this month: live jobs plus anything already rolled up
+// into ai_usage_month (normally 0, since pruning never touches the current month).
+export async function monthlyTokensUsed(
+  db: Pick<Pool, "query">,
+  site: string,
+  excludeJob?: string,
+) {
+  const row = (
+    await db.query(
+      `SELECT (coalesce((SELECT sum(tokens_in+tokens_out) FROM ai_job
+                 WHERE site_id=$1 AND created_at>=date_trunc('month',now())
+                   AND ($2::uuid IS NULL OR id<>$2::uuid)),0)
+             + coalesce((SELECT tokens_in+tokens_out FROM ai_usage_month
+                 WHERE site_id=$1 AND month=date_trunc('month',now())::date),0))::float8 AS used`,
+      [site, excludeJob ?? null],
+    )
+  ).rows[0];
+  return Number(row.used);
+}
+// Rolls old terminal jobs into ai_usage_month and deletes them. Each batch is one
+// statement, so the delete and the rollup commit together and nothing is counted twice.
+export async function pruneAiJobs(
+  pool: Pool,
+  policy: RetentionPolicy,
+): Promise<Record<string, number>> {
+  let deletedJobs = 0,
+    batches = 0;
+  while (batches < policy.maxBatches) {
+    const deleted = Number(
+      (
+        await pool.query(
+          `WITH doomed AS (
+             DELETE FROM ai_job WHERE id IN (
+               SELECT id FROM ai_job
+               WHERE status IN ('done','failed','cancelled')
+                 AND (completed_at<now()-$1::int*interval '1 day'
+                   OR (completed_at IS NULL AND created_at<now()-$1::int*interval '1 day'))
+                 AND created_at<date_trunc('month',now())
+               LIMIT $2 FOR UPDATE SKIP LOCKED)
+             RETURNING site_id,created_at,tokens_in,tokens_out
+           ), rolled AS (
+             INSERT INTO ai_usage_month(site_id,month,jobs,tokens_in,tokens_out)
+             SELECT site_id,date_trunc('month',created_at)::date,count(*),sum(tokens_in),sum(tokens_out)
+             FROM doomed GROUP BY 1,2
+             ON CONFLICT(site_id,month) DO UPDATE SET
+               jobs=ai_usage_month.jobs+excluded.jobs,
+               tokens_in=ai_usage_month.tokens_in+excluded.tokens_in,
+               tokens_out=ai_usage_month.tokens_out+excluded.tokens_out
+             RETURNING 1
+           )
+           SELECT count(*)::int AS deleted FROM doomed`,
+          [policy.aiJobDays, policy.batchSize],
+        )
+      ).rows[0].deleted,
+    );
+    if (!deleted) break;
+    batches++;
+    deletedJobs += deleted;
+    if (deleted < policy.batchSize) break;
+  }
+  return { deletedJobs, batches };
+}
+
