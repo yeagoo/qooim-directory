@@ -32,6 +32,7 @@ import { aiHttp } from "./ai-http.js";
 import { Media } from "./media.js";
 import { mediaHttp } from "./media-http.js";
 import { Limits, limitsHttp } from "./limits.js";
+import { AiBilling, aiBillingHttp } from "./ai-billing.js";
 import { DEFAULT_RETENTION, type RetentionPolicy } from "./retention.js";
 import { Personal } from "./personal.js";
 import { AuditLog } from "./audit.js";
@@ -55,6 +56,7 @@ export class Application {
   readonly ai: AiService;
   readonly collectors: Collectors;
   readonly limits: Limits;
+  readonly aiBilling: AiBilling;
   private assets = new Map<string, { body: string; etag: string }>();
   constructor(
     readonly pool: Pool,
@@ -89,6 +91,7 @@ export class Application {
     this.ai = new AiService(pool, config.key);
     this.collectors = new Collectors(pool);
     this.limits = new Limits(pool);
+    this.aiBilling = new AiBilling(pool);
   }
   async close() {
     await this.auth.close();
@@ -343,6 +346,8 @@ export class Application {
                       ? "collector-admin.js"
                     : path === "/assets/limits-admin.js" && admin
                       ? "limits-admin.js"
+                    : path === "/assets/ai-billing-admin.js" && admin
+                      ? "ai-billing-admin.js"
                   : path === "/assets/github-admin.js" && admin
               ? "github-admin.js"
               : path === "/assets/content-admin.js" && admin
@@ -455,6 +460,15 @@ export class Application {
         () => this.body(request),
       );
       if (collectorResponse) return collectorResponse;
+      // Before aiHttp: it answers 405 for any other /ai/* action.
+      const billingResponse = await aiBillingHttp(
+        this.aiBilling,
+        operator,
+        action,
+        request,
+        () => this.body(request),
+      );
+      if (billingResponse) return billingResponse;
       const aiResponse = await aiHttp(
         this.ai,
         operator,

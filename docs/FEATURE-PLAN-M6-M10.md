@@ -98,7 +98,9 @@ M10 放最后：改动面最大，并且需要 M6/M7 先把统一采集器的配
 
 ## M9 AI 治理
 
-- 提示词模板表 `ai_prompt(kind, version, system, task, created_by, created_at)`，内置 v1 作为只读种子。站点选择每种任务用哪个版本；任务记录 `prompt_version`（字段已有）。改提示词只能新建版本。
+状态：代码已完成，本地回归通过（2026-10-23，见 [M9 验收](ACCEPTANCE-M9-20261023.md)）；尚未发布。实施时的调整：`ai_prompt` 只保存任务指令；系统提示（用户内容不可信、只输出 JSON）、数据包装和输出 schema 固定在代码中，自定义版本改不掉这些防护。内置 v1 保留在代码里，不写入表。
+
+- 提示词模板表 `ai_prompt(kind, version, instructions, note, created_by, created_at)`，内置 v1 只读。站点选择每种任务用哪个版本（`ai_config.prompt_versions`）；任务在创建时记录 `prompt_version`，Worker 按任务记录的版本生成提示。改提示词只能新建版本，只有站群管理员能新建。
 - 对账：导入供应商用量 CSV/JSON（按天或按月的 token 数），和 `ai_usage_month` 加当月 `ai_job` 对比，显示差异，不自动修正预算。
 - 余额检查：OpenAI-compatible 协议没有标准的余额接口，所以默认不支持。只提供可选的“余额端点 + JSON 字段路径”，并沿用同一套 SSRF 防护；读不到时显示“未知”。
 

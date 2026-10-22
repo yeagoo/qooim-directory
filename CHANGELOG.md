@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — M6 配额与保留期、M7 运维 UI、M8 媒体版本
+## Unreleased — M6 配额与保留期、M7 运维 UI、M8 媒体版本、M9 AI 治理
 
 开发方案见 [M6–M10](docs/FEATURE-PLAN-M6-M10.md)。
 
@@ -29,13 +29,21 @@
 - 媒体页：版本标记、历史版本面板、替换、批量上传（逐个上传，单独显示结果，配额不足时停止剩余文件）。
 - 迁移 `012-media-versions.sql`；新增测试 `tests/p8/`。
 
+### Added（M9 AI 治理）
+
+- 提示词版本：内置 v1 只读；站群管理员新建版本，创建后不能修改；只能定制任务指令，系统提示和输出约束固定在代码里。各站为每种任务选择版本，任务记录创建时用的版本，Worker 按记录的版本生成提示。
+- 对账：按月录入或用 CSV 导入供应商用量，与系统记录对比（差额和百分比），不影响预算。
+- 余额检查（可选）：每站配置余额接口和 JSON 字段，由 Worker 带 API Key 发起请求（HTTPS、私网拒绝、固定 DNS、不跟随跳转、限时限量），每 6 小时自动检查一次，也可以手动排队检查。
+- 新增“AI 对账”页面；AI 任务列表显示提示词版本。
+- 迁移 `013-ai-governance.sql`；新增测试 `tests/p9/`。
+
 ### Changed（M8）
 
 - 媒体对象的 `url` 字段改为当前版本的地址 `/media/<id>/<version>`。外部如果直接引用了旧的 `/media/<id>`，仍可通过跳转访问。
 
 ### Upgrade
 
-- 应用迁移 `010-quota-retention.sql`、`011-operations-ui.sql`、`012-media-versions.sql`（会给现有媒体补上 v1，给已有发布记录补上 `version: 1`）。现有站点使用默认配额；如果已经超出默认配额，只会阻止新增，不删除任何数据。
+- 应用迁移 `010-quota-retention.sql`、`011-operations-ui.sql`、`012-media-versions.sql`（会给现有媒体补上 v1，给已有发布记录补上 `version: 1`）、`013-ai-governance.sql`。现有站点使用默认配额；如果已经超出默认配额，只会阻止新增，不删除任何数据。
 - 首次运行保留期清理时，会处理历史上积累的数据（每类每次最多 10 万行，下一小时继续）。
 
 ## v0.2.0-rc.1 — 2026-10-21 (release candidate)

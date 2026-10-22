@@ -23,6 +23,10 @@ export async function aiHttp(
       .parse(new URL(request.url).searchParams.get("site"));
     return Response.json(await ai.usage(actor, site));
   }
+  if (action === "/ai/prompts" && request.method === "GET")
+    return Response.json(await ai.prompts(actor));
+  if (action === "/ai/prompts" && request.method === "POST")
+    return Response.json(await ai.createPrompt(actor, await body()), { status: 201 });
   if (action === "/ai/config" && request.method === "POST")
     return Response.json(await ai.saveConfig(actor, await body()));
   if (action === "/ai/jobs" && request.method === "GET") {

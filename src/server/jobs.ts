@@ -3,6 +3,7 @@ import { OutboxWorker } from "../domain/outbox.js";
 import { GithubWorker } from "./github.js";
 import { AuthRegistry } from "./auth.js";
 import { AiWorker } from "./ai.js";
+import { AiBalanceWorker } from "./ai-billing.js";
 import { CollectorWorker } from "./collectors.js";
 import { runMaintenance } from "./maintenance.js";
 import type { RetentionPolicy } from "./retention.js";
@@ -44,6 +45,7 @@ export async function runJobs(
   });
   // Bound SMTP work per iteration so a failing transport cannot starve maintenance.
   if (key) await attempt(() => new AiWorker(pool, key).runOnce());
+  if (key) await attempt(() => new AiBalanceWorker(pool, key).runOnce());
   await attempt(async () => {
     const collectors = new CollectorWorker(pool);
     await collectors.schedule();

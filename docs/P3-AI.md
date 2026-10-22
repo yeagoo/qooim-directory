@@ -57,10 +57,42 @@ Key 使用 `AUTH_ENCRYPTION_KEY` 经 AES-256-GCM 封装后存 `ai_config.sealed_
 - 当月预算 = 当月 `ai_job` 加当月 `ai_usage_month`，所以调整保留期不会让预算少算。
 - 后台 AI 设置页显示当月用量占预算的比例，以及近 12 个月的用量表。清理前后，各月总数保持一致。
 
+## 提示词版本（M9）
+
+- 每种任务（generate/translate/seo）的 v1 是代码里的内置指令，只读。站群管理员可以新建 v2、v3…，版本创建后不能修改或删除，要改只能再建一个新版本。
+- 自定义版本只替换 `<task>` 里的任务指令。系统提示（用户内容是不可信数据、只输出 JSON）、`<data>` 包装和输出 schema 都固定在代码里，自定义提示词改不掉这些防护。
+- 各站在 AI 设置页的“提示词版本”面板里，为每种任务选择版本（`ai_config.prompt_versions`，没选的用 v1）。任务创建时记录当时选中的版本（`prompt_version`），Worker 按任务记录的版本生成提示，所以之后再改选择不影响已排队的任务；重试按重试时的选择。如果任务记录的版本找不到，任务直接失败（`prompt_missing`），不会调用供应商。
+
+| 方法/路径 | 用途 |
+| --- | --- |
+| `GET /admin/api/ai/prompts` | 各任务类型的全部版本（含内置 v1） |
+| `POST /admin/api/ai/prompts` | `{kind,instructions,note?}`；仅站群管理员；审计 `ai.prompt.create` |
+| `POST /admin/api/ai/config` | 可附带 `promptVersions`（部分更新）；也可以只传 `{site,promptVersions}` 单独保存版本选择 |
+
+## 对账与余额（M9）
+
+后台“AI 对账”页（`#ai-billing/<site>`，站点页和 AI 设置页都有入口）：
+
+- **对账**：按月录入供应商账单上的输入/输出 token 数，或粘贴 CSV（表头 `month,tokens_in,tokens_out[,note]`，最多 120 行、64 KiB；只要有一行不合法，整批都不写入，并按行号列出错误）。页面列出近 12 个月“系统记录 vs 供应商”的差额和百分比，差异超过 5% 的标红。系统记录的口径和预算一致：当月及以前的 `ai_job` 加 `ai_usage_month`。录入的数据只用来对比，**不会**修改预算、任务或用量汇总。
+- **余额检查**（可选）：OpenAI-compatible 协议没有标准的余额接口，所以每站可以自己配置一个余额接口（公开 HTTPS 地址）和 JSON 字段路径（如 `balance_infos.0.total_balance`，数字或数字字符串都可以）。
+  - 请求由 Worker 发出，带上本站 AI 配置里的 API Key（Bearer）。沿用同样的防护：只允许 HTTPS、DNS 解析后拒绝私网地址并固定连接、不跟随跳转、10 秒超时、响应不超过 64 KiB。
+  - 网页进程不对外发请求，“立即检查”只是排队：已有检查排队中、正在执行，或距上次检查不足 60 秒时返回 409。
+  - Worker 每 6 小时自动检查一次；新保存的配置会尽快检查一次。
+  - 读不到时余额显示“未知”，并给出错误码（如 `http_401`、`field_missing`、`unsafe_address`）。不记录 API Key 和响应内容。
+
+| 方法/路径 | 用途 |
+| --- | --- |
+| `GET /admin/api/ai/reconcile?site=` | 近 12 个月对账 |
+| `POST /admin/api/ai/reconcile` | `{site,month,tokensIn,tokensOut,note?}`；审计 `ai.reconcile.save` |
+| `POST /admin/api/ai/reconcile/import` | `{site,csv}`；审计 `ai.reconcile.import` |
+| `GET /admin/api/ai/balance?site=` | 余额配置与最近一次结果 |
+| `POST /admin/api/ai/balance` | `{site,url,field,enabled}`；审计只记录主机名和字段 |
+| `POST /admin/api/ai/balance/check` | `{site}`；排队检查 |
+
 ## 限制与未验证
 
 - 没有真实 OpenAI/Anthropic 或第三方兼容端点联调；测试使用注入传输，验证队列/校验/预算/人工确认，不证明供应商可用性或内容质量。
-- 没有 token 计费对账、供应商账单同步、提示词版本管理 UI（M9）；见 [M6–M10 方案](FEATURE-PLAN-M6-M10.md)。
+- 对账依赖人工录入或 CSV，没有自动同步供应商账单；余额检查只在配置了余额接口时可用。
 - 端点 DNS 固定是尽力而为的 SSRF 缓解，不替代出站防火墙/代理。
 - AI 输出可能不准确；发布者必须核对事实、版权、翻译质量和 SEO 声明。
 

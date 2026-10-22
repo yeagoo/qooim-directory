@@ -106,13 +106,98 @@ function bindJobs(site, workspace, api, notice) {
   });
   return run(load);
 }
+const promptKinds = ["generate", "translate", "seo"];
+const versionLabel = (entry) =>
+  `v${entry.version}${entry.builtin ? "（内置）" : entry.note ? `（${entry.note}）` : ""}`;
+// Per-kind version select with a read-only view of the chosen instructions; global
+// admins also get the form for creating a new (immutable) version.
+function promptsPanel(prompts, selected, global) {
+  const kinds = promptKinds
+    .map((kind) => {
+      const list = prompts.kinds[kind] || [];
+      const current = selected[kind] ?? 1;
+      const options = list.some((entry) => entry.version === current)
+        ? list
+        : [{ version: current, note: "不存在", builtin: false }, ...list];
+      const shown = list.find((entry) => entry.version === current);
+      return `<div class="ai-prompt-kind" data-kind="${kind}"><label for="ai-prompt-${kind}">${escape(kindLabels[kind])}</label><select id="ai-prompt-${kind}" data-kind="${kind}">${options.map((entry) => `<option value="${entry.version}" ${entry.version === current ? "selected" : ""}>${escape(versionLabel(entry))}</option>`).join("")}</select><pre id="ai-prompt-text-${kind}" style="white-space:pre-wrap">${escape(shown?.instructions ?? "该版本不存在。")}</pre><p class="muted" id="ai-prompt-meta-${kind}">${escape(promptMeta(shown))}</p></div>`;
+    })
+    .join("");
+  const create = global
+    ? `<h3>新建版本</h3><p class="muted">版本创建后不能修改或删除；修改提示词就是新建一个版本，各站点需要自行选择后才会使用。</p><label for="ai-prompt-new-kind">任务类型</label><select id="ai-prompt-new-kind">${promptKinds.map((kind) => `<option value="${kind}">${escape(kindLabels[kind])}</option>`).join("")}</select><label for="ai-prompt-new-text">任务说明（最多 4000 字）</label><textarea id="ai-prompt-new-text" maxlength="4000" spellcheck="false"></textarea><label for="ai-prompt-new-note">备注（最多 200 字）</label><input id="ai-prompt-new-note" maxlength="200"><div class="actions"><button id="create-ai-prompt">创建新版本</button></div>`
+    : `<p class="muted">只有站群管理员可以新建提示词版本。</p>`;
+  return `<section class="panel" id="ai-prompts"><h2>提示词版本</h2><p class="muted">只能自定义任务说明；系统提示（用户内容按不可信数据处理、只返回 JSON）和输出格式固定不变。任务创建时记录当时选用的版本，之后修改选择不影响已创建的任务。</p>${kinds}<div class="actions"><button id="save-ai-prompts">保存版本选择</button></div>${create}</section>`;
+}
+function promptMeta(entry) {
+  if (!entry) return "";
+  if (entry.builtin) return "内置版本，只读";
+  return `${entry.createdBy ?? "—"} · ${time(entry.createdAt)}`;
+}
+function bindPrompts(site, workspace, api, notice, prompts, rerender) {
+  const panel = workspace.querySelector("#ai-prompts");
+  const find = (kind, version) =>
+    (prompts.kinds[kind] || []).find((entry) => entry.version === Number(version));
+  const newKind = panel.querySelector("#ai-prompt-new-kind");
+  const newText = panel.querySelector("#ai-prompt-new-text");
+  const prefill = () => {
+    if (!newKind || !newText) return;
+    const kind = newKind.value;
+    newText.value = find(kind, panel.querySelector(`#ai-prompt-${kind}`).value)?.instructions ?? "";
+  };
+  for (const select of panel.querySelectorAll("select[data-kind]"))
+    select.addEventListener("change", () => {
+      const kind = select.dataset.kind;
+      const entry = find(kind, select.value);
+      panel.querySelector(`#ai-prompt-text-${kind}`).textContent =
+        entry?.instructions ?? "该版本不存在。";
+      panel.querySelector(`#ai-prompt-meta-${kind}`).textContent = promptMeta(entry);
+      if (newKind?.value === kind) prefill();
+    });
+  newKind?.addEventListener("change", prefill);
+  prefill();
+  const run = async (button, work) => {
+    button.disabled = true;
+    try {
+      await work();
+    } catch (error) {
+      notice(error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  };
+  panel.querySelector("#save-ai-prompts").addEventListener("click", (event) =>
+    run(event.currentTarget, async () => {
+      const promptVersions = Object.fromEntries(
+        promptKinds.map((kind) => [kind, Number(panel.querySelector(`#ai-prompt-${kind}`).value)]),
+      );
+      await api("/ai/config", { site, promptVersions });
+      await rerender();
+      notice("提示词版本选择已保存。");
+    }),
+  );
+  panel.querySelector("#create-ai-prompt")?.addEventListener("click", (event) =>
+    run(event.currentTarget, async () => {
+      const note = panel.querySelector("#ai-prompt-new-note").value.trim();
+      const created = await api("/ai/prompts", {
+        kind: newKind.value,
+        instructions: newText.value,
+        ...(note ? { note } : {}),
+      });
+      await rerender();
+      notice(`已创建${kindLabels[newKind.value] ?? ""}提示词 v${created.version}，选择后才会用于本站。`);
+    }),
+  );
+}
 export async function renderAi(site, workspace, api, notice) {
-  const [config, usage] = await Promise.all([
+  const [config, usage, prompts, me] = await Promise.all([
     api("/ai/config?site=" + encodeURIComponent(site)),
     api("/ai/usage?site=" + encodeURIComponent(site)),
+    api("/ai/prompts"),
+    api("/me"),
   ]);
-  workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / AI</span><h1>AI 生成与翻译 · ${escape(site)}</h1><p class="muted">服务端调用 OpenAI-compatible 端点；密钥加密保存，不回显。AI 输出只作为草稿建议，必须人工保存并发布。</p><section class="panel"><h2>供应商配置</h2><div class="split"><div><label for="ai-endpoint">HTTPS 端点</label><input id="ai-endpoint" value="${escape(config.endpoint)}" placeholder="https://api.openai.com/v1/chat/completions"><label for="ai-model">模型</label><input id="ai-model" value="${escape(config.model)}" placeholder="gpt-4.1-mini"></div><div><label for="ai-key">API Key</label><input id="ai-key" type="password" autocomplete="new-password" placeholder="${config.hasKey ? "已保存，留空保持不变" : "首次配置必填"}"><label for="ai-budget">月度 token 预算</label><input id="ai-budget" type="number" min="1000" max="100000000" step="1000" value="${config.monthlyTokens}"><label><input id="ai-enabled" type="checkbox" ${config.enabled ? "checked" : ""}>启用本站 AI</label></div></div><div class="actions"><button id="save-ai">保存配置</button><button id="refresh-ai" class="secondary">刷新</button></div><p id="ai-state" class="muted">${config.hasKey ? "已保存 API Key" : "尚未保存 API Key"} · 更新于 ${escape(config.updatedAt ?? "—")}</p></section>${usagePanel(usage)}${jobsPanel}<p id="message" role="status" aria-live="polite"></p>`;
+  workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / AI</span> · <a href="#ai-billing/${encodeURIComponent(site)}">用量对账与余额 →</a><h1>AI 生成与翻译 · ${escape(site)}</h1><p class="muted">服务端调用 OpenAI-compatible 端点；密钥加密保存，不回显。AI 输出只作为草稿建议，必须人工保存并发布。</p><section class="panel"><h2>供应商配置</h2><div class="split"><div><label for="ai-endpoint">HTTPS 端点</label><input id="ai-endpoint" value="${escape(config.endpoint)}" placeholder="https://api.openai.com/v1/chat/completions"><label for="ai-model">模型</label><input id="ai-model" value="${escape(config.model)}" placeholder="gpt-4.1-mini"></div><div><label for="ai-key">API Key</label><input id="ai-key" type="password" autocomplete="new-password" placeholder="${config.hasKey ? "已保存，留空保持不变" : "首次配置必填"}"><label for="ai-budget">月度 token 预算</label><input id="ai-budget" type="number" min="1000" max="100000000" step="1000" value="${config.monthlyTokens}"><label><input id="ai-enabled" type="checkbox" ${config.enabled ? "checked" : ""}>启用本站 AI</label></div></div><div class="actions"><button id="save-ai">保存配置</button><button id="refresh-ai" class="secondary">刷新</button></div><p id="ai-state" class="muted">${config.hasKey ? "已保存 API Key" : "尚未保存 API Key"} · 更新于 ${escape(config.updatedAt ?? "—")}</p></section>${promptsPanel(prompts, config.promptVersions || {}, Boolean(me.global_admin))}${usagePanel(usage)}${jobsPanel}<p id="message" role="status" aria-live="polite"></p>`;
   workspace.querySelector("#refresh-ai")?.addEventListener("click", () => renderAi(site, workspace, api, notice));
+  bindPrompts(site, workspace, api, notice, prompts, () => renderAi(site, workspace, api, notice));
   await bindJobs(site, workspace, api, notice);
   workspace.querySelector("#save-ai")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
