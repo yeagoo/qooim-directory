@@ -24,6 +24,32 @@ export function document(
 ) {
   return `<!doctype html><html lang="${escape(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title>${head}<link rel="stylesheet" href="/assets/network.css"></head><body>${body}<footer class="footer" aria-label="Source"><a href="/source.tar.gz">获取本部署源码 · AGPL-3.0</a></footer>${script ? `<script type="module" src="${script}"></script>` : ""}</body></html>`;
 }
+export function staticPage(
+  siteName: string,
+  page: { title: string; content: string; locale: string },
+  canonical: string,
+  alternates: { locale: string; url: string }[],
+) {
+  const description = page.content
+    .replace(/[*_`[\]()>#|]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+  const paragraphs = page.content
+    .split(/\r?\n\s*\r?\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${escape(paragraph).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  const head = `<meta name="description" content="${escape(description)}"><link rel="canonical" href="${escape(canonical)}"><meta property="og:title" content="${escape(page.title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${escape(canonical)}">${alternates.map((alternate) => `<link rel="alternate" hreflang="${escape(alternate.locale)}" href="${escape(alternate.url)}">`).join("")}`;
+  return document(
+    page.title + " · " + siteName,
+    `<main class="public"><header><a class="brand" href="/">${escape(siteName)}</a><nav><a href="/">返回目录</a></nav></header><article class="resource-detail"><h1>${escape(page.title)}</h1>${paragraphs}</article></main>`,
+    undefined,
+    head,
+    page.locale === "zh" ? "zh-CN" : "en",
+  );
+}
 export function adminPage() {
   return document(
     "站群工作台",

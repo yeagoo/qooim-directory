@@ -2,12 +2,16 @@
 import { marketingNavigationKeys } from "./config.js";
 import { NavBar, type NavKey } from "./navbar.js";
 import { context } from "../../runtime.js";
+import type { PublicCategory } from "../../../../public/sdk.js";
 
 const TOP_N = 18;
 
 export function NavBarShell() {
   const { page } = context();
-  const categories = page.kind === "missing" ? [] : (page.categories ?? []);
+  const categories: PublicCategory[] =
+    page.kind === "missing" || page.kind === "page"
+      ? []
+      : (page.categories ?? []);
   const extra: NavKey[] = page.site.navigation.map((n) => ({ key: `site-${n.href}`, href: n.href, label: n.label }));
   const navItems: NavKey[] = [...marketingNavigationKeys, ...extra];
 

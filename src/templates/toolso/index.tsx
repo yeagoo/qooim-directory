@@ -4,6 +4,7 @@ import { DetailPage } from "./pages/detail.js";
 import { DirectoryPage } from "./pages/directory.js";
 import { HomePage } from "./pages/home.js";
 import { MissingPage } from "./pages/missing.js";
+import { StaticPage } from "./pages/page.js";
 
 export default defineTemplate({
   id: "toolso",
@@ -18,4 +19,5 @@ export default defineTemplate({
       <DirectoryPage page={page} />
     ),
   renderHome: (page) => <HomePage page={page} />,
+  renderPage: (page) => <StaticPage page={page} />,
 });

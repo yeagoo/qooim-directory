@@ -5,7 +5,13 @@
 // <Document> are built, i.e. before Document calls provide(), so they must not touch the render
 // context (context()/translator()/localePath()); messages are looked up with the page's own locale.
 // Titles get the "%s · Brand" template unless they already contain the brand. See NOTICE.md.
-import type { PublicCategory, PublicResource, TemplateHomePage, TemplatePage } from "../../../public/sdk.js";
+import type {
+  PublicCategory,
+  PublicResource,
+  TemplateHomePage,
+  TemplatePage,
+  TemplateStaticPage,
+} from "../../../public/sdk.js";
 import type { Seo } from "../document.js";
 import { messages } from "../i18n/messages.js";
 import { extra } from "../i18n/extra.js";
@@ -223,5 +229,20 @@ export function missingSeo(page: Missing): Seo {
   return {
     title: titled(page, message(page, "errors.404.title")),
     description: message(page, "errors.404.message"),
+  };
+}
+
+export function staticSeo(page: TemplateStaticPage): Seo {
+  const description = page.content
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .find((block) => block && !/^(#|\||[-*+] |\d+\. |>|```)/.test(block))
+    ?.replace(/[*_`[\]]|\(([^)]*)\)/g, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 160);
+  return {
+    title: titled(page, page.title),
+    description: description || page.title,
+    type: "article",
   };
 }

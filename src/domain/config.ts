@@ -17,6 +17,20 @@ export const templateParamsSchema = z.strictObject({
     .optional(),
   motion: z.enum(["smooth", "crisp", "playful", "minimal"]).optional(),
 });
+export const pageKeys = ["about", "privacy", "terms", "contact"] as const;
+export type PageKey = (typeof pageKeys)[number];
+const pageCopy = z.strictObject({
+  title: z.string().trim().min(1).max(100),
+  content: z.string().max(20000),
+});
+const pagesSchema = z
+  .strictObject({
+    about: z.strictObject({ zh: pageCopy.optional(), en: pageCopy.optional() }).optional(),
+    privacy: z.strictObject({ zh: pageCopy.optional(), en: pageCopy.optional() }).optional(),
+    terms: z.strictObject({ zh: pageCopy.optional(), en: pageCopy.optional() }).optional(),
+    contact: z.strictObject({ zh: pageCopy.optional(), en: pageCopy.optional() }).optional(),
+  })
+  .default({});
 const item = z.strictObject({
   id: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/),
   label: z.string().min(1).max(100),
@@ -41,6 +55,8 @@ export const configSchema = z.strictObject({
     .default([])
     .refine((v) => new Set(v.map((i) => i.id)).size === v.length),
   tagline: z.string().max(300).default(""),
+  // Optional static pages. A missing object keeps older published configs valid.
+  pages: pagesSchema,
   modules: z
     .array(z.enum(moduleIds))
     .max(2)

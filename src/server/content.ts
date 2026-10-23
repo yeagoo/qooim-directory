@@ -12,14 +12,18 @@ export const localeSchema = z.enum(["zh", "en"]);
 const reservedSlugs = new Set(["category", "tag", "collection", "compare"]);
 const text = z.string().trim().min(1).max(200);
 const description = z.string().trim().min(1).max(5000);
-const webUrl = z
+export const webUrl = z
   .url()
   .max(2048)
   .refine((v) => {
-    const u = new URL(v);
-    return (
-      ["http:", "https:"].includes(u.protocol) && !u.username && !u.password
-    );
+    try {
+      const u = new URL(v);
+      return (
+        ["http:", "https:"].includes(u.protocol) && !u.username && !u.password
+      );
+    } catch {
+      return false;
+    }
   }, "Only public HTTP(S) links without credentials");
 const bullet = z.string().trim().min(1).max(300);
 const bullets = z.array(bullet).max(12);

@@ -19,6 +19,29 @@
 - 重复 ID、非法父子关系、不支持语言和缺失引用在发布前拒绝。
 - 停用模块保留数据；删除资源、用户或分类实体不是快照缺项的副作用。
 
+## 静态页面
+
+配置可选增加 `pages` 对象，未提供时规范化为 `{}`，旧配置不需要迁移。支持的 key 固定为 `about`、`privacy`、`terms`、`contact`；每个 key 可分别提供 `zh` 和 `en`：
+
+```json
+{
+  "pages": {
+    "about": {
+      "zh": {"title": "关于本站", "content": "## 我们是谁\n\n这是一段 Markdown。"},
+      "en": {"title": "About", "content": "## Who we are\n\nThis is Markdown."}
+    },
+    "privacy": {
+      "zh": {"title": "隐私政策", "content": "我们只收集运行服务所需的信息。"}
+    }
+  }
+}
+```
+
+- `title` 去除首尾空白后必须为 1–100 字；`content` 是最多 20,000 字的不可信 Markdown，可按空行分段，模板不得把其中的 HTML 直接插入页面。
+- 只有配置了某语言版本，`/<locale>/<key>` 才存在；其他语言和未配置的 key 返回 404。canonical 指向自身，hreflang 和 sitemap 只列实际存在的语言版本。
+- 若 `catalogPath` 与页面 key 相同，目录路由优先；该 key 不再作为静态页面、sitemap 页面或 toolso 页脚链接出现。
+- 模板实现可选 `renderPage` 时使用模板外壳；未实现时由服务器输出转义后的段落兜底。字段定义和徽章路由见 [模板开发](TEMPLATE-DEVELOPMENT.md#m15静态页面与收录徽章)。
+
 ## 草稿与并发
 
 导入生成候选变更，先比较和校验，保存时检查读取的已发布修订及共享草稿版本。后台执行同样检查。

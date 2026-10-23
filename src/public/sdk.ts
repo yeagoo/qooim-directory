@@ -15,7 +15,15 @@ export type TemplateSite = {
   locales: ("zh" | "en")[];
   navigation: { label: string; href: string }[];
   templateParams?: TemplateParams;
+  /** Configured static pages for navigation; page content is delivered separately as TemplateStaticPage. */
+  pages?: Partial<
+    Record<
+      TemplateStaticPageKey,
+      Partial<Record<"zh" | "en", { title: string }>>
+    >
+  >;
 };
+export type TemplateStaticPageKey = "about" | "privacy" | "terms" | "contact";
 export type PublicProject = {
   provider: "github";
   repoId: string;
@@ -123,6 +131,13 @@ export type TemplatePage = {
   | { kind: "missing" }
 );
 type PageBase = Omit<Extract<TemplatePage, { kind: "missing" }>, "kind">;
+/** A configured about/privacy/terms/contact page; `content` is untrusted Markdown. */
+export type TemplateStaticPage = PageBase & {
+  kind: "page";
+  key: TemplateStaticPageKey;
+  title: string;
+  content: string;
+};
 /** Site front page; only requested from templates that implement `renderHome`. */
 export type TemplateHomePage = PageBase & {
   kind: "home";
@@ -140,6 +155,8 @@ export type TemplateDefinition = {
   render: (page: TemplatePage) => TemplateOutput;
   /** Optional front page. Without it, "/" keeps rendering the default-locale directory. */
   renderHome?: (page: TemplateHomePage) => TemplateOutput;
+  /** Optional static content page. The server supplies a plain fallback when omitted. */
+  renderPage?: (page: TemplateStaticPage) => TemplateOutput;
   /**
    * Optional routes the template renders. Missing or false means the route is not
    * served for this template; comparison data is omitted from detail pages too.

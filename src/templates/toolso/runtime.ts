@@ -6,12 +6,16 @@
  * react-server build, which has no createContext/useContext. Rendering is synchronous, so the
  * root <Document> stores the context in this module before any child component runs.
  */
-import type { TemplateHomePage, TemplatePage } from "../../public/sdk.js";
+import type {
+  TemplateHomePage,
+  TemplatePage,
+  TemplateStaticPage,
+} from "../../public/sdk.js";
 import { extra } from "./i18n/extra.js";
 import { messages } from "./i18n/messages.js";
 import { resetIds } from "./shims/react-hooks.js";
 
-export type AnyPage = TemplatePage | TemplateHomePage;
+export type AnyPage = TemplatePage | TemplateHomePage | TemplateStaticPage;
 export type Locale = "zh" | "en";
 /** Mirrors toolso's ClientSite (src/context/site-provider.tsx) for the fields Qoo.IM can supply. */
 export type ClientSite = {

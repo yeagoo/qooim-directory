@@ -7,16 +7,25 @@ import { z } from "zod";
 import { type AuthPolicy, clientIp } from "./auth-policy.js";
 import {
   renderHomeTemplate,
+  renderPageTemplate,
   renderTemplate,
   templateCss,
   templateHasHome,
+  templateHasPage,
   templateManifest,
   templateSupportsAlternatives,
   templateSupportsComparisons,
 } from "./templates.js";
 import { themeCss } from "./theme.js";
 import { Catalog, NotFound, type SiteContext, type SitemapItem } from "../domain/catalog.js";
-import { Conflict, InvalidReference, configSchema, type Config } from "../domain/config.js";
+import {
+  Conflict,
+  InvalidReference,
+  configSchema,
+  pageKeys,
+  type Config,
+  type PageKey,
+} from "../domain/config.js";
 import { transaction } from "../domain/transaction.js";
 import { AuthRegistry } from "./auth.js";
 import { Sites } from "./sites.js";
@@ -27,12 +36,13 @@ import {
   accountPage,
   accountHomePage,
   publicPage,
+  staticPage,
   css,
 } from "../ui/pages.js";
 import { moduleManifest } from "../public/modules.js";
 import { GithubSources } from "./github.js";
 import { githubHttp } from "./github-http.js";
-import { Content } from "./content.js";
+import { Content, webUrl } from "./content.js";
 import { contentHttp } from "./content-http.js";
 import { AiService } from "./ai.js";
 import { Collectors } from "./collectors.js";
@@ -44,6 +54,8 @@ import { Limits, limitsHttp } from "./limits.js";
 import { AiBilling, aiBillingHttp } from "./ai-billing.js";
 import { DEFAULT_RETENTION, type RetentionPolicy } from "./retention.js";
 import { Personal } from "./personal.js";
+import { MetadataService } from "./metadata.js";
+import { badgeSvg } from "./badge.js";
 import { AuditLog } from "./audit.js";
 import {
   personalPage,
@@ -58,12 +70,21 @@ const version = z.strictObject({
   revision: z.number().int().nonnegative(),
   draftVersion: z.number().int().nonnegative(),
 });
+function pageAlternates(config: Config, key: PageKey, origin: string) {
+  if (key === config.catalogPath) return [];
+  return config.locales.flatMap((locale) =>
+    config.pages?.[key]?.[locale]
+      ? [{ locale, url: `${origin}/${locale}/${key}` }]
+      : [],
+  );
+}
 export class Application {
   readonly sites: Sites;
   readonly auth: AuthRegistry;
   readonly catalog: Catalog;
   readonly content: Content;
   readonly personal: Personal;
+  readonly metadata: MetadataService;
   readonly github: GithubSources;
   readonly audit: AuditLog;
   readonly media: Media;
@@ -82,6 +103,7 @@ export class Application {
       auth?: AuthPolicy;
       mediaRoot?: string;
       retention?: RetentionPolicy;
+      metadataFetcher?: typeof import("./outbound.js").fetchPublicText;
     },
   ) {
     this.sites = new Sites(
@@ -99,6 +121,7 @@ export class Application {
     this.catalog = new Catalog(pool);
     this.content = new Content(pool);
     this.personal = new Personal(pool);
+    this.metadata = new MetadataService(pool, config.metadataFetcher);
     this.github = new GithubSources(pool, this.content);
     this.audit = new AuditLog(pool);
     this.media = new Media(pool, config.mediaRoot ?? ".local/media");
@@ -184,6 +207,7 @@ export class Application {
     const path = new URL(request.url).pathname;
     const publicAsset = path.startsWith("/assets/");
     const publicMedia = /^\/media\/[0-9a-f-]{36}\/[1-9][0-9]{0,8}$/.test(path);
+    const publicBadge = /^\/badge\/(?:zh|en)\/[a-z][a-z0-9-]{0,63}\.svg$/.test(path);
     const publicPage =
       path === "/" ||
       path === "/sitemap.xml" ||
@@ -198,7 +222,7 @@ export class Application {
       request.method === "GET" &&
       response.status === 200 &&
       !response.headers.has("set-cookie") &&
-      (publicAsset || publicPage || publicMedia);
+      (publicAsset || publicPage || publicMedia || publicBadge);
     const body = cacheable
       ? Buffer.from(await response.arrayBuffer())
       : undefined;
@@ -216,7 +240,7 @@ export class Application {
         "cache-control",
         publicMedia
           ? "public, max-age=31536000, immutable"
-          : publicAsset
+          : publicAsset || publicBadge
             ? "public, max-age=3600"
             : "public, max-age=60, must-revalidate",
       );
@@ -451,6 +475,14 @@ export class Application {
         return this.json(moduleManifest);
       if (action === "/templates" && request.method === "GET")
         return this.json(templateManifest);
+      const metadataAdmin = action.match(
+        /^\/content\/([a-z][a-z0-9-]{0,47})\/metadata$/,
+      );
+      if (metadataAdmin && request.method === "POST") {
+        await this.content.operators.require(operator, metadataAdmin[1], true);
+        const value = z.strictObject({ url: webUrl }).parse(await this.body(request));
+        return this.json(await this.metadata.fetch(value.url));
+      }
       if (action === "/me" && request.method === "GET")
         return this.json(operator);
       if (action === "/audit" && request.method === "GET") {
@@ -840,6 +872,36 @@ export class Application {
     const { revision, config } = await this.catalog.configuration(ctx);
     const url = new URL(request.url),
       locale = url.searchParams.get("locale") ?? config.locales[0];
+    const badge = path.match(
+      /^\/badge\/(zh|en)\/([a-z][a-z0-9-]{0,63})\.svg$/,
+    );
+    if (badge) {
+      if (request.method !== "GET") throw new HttpError(405, "Method not allowed");
+      if (!config.locales.includes(badge[1] as "zh" | "en")) throw new NotFound();
+      const theme = z.enum(["light", "dark"]).parse(
+        url.searchParams.get("theme") ?? "light",
+      );
+      const item = await this.catalog.detail(ctx, badge[1], badge[2]);
+      return new Response(
+        badgeSvg({
+          locale: badge[1] as "zh" | "en",
+          siteName: config.name,
+          title: item.title,
+          theme,
+          accentColor: /^#[0-9a-f]{6}$/i.test(
+            config.templateParams.accentColor ?? "",
+          )
+            ? config.templateParams.accentColor
+            : undefined,
+        }),
+        {
+          headers: {
+            "content-type": "image/svg+xml; charset=utf-8",
+            "x-content-type-options": "nosniff",
+          },
+        },
+      );
+    }
     if (path.startsWith("/api/me/")) {
       const user = await this.auth.current(site, request.headers);
       if (!user) throw new HttpError(401, "请先登录");
@@ -865,6 +927,15 @@ export class Application {
             await this.personal.submit(ctx.siteId, user, input),
             201,
           );
+        if (path === "/api/me/submissions/metadata") {
+          const value = z.strictObject({ url: webUrl }).parse(input);
+          return this.json(
+            await this.metadata.fetch(value.url, {
+              siteId: ctx.siteId,
+              userId: user.user_id,
+            }),
+          );
+        }
       } else if (request.method === "GET") {
         if (path === "/api/me/favorites")
           return this.json(
@@ -1025,6 +1096,35 @@ export class Application {
     const parts = path.split("/");
     const language = path === "/" ? config.locales[0] : parts[1];
     const localeRoot = parts.length === 2 && path !== "/";
+    // Static pages live at /<locale>/<key>. A catalog path with the same name wins.
+    const staticKey =
+      parts.length === 3 && pageKeys.includes(parts[2] as PageKey)
+        ? (parts[2] as PageKey)
+        : null;
+    if (staticKey && staticKey !== config.catalogPath) {
+      if (!config.locales.includes(language as "zh" | "en")) throw new NotFound();
+      const copy = config.pages?.[staticKey]?.[language as "zh" | "en"];
+      if (!copy) throw new NotFound();
+      const alternates = pageAlternates(config, staticKey, site.origin);
+      const page = {
+        kind: "page" as const,
+        key: staticKey,
+        title: copy.title,
+        content: copy.content,
+        site: config,
+        origin: site.origin,
+        catalogPath: config.catalogPath,
+        locale: language,
+        canonical: site.origin + path,
+        alternates,
+        noindex: false,
+      };
+      return this.html(
+        templateHasPage(config.template)
+          ? renderPageTemplate(config.template, page)
+          : staticPage(config.name, { ...copy, locale: language }, page.canonical, alternates),
+      );
+    }
     if (
       !config.locales.includes(language as "zh" | "en") ||
       (path !== "/" &&
@@ -1344,6 +1444,17 @@ export class Application {
         ["collection", collections],
       ] as const)
         for (const term of terms) pages.push({ loc: `${catalog}/${kind}/${term.id}` });
+      for (const key of pageKeys) {
+        if (key === config.catalogPath || !config.pages?.[key]?.[locale]) continue;
+        const alternates = pageAlternates(config, key, origin);
+        pages.push({
+          loc: `${origin}/${locale}/${key}`,
+          alternates: alternates.map((alternate) => ({
+            locale: alternate.locale,
+            href: alternate.url,
+          })),
+        });
+      }
       if (hasComparisons)
         for (const comparison of await this.catalog.comparisons(ctx, locale))
           pages.push({ loc: `${catalog}/compare/${comparison.id}`, lastmod: comparison.updated_at });

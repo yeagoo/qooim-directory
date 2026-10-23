@@ -1,6 +1,8 @@
 import { lookup } from "node:dns/promises";
 import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
+/** The target itself is not a public HTTPS origin (or resolved to a private one). */
+export class UnsafePublicTarget extends Error {}
 export function privateAddress(address: string) {
   if (isIP(address) === 4) {
     const octets = address.split(".").map(Number);
@@ -37,7 +39,7 @@ export function privateAddress(address: string) {
 export function publicUrl(value: string) {
   const url = new URL(value);
   if (url.protocol !== "https:" || url.username || url.password)
-    throw new Error("仅允许公开 HTTPS 地址");
+    throw new UnsafePublicTarget("仅允许公开 HTTPS 地址");
   const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (
     host === "localhost" ||
@@ -46,7 +48,7 @@ export function publicUrl(value: string) {
     host.endsWith(".internal") ||
     (isIP(host) && privateAddress(host))
   )
-    throw new Error("地址不是公开网络");
+    throw new UnsafePublicTarget("地址不是公开网络");
   return url;
 }
 async function requestText(
@@ -58,7 +60,7 @@ async function requestText(
   const host = url.hostname.replace(/^\[|\]$/g, ""),
     addresses = await lookup(host, { all: true, verbatim: true });
   if (!addresses.length || addresses.some((item) => privateAddress(item.address)))
-    throw new Error("地址解析到私网");
+    throw new UnsafePublicTarget("地址解析到私网");
   const selected = addresses[0];
   return new Promise<{
     status: number;
@@ -107,6 +109,7 @@ export async function fetchPublicText(
     timeoutMs?: number;
     maxBytes?: number;
     redirects?: number;
+    headers?: Record<string, string>;
   } = {},
 ): Promise<{ notModified: boolean; text: string; etag: string | null }> {
   let url = publicUrl(value);
@@ -117,6 +120,7 @@ export async function fetchPublicText(
       {
         "user-agent": "QooIM-Directory-Collector/1",
         accept: "application/rss+xml, application/atom+xml, application/json, text/xml, */*",
+        ...options.headers,
         ...(options.etag ? { "if-none-match": options.etag } : {}),
       },
       options.timeoutMs ?? 10000,

@@ -17,6 +17,7 @@ import { DetailComparisons } from "../components/detail/comparisons.js";
 import { DetailGithub } from "../components/detail/github.js";
 import { DetailHero } from "../components/detail/hero.js";
 import { DetailRelated } from "../components/detail/related.js";
+import { DetailBadge } from "../components/detail/badge.js";
 import { DETAIL_HERO_END_ID, SectionTabs, sectionElementId, type DetailSection } from "../components/detail/section-nav.js";
 import { ToolDetailShell } from "../components/detail/shell.js";
 import { DetailSidebar } from "../components/detail/sidebar.js";
@@ -41,6 +42,7 @@ function ToolDetail({ page }: { page: Page }) {
   const tq = useTranslations("qooim.catalog.github");
   const tm = useTranslations("qooim.catalog.detail");
   const tc = useTranslations("qooim.catalog.compare");
+  const tb = useTranslations("qooim.catalog.badge");
   const tool = page.item;
   const details = tool.details ?? {};
   const features = details.features ?? [];
@@ -62,6 +64,7 @@ function ToolDetail({ page }: { page: Page }) {
   if (tool.project) nav.push({ slug: "github", title: tq("title") });
   if (faqs.length > 0) nav.push({ slug: "faq", title: td("faq") });
   if (comparisons.length > 0) nav.push({ slug: "comparisons", title: tc("title") });
+  nav.push({ slug: "badge", title: tb("title") });
   if (related.length > 0) nav.push({ slug: "related", title: td("relatedTools") });
   const secNo = (navSlug: string) => {
     const i = nav.findIndex((n) => n.slug === navSlug);
@@ -131,6 +134,8 @@ function ToolDetail({ page }: { page: Page }) {
                 {faqs.length > 0 && <DetailFaq index={secNo("faq")} title={td("faq")} faq={faqs} />}
 
                 {comparisons.length > 0 && <DetailComparisons index={secNo("comparisons")} comparisons={comparisons} />}
+
+                <DetailBadge page={page} index={secNo("badge")} />
 
                 <DetailSimilarCta />
               </div>{/* /正文 sections */}

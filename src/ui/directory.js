@@ -249,13 +249,56 @@ if (form) {
     formVersion++;
     void load();
   });
+  const autofill = form.querySelector("#autofill-metadata");
+  let metadataBusy = false;
+  autofill?.addEventListener("click", async () => {
+    if (metadataBusy) return;
+    const url = form.elements.namedItem("url").value.trim();
+    if (!url) {
+      notice("请先填写网站地址。");
+      form.elements.namedItem("url").focus();
+      return;
+    }
+    metadataBusy = true;
+    autofill.disabled = true;
+    autofill.value = "正在获取…";
+    const currentAction = beginAction();
+    try {
+      const metadata = await api("/api/me/submissions/metadata", { url });
+      if (!currentAction()) return;
+      const title = form.elements.namedItem("title");
+      const description = form.elements.namedItem("description");
+      let filled = false;
+      if (!title.value.trim() && metadata.title) {
+        title.value = metadata.title;
+        filled = true;
+      }
+      if (!description.value.trim() && metadata.description) {
+        description.value = metadata.description;
+        filled = true;
+      }
+      notice(
+        filled
+          ? "已填入空白的名称或说明，提交前请核对。"
+          : metadata.title || metadata.description
+            ? "名称和说明已有内容，未覆盖。"
+            : "未获取到可用的名称或说明，请手动填写。",
+      );
+    } catch (error) {
+      if (currentAction()) notice(error.message);
+    } finally {
+      metadataBusy = false;
+      autofill.disabled = false;
+      autofill.value = "自动获取名称和说明";
+    }
+  });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (submissionBusy) return;
     submissionBusy = true;
     const currentAction = beginAction();
     const messageVersion = actionVersion;
-    const button = form.querySelector("button");
+    const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     const submittedVersion = formVersion;
     try {

@@ -121,3 +121,13 @@ pnpm template:preview
 - **对比页**：`/<locale>/<catalogPath>/compare/<a>-vs-<b>` 渲染目录页，同时传入 `comparison`（`PublicComparison`：标题、Markdown 正文、时间）。`result.items` 是这两个条目，正文和 FAQ 已去掉。只有在该语言已发布、且两个条目都可见时，页面才会返回。详情页通过 `comparisons` 拿到包含该条目的对比。
 - **sitemap**：`/sitemap.xml` 包含每种语言的首页、目录、分类、标签、榜单和对比页，以及全部条目（带 `lastmod`）。超过 45,000 个地址时改为 sitemap index，指向 `/sitemap-<n>.xml`。
 - **RSS**：`/<locale>/feed.xml` 列出该语言最新发布的 50 条。
+
+## M15：静态页面与收录徽章
+
+API v1 继续只增不改：没有实现新可选能力的 `basic`、`editorial` 模板行为不变。
+
+- **静态页面**：`TemplateDefinition` 新增可选 `renderPage?: (page: TemplateStaticPage) => TemplateOutput`。`TemplateStaticPage` 的 `kind` 为 `"page"`，`key` 是 `about`、`privacy`、`terms`、`contact` 之一，另有 `title` 和不可信 Markdown `content`；其余站点、语言、canonical 和 alternates 字段与目录页相同。模板不实现 `renderPage` 时，服务器用转义后的纯文本段落兜底，不解释 Markdown 里的 HTML。
+- **路径规则**：配置中存在某语言的页面时，`/<locale>/<key>` 才返回页面；否则 404。若站点 `catalogPath` 与某个 key 相同，目录优先，该 key 不再作为静态页面出现。页面 canonical 指向自身，hreflang 只列实际配置的语言版本，并进入 sitemap。
+- **toolso**：`src/templates/toolso/pages/page.tsx` 使用站点导航和页脚外壳，正文用 `components/detail/shared.tsx` 的 `DetailMarkdown` 渲染；页脚只链接当前语言已配置的 about/privacy/terms/contact。
+- **收录徽章**：`GET /badge/<locale>/<slug>.svg` 对所有模板可用，`?theme=dark` 切换深色版本。只有通过 `public_listing` 可见的条目才返回 200，未知、未发布或该语言不可见时返回 404。SVG 用 XML 文本转义和长度截断，颜色取站点 `templateParams.accentColor`（通过配置校验），只用 presentation attributes，不引入外部字体、图片或内联 `<style>`；响应为 `image/svg+xml`，带 `nosniff`，按公开资源缓存 1 小时。
+- **toolso 详情页**：详情页新增“徽章”章节和目录项，展示浅色/深色预览及 `<a><img></a>` 嵌入代码；复制按钮复用 `src/ui/toolso.js` 的 `data-copy` 约定，文案在中英文 `qooim-catalog` 中维护。

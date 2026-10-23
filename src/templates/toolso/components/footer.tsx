@@ -1,4 +1,4 @@
-// Ported from toolso-ai-open src/components/footer.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: the site-network block (network-data logos, DR badges, pricing pitch) dropped from all four variants; links are the pages Qoo.IM has (tools, submit → /me) plus the site's configured navigation, legal pages (none exist) dropped; brand-colour inline styles became text-primary/bg-primary classes (CSP); the wordmark size uses a literal class per name length (CJK counted double) instead of an inline font-size; copyright line carries the current year and site name; the operator's footer text (templateParams.footer) or the tagline is shown under the logo.
+// Ported from toolso-ai-open src/components/footer.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: the site-network block (network-data logos, DR badges, pricing pitch) dropped from all four variants; links are the pages Qoo.IM has (tools, submit → /me) plus the site's configured navigation and configured about/privacy/terms/contact pages; brand-colour inline styles became text-primary/bg-primary classes (CSP); the wordmark size uses a literal class per name length (CJK counted double) instead of an inline font-size; copyright line carries the current year and site name; the operator's footer text (templateParams.footer) or the tagline is shown under the logo.
 import { Logo } from "./logo.js";
 import { useTranslations } from "../shims/next-intl.js";
 import { LocaleLink } from "./locale-link.js";
@@ -202,13 +202,20 @@ export const Footer = () => {
     site.social?.twitter && { name: t("footer.social.twitter"), href: site.social.twitter, external: true },
     site.social?.github && { name: t("footer.social.github"), href: site.social.github, external: true },
   ].filter(Boolean) as FLink[];
+  const locale = page.locale === "en" ? "en" : "zh";
+  const legal: FLink[] = (["about", "privacy", "terms", "contact"] as const).flatMap((key) => {
+    const copy = page.site.pages?.[key]?.[locale];
+    return copy && key !== page.catalogPath
+      ? [{ name: copy.title, href: `/${page.locale}/${key}` }]
+      : [];
+  });
 
   const data: FooterData = {
     note: page.site.templateParams?.footer || site.tagline,
     copyright: t("qooim.home.copyright", { year: new Date().getFullYear() }),
     rights: t("common.brand.allRightsReserved"),
     links,
-    legal: [],
+    legal,
     socials,
   };
 
