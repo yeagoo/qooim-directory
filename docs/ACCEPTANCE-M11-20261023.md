@@ -59,3 +59,4 @@ pnpm release:check:image   通过（main 上的镜像输入文件未改动）
 
 - 未运行 `pnpm test:docker`：M11 没有改动迁移和部署文件。
 - 镜像 evidence 分支 `evidence-refresh-m6-m10` 基于 M11 之前的代码构建。M11 合并后应用代码有变化，候选镜像的摘要也会变，所以交给 QooIM 签字之前，需要把该分支 rebase 到最新的 `main`，并重新采集应用镜像的 evidence。
+  - 补记（同日）：已在该分支上基于 `7f54beb` 重建，加入 `test:p11` 脚本，重新构建候选镜像 `sha256:c73accb2…` 并重新采集六组 evidence；运行时包、系统包和通知文件仍与 rc.1 完全相同。复核包已更新，仍待 QooIM 确认。
