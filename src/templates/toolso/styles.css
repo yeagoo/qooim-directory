@@ -1,0 +1,607 @@
+/*
+ * Ported from toolso-ai-open src/app/globals.css (Apache-2.0, Copyright 2025 CoolChange.AI).
+ * Changes: no prism.css; Geist loaded from local /assets/fonts (was next/font);
+ * the grain layer uses a self-drawn SVG instead of noise.webp. See NOTICE.md.
+ */
+@font-face {
+  font-family: "Geist";
+  src: url("/assets/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/assets/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /*
+   * 设计 token。中性色全部带「本域品牌色相」的微染色(--brand-h 由 [locale]/layout 按
+   * site.theme.accentHsl 落到 <html>),所以每个域的纸面/墨色/描边都与自己的主色同族,
+   * 而不是一套通用的纯灰。未配置品牌色的兜底站用冷灰(240)。
+   */
+  :root {
+    --brand-h: 240;
+
+    /* 主要背景和前景色 */
+    --background: var(--brand-h) 22% 98.4%;
+    --foreground: var(--brand-h) 20% 8%;
+
+    /* 卡片容器 */
+    --card: var(--brand-h) 30% 99.6%;
+    --card-foreground: var(--brand-h) 20% 8%;
+
+    /* 弹出层 */
+    --popover: var(--brand-h) 30% 99.6%;
+    --popover-foreground: var(--brand-h) 20% 8%;
+
+    /* 主色调 (用于主要按钮、链接等;按域在 layout 覆盖) */
+    --primary: var(--brand-h) 18% 10%;
+    --primary-foreground: 0 0% 98%;
+
+    /* 次要色调 */
+    --secondary: var(--brand-h) 18% 94.6%;
+    --secondary-foreground: var(--brand-h) 20% 10%;
+
+    /* 柔和/禁用状态 */
+    --muted: var(--brand-h) 18% 94.6%;
+    --muted-foreground: var(--brand-h) 8% 37%;
+
+    /* 强调色 */
+    --accent: var(--brand-h) 18% 94.6%;
+    --accent-foreground: var(--brand-h) 20% 10%;
+
+    /* 边框、输入框、焦点环 */
+    --border: var(--brand-h) 15% 88.5%;
+    --input: var(--brand-h) 18% 94.6%;
+    /* 错误/危险态(此前类名在用但 token 未定义 → 表单报错其实没有颜色) */
+    --destructive: 356 72% 44%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: var(--brand-h) 20% 8%;
+
+    /* 渐变色支持 */
+    --gradient-from: var(--brand-h) 18% 94.6%;
+    --gradient-to: var(--brand-h) 15% 88.5%;
+
+    /* 导航栏特定颜色 */
+    --navbar-bg: var(--brand-h) 22% 98.4%;
+    --navbar-bg-scrolled: var(--brand-h) 18% 94.6%;
+
+    /* 阴影颜色 (用于导航栏、卡片等) */
+    --shadow-color: var(--brand-h) 15% 88.5%;
+    /* 带品牌色相的深色投影墨(新阴影 token 用;单一光源自上而下) */
+    --shadow-ink: var(--brand-h) 40% 14%;
+
+    /* 悬停状态 */
+    --hover-bg: var(--brand-h) 18% 93%;
+    --hover-foreground: var(--brand-h) 20% 4%;
+
+    /* 主色文字(tailwind 的 text-primary 走 --primary-ink,回退 --primary)。
+       主色很亮的域由 layout 写入 --primary-ink-light;未写入时这里取到无效值,
+       text-primary 自动回退到 --primary(在使用处解析,嵌套覆盖 --primary 的局部主题照常生效)。 */
+    --primary-ink: var(--primary-ink-light);
+
+    /* 动效曲线:入场用 expo-out */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* 全局颗粒层的层级(唯一消费者见下方 body::after) */
+    --z-overlay: 60;
+  }
+
+  .dark {
+    /* 暗色背景上亮主色文字对比足够:置回无效值 → text-primary 回退 --primary */
+    --primary-ink: initial;
+
+    --background: var(--brand-h) 14% 5.5%;
+    --foreground: var(--brand-h) 14% 95%;
+
+    --card: var(--brand-h) 13% 8%;
+    --card-foreground: var(--brand-h) 14% 95%;
+
+    --popover: var(--brand-h) 13% 8%;
+    --popover-foreground: var(--brand-h) 14% 95%;
+
+    --primary: var(--brand-h) 14% 95%;
+    --primary-foreground: var(--brand-h) 20% 8%;
+
+    --secondary: var(--brand-h) 11% 12.5%;
+    --secondary-foreground: var(--brand-h) 14% 95%;
+
+    --muted: var(--brand-h) 11% 12.5%;
+    --muted-foreground: var(--brand-h) 9% 68%;
+
+    --accent: var(--brand-h) 11% 12.5%;
+    --accent-foreground: var(--brand-h) 14% 95%;
+
+    --border: var(--brand-h) 10% 16.5%;
+    --input: var(--brand-h) 11% 12.5%;
+    --destructive: 356 86% 68%;
+    --destructive-foreground: var(--brand-h) 20% 8%;
+    --ring: var(--brand-h) 12% 80%;
+
+    --gradient-from: var(--brand-h) 14% 5.5%;
+    --gradient-to: var(--brand-h) 11% 12.5%;
+
+    --navbar-bg: var(--brand-h) 12% 10%;
+    --navbar-bg-scrolled: var(--brand-h) 11% 12.5%;
+
+    --shadow-color: var(--brand-h) 10% 16.5%;
+    --shadow-ink: var(--brand-h) 60% 2%;
+
+    --hover-bg: var(--brand-h) 11% 14%;
+    --hover-foreground: 0 0% 100%;
+  }
+
+  /* next/font set these on <body>: GeistSans.className + GeistMono.variable */
+  :root {
+    --font-geist-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-geist-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  body {
+    font-family: var(--font-geist-sans);
+    font-feature-settings: "calt", "rlig";
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.22);
+    color: hsl(var(--foreground));
+  }
+
+  /* 键盘焦点统一可见(鼠标点击不出环);组件自带 ring 的不受影响 */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 3px;
+    border-radius: 0.375rem;
+  }
+}
+
+@layer components {
+  /* ── 排版 ─────────────────────────────────────────────── */
+  /* 展示级标题:流式字号 + 紧字距。CJK/越南文不吃负字距与过紧行高,单独放松。 */
+  .type-display {
+    font-size: clamp(2.5rem, 5.6vw + 0.75rem, 5.75rem);
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  .type-title {
+    font-size: clamp(1.875rem, 2.6vw + 1rem, 3.25rem);
+    line-height: 1.04;
+    letter-spacing: -0.035em;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  :lang(zh) .type-display,
+  :lang(ja) .type-display,
+  :lang(ko) .type-display {
+    line-height: 1.14;
+    letter-spacing: -0.01em;
+    font-size: clamp(2.25rem, 4.6vw + 0.75rem, 4.75rem);
+  }
+  :lang(zh) .type-title,
+  :lang(ja) .type-title,
+  :lang(ko) .type-title {
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+  }
+  :lang(vi) .type-display,
+  :lang(vi) .type-title {
+    line-height: 1.14;
+    letter-spacing: -0.03em;
+  }
+  :lang(de) .type-display,
+  :lang(ru) .type-display {
+    font-size: clamp(2.25rem, 4.6vw + 0.75rem, 4.75rem);
+    hyphens: auto;
+  }
+
+  /* 目录站的「索引」母题:等宽小标签 + 表格数字 */
+  .eyebrow {
+    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+  :lang(zh) .eyebrow,
+  :lang(ja) .eyebrow,
+  :lang(ko) .eyebrow {
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+  }
+  .num {
+    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* ── 表面 ─────────────────────────────────────────────── */
+  /* 可点击卡片:描边 + 悬停上浮 + 光标聚光(--mx/--my 由 <Spotlight> 事件委托写入)。 */
+  .surface-card {
+    position: relative;
+    isolation: isolate;
+    border-radius: 1rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    transition:
+      transform 0.5s var(--ease-out-expo),
+      box-shadow 0.5s var(--ease-out-expo),
+      border-color 0.25s ease;
+  }
+  .surface-card::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(
+      340px circle at var(--mx, 50%) var(--my, 0%),
+      hsl(var(--primary) / 0.13),
+      transparent 62%
+    );
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .surface-card:hover {
+      transform: translateY(-3px);
+      border-color: hsl(var(--primary) / 0.38);
+      box-shadow:
+        0 1px 1px hsl(var(--shadow-ink) / 0.04),
+        0 10px 20px -10px hsl(var(--shadow-ink) / 0.14),
+        0 28px 48px -28px hsl(var(--shadow-ink) / 0.22);
+    }
+    .surface-card:hover::before {
+      opacity: 1;
+    }
+  }
+  .surface-card:active {
+    transform: translateY(-1px) scale(0.995);
+    transition-duration: 0.12s;
+  }
+
+  /* ── 长文排版(@tailwindcss/typography)──────────────────── */
+  /* 把 prose 的颜色变量接到本域 token 上:正文/标题/描边带品牌色相,列表符号与链接下划线用主色。
+     明暗两套都覆盖(dark:prose-invert 读的是 --tw-prose-invert-*)。 */
+  .prose {
+    --tw-prose-body: hsl(var(--foreground) / 0.8);
+    --tw-prose-headings: hsl(var(--foreground));
+    --tw-prose-lead: hsl(var(--muted-foreground));
+    --tw-prose-links: hsl(var(--foreground));
+    --tw-prose-bold: hsl(var(--foreground));
+    --tw-prose-counters: hsl(var(--primary));
+    --tw-prose-bullets: hsl(var(--primary));
+    --tw-prose-hr: hsl(var(--border));
+    --tw-prose-quotes: hsl(var(--foreground));
+    --tw-prose-quote-borders: hsl(var(--primary));
+    --tw-prose-captions: hsl(var(--muted-foreground));
+    --tw-prose-code: hsl(var(--foreground));
+    --tw-prose-th-borders: hsl(var(--border));
+    --tw-prose-td-borders: hsl(var(--border));
+    --tw-prose-invert-body: hsl(var(--foreground) / 0.8);
+    --tw-prose-invert-headings: hsl(var(--foreground));
+    --tw-prose-invert-lead: hsl(var(--muted-foreground));
+    --tw-prose-invert-links: hsl(var(--foreground));
+    --tw-prose-invert-bold: hsl(var(--foreground));
+    --tw-prose-invert-counters: hsl(var(--primary));
+    --tw-prose-invert-bullets: hsl(var(--primary));
+    --tw-prose-invert-hr: hsl(var(--border));
+    --tw-prose-invert-quotes: hsl(var(--foreground));
+    --tw-prose-invert-quote-borders: hsl(var(--primary));
+    --tw-prose-invert-captions: hsl(var(--muted-foreground));
+    --tw-prose-invert-code: hsl(var(--foreground));
+    --tw-prose-invert-th-borders: hsl(var(--border));
+    --tw-prose-invert-td-borders: hsl(var(--border));
+  }
+  .prose :where(a):not(:where([class~="not-prose"] *)) {
+    text-decoration-color: hsl(var(--primary) / 0.5);
+    text-decoration-thickness: 1px;
+    transition: text-decoration-color 0.2s ease;
+  }
+  .prose :where(a):not(:where([class~="not-prose"] *)):hover {
+    text-decoration-color: hsl(var(--primary));
+  }
+  .prose :where(:not(pre) > code):not(:where([class~="not-prose"] *)) {
+    border-radius: 0.375rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--secondary));
+    padding: 0.1em 0.35em;
+    font-size: 0.875em;
+    font-weight: 500;
+  }
+  .prose :where(:not(pre) > code):not(:where([class~="not-prose"] *))::before,
+  .prose :where(:not(pre) > code):not(:where([class~="not-prose"] *))::after {
+    content: none;
+  }
+
+  /* ── 表单 ─────────────────────────────────────────────── */
+  /* 全站统一输入框:16px 字号(iOS 不触发聚焦缩放)、悬停加深描边、聚焦品牌色描边 + 柔光环、错误态红色。
+     react-hook-form 的 FormControl 把 aria-invalid 落在包裹层上,所以两种位置都匹配。 */
+  .field {
+    display: block;
+    width: 100%;
+    height: 3rem;
+    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    padding: 0 1rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: hsl(var(--foreground));
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.35s var(--ease-out-expo);
+  }
+  textarea.field {
+    height: auto;
+    min-height: 8rem;
+    padding: 0.8rem 1rem;
+    line-height: 1.6;
+    resize: vertical;
+  }
+  select.field {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+  }
+  .field::placeholder {
+    color: hsl(var(--muted-foreground) / 0.6);
+  }
+  .field:hover {
+    border-color: hsl(var(--foreground) / 0.28);
+  }
+  .field:focus,
+  .field:focus-visible {
+    /* 不用 outline: none:强制颜色(Windows 高对比)模式会丢弃 box-shadow 并覆盖描边色,
+       焦点就完全不可见了。透明 outline 平时看不见,在该模式下由系统换成可见色。 */
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.14);
+  }
+  .field[aria-invalid="true"],
+  [aria-invalid="true"] .field {
+    border-color: hsl(var(--destructive));
+  }
+  .field[aria-invalid="true"]:focus,
+  [aria-invalid="true"] .field:focus {
+    box-shadow: 0 0 0 4px hsl(var(--destructive) / 0.14);
+  }
+  .field:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .field-sm {
+    height: 2.5rem;
+    border-radius: 0.625rem;
+    padding: 0 0.875rem;
+    font-size: 0.9375rem;
+  }
+  textarea.field-sm {
+    height: auto;
+    min-height: 5.5rem;
+    padding: 0.6rem 0.875rem;
+  }
+
+  /* 文字链接:下划线从左划入 */
+  .link-sweep {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0% 1px;
+    transition: background-size 0.45s var(--ease-out-expo), color 0.2s ease;
+  }
+  .link-sweep:hover,
+  .link-sweep:focus-visible {
+    background-size: 100% 1px;
+  }
+
+  /* 细发丝网格背景(替代原 120 个 SMIL 动画 SVG 节点) */
+  .hairline-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--foreground) / 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground) / 0.055) 1px, transparent 1px);
+    background-size: 5rem 5rem;
+    background-position: center top;
+  }
+
+  /* 页脚巨型品牌字:极淡的实心字(可变字体轮廓重叠,描边会露出接缝),悬停被品牌色自左填满 */
+  .footer-wordmark {
+    line-height: 0.8;
+    letter-spacing: -0.06em;
+    font-weight: 600;
+    white-space: nowrap;
+    color: transparent;
+    background:
+      linear-gradient(hsl(var(--primary)), hsl(var(--primary))) no-repeat 0 0 / 0% 100%,
+      linear-gradient(hsl(var(--foreground) / 0.07), hsl(var(--foreground) / 0.07));
+    -webkit-background-clip: text;
+    background-clip: text;
+    transition: background-size 1.1s var(--ease-out-expo);
+    user-select: none;
+  }
+  .footer-wordmark:hover {
+    background-size: 100% 100%, 100% 100%;
+  }
+}
+
+/* 全局颗粒:固定层、不参与命中、不用 blend(避免滚动重绘成本),打破纯数字平涂感 */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px;
+  opacity: 0.045;
+}
+.dark body::after {
+  opacity: 0.07;
+}
+@media print {
+  body::after {
+    display: none;
+  }
+}
+
+/*
+ * 锚点落点。浮动导航固定在视口顶部(top-4 + 自身高度),所有 #hash 跳转都要让出它:
+ *   落点 = scroll-padding-top(全站)+ 目标元素自己的 scroll-margin-top(按需)。
+ * 详情页在 < lg 还有一条吸顶章节条(.detail-tabs),章节要再让出它的高度;桌面没有这条,只留一点呼吸。
+ * 章节条的位置、章节的留白都从这几个变量派生,改导航高度时只动这里。
+ */
+:root {
+  --anchor-offset: 96px;
+  /* 章节条吸顶位置 = 浮动导航的底边(top-4 的 16px + 导航卡片 58px = 74px,各域各宽度实测一致)。
+     与导航之间不留缝:留缝的话正文会从缝里滚过去。 */
+  --detail-tabs-top: 4.625rem;
+  /* 章节条自身高度(单行标签 + 上下内边距 + 上下边框) */
+  --detail-tabs-height: 3.125rem;
+}
+.detail-tabs {
+  top: var(--detail-tabs-top);
+}
+.detail-section:focus {
+  /* 章节是跳转目标而不是控件:跳过去时会被程序聚焦(让 Tab 从这里继续),不需要焦点环 */
+  outline: none;
+}
+.detail-section {
+  /* 章节条底边 = tabs-top + tabs-height;减去全站已让出的 anchor-offset,再留 1rem */
+  scroll-margin-top: calc(var(--detail-tabs-top) + var(--detail-tabs-height) - var(--anchor-offset) + 1rem);
+}
+@media (min-width: 1024px) {
+  .detail-section {
+    scroll-margin-top: 1rem;
+  }
+}
+
+html {
+  scroll-padding-top: var(--anchor-offset);
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 站点动效变体(framer 入场走 <Reveal>/useMotion;此处补 CSS 侧)。
+   minimal 质感=即时,关掉平滑滚动与之一致。data-motion 由 layout 按 theme.motion 落到 <html>。 */
+html[data-motion="minimal"] {
+  scroll-behavior: auto;
+}
+
+/* 无障碍:用户偏好减少动效时,全局压缩动画/过渡 + 关掉平滑滚动。 */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.site-reveal {
+  opacity: 0;
+  transform: translateY(var(--reveal-y, 24px));
+}
+
+.site-reveal-visible {
+  animation: site-reveal-in var(--reveal-duration, 0.5s)
+    var(--reveal-ease, ease-out) var(--reveal-delay, 0s) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-reveal-visible {
+    animation-delay: 0s !important;
+  }
+}
+
+@keyframes site-reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--reveal-y, 24px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes theme-icon-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes category-menu-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/*
+ * 详情页内容入场:只淡入,不做位移。这层容器包着整页内容,不能带 transform:
+ *   - 动画用 fill-mode both,结束后 `transform: translateY(0)` 会一直留着;任何非 none 的 transform 都会让
+ *     容器成为后代 `position: fixed` 的定位基准 → 封面灯箱的遮罩盖住的是整页内容而不是视口。
+ *   - 浏览器在动画起点(内容还下移 16px)就完成了 #hash 定位,动画结束后内容上移,落点偏 16px。
+ */
+@keyframes tool-detail-content-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

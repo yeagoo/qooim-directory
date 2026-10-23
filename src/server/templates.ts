@@ -1,20 +1,38 @@
-import type { TemplatePage, TemplateDefinition } from "../public/sdk.js";
+import { resolve } from "node:path";
+import type {
+  TemplateDefinition,
+  TemplateHomePage,
+  TemplateOutput,
+  TemplatePage,
+} from "../public/sdk.js";
 import basic from "../templates/basic.js";
 import editorial from "../templates/editorial.js";
+import toolso from "../templates/toolso/index.js";
 export { templateCss, templateManifest } from "../templates/manifest.js";
 const templates = new Map<string, TemplateDefinition>(
-  [basic, editorial].map((template) => [template.id, template]),
+  [basic, editorial, toolso].map((template) => [template.id, template]),
 );
 export const templateIds = new Set(templates.keys());
+// Loaded through Node at runtime: Next forbids bundling react-dom/server into route handlers,
+// and the classic (non react-server) renderer is what static template markup needs.
+// process.getBuiltinModule keeps webpack from rewriting the require into a bundled module.
+const { renderToStaticMarkup } = process
+  .getBuiltinModule("node:module")
+  .createRequire(resolve("package.json"))(
+  "react-dom/server",
+) as typeof import("react-dom/server");
 export { templateParamsSchema } from "../domain/config.js";
 import { templateParamsSchema } from "../domain/config.js";
 
-export function renderTemplate(id: string, page: TemplatePage) {
-  const template = templates.get(id);
-  if (!template || template.apiVersion !== 1)
+function template(id: string) {
+  const found = templates.get(id);
+  if (!found || found.apiVersion !== 1)
     throw new Error("Template unavailable or incompatible");
+  return found;
+}
+function model<T extends TemplatePage | TemplateHomePage>(page: T): T {
   const params = templateParamsSchema.parse(page.site.templateParams ?? {});
-  const model = structuredClone({
+  const result = structuredClone({
     ...page,
     site: { ...page.site, templateParams: params },
   });
@@ -24,8 +42,25 @@ export function renderTemplate(id: string, page: TemplatePage) {
       for (const child of Object.values(value)) freeze(child);
     }
   };
-  freeze(model);
-  return appendSourceOffer(template.render(model));
+  freeze(result);
+  return result;
+}
+function html(output: TemplateOutput) {
+  return appendSourceOffer(
+    typeof output === "string"
+      ? output
+      : "<!doctype html>" + renderToStaticMarkup(output),
+  );
+}
+
+export function renderTemplate(id: string, page: TemplatePage) {
+  return html(template(id).render(model(page)));
+}
+export const templateHasHome = (id: string) => !!templates.get(id)?.renderHome;
+export function renderHomeTemplate(id: string, page: TemplateHomePage) {
+  const renderHome = template(id).renderHome;
+  if (!renderHome) throw new Error("Template has no home page");
+  return html(renderHome(model(page)));
 }
 
 // Keep custom templates compatible with valid uppercase or omitted HTML end tags.

@@ -1,10 +1,13 @@
 /** Stable template API v1. DTOs only: no database, environment or authentication internals. */
+import type { ReactElement } from "react";
 export const TEMPLATE_API_VERSION = 1 as const;
 export type TemplateParams = {
   accent?: "forest" | "indigo" | "terracotta";
   density?: "comfortable" | "compact";
   eyebrow?: string;
   footer?: string;
+  accentColor?: string;
+  motion?: "smooth" | "crisp" | "playful" | "minimal";
 };
 export type TemplateSite = {
   name: string;
@@ -37,7 +40,10 @@ export type PublicResource = {
   seo_title: string;
   seo_description: string;
   image?: { url: string; alt: string } | null;
+  category_id?: string | null;
+  rank?: number;
 };
+export type PublicCategory = { id: string; label: string; count: number };
 export type TemplatePage = {
   preview?: boolean;
   site: TemplateSite;
@@ -56,17 +62,31 @@ export type TemplatePage = {
         page: number;
         limit: number;
       };
-      categories: { id: string; label: string; count: number }[];
+      categories: PublicCategory[];
       q: string;
       category?: string;
+      /** Set when the page is a category's own URL rather than a ?category= filter. */
+      categoryPage?: PublicCategory;
     }
-  | { kind: "detail"; item: PublicResource }
+  | { kind: "detail"; item: PublicResource; categories?: PublicCategory[]; related?: PublicResource[] }
   | { kind: "missing" }
 );
+type PageBase = Omit<Extract<TemplatePage, { kind: "missing" }>, "kind">;
+/** Site front page; only requested from templates that implement `renderHome`. */
+export type TemplateHomePage = PageBase & {
+  kind: "home";
+  total: number;
+  featured: PublicResource[];
+  categories: PublicCategory[];
+};
+/** A full HTML string, or a React element rendered to static markup on the server (no hydration). */
+export type TemplateOutput = string | ReactElement;
 export type TemplateDefinition = {
   id: string;
   apiVersion: typeof TEMPLATE_API_VERSION;
-  render: (page: TemplatePage) => string;
+  render: (page: TemplatePage) => TemplateOutput;
+  /** Optional front page. Without it, "/" keeps rendering the default-locale directory. */
+  renderHome?: (page: TemplateHomePage) => TemplateOutput;
 };
 export const defineTemplate = (definition: TemplateDefinition) =>
   Object.freeze(definition);

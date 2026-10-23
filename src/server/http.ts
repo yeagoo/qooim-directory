@@ -5,7 +5,14 @@ import { sourceDownload } from "./source-download.js";
 import type { Pool } from "pg";
 import { z } from "zod";
 import { type AuthPolicy, clientIp } from "./auth-policy.js";
-import { renderTemplate, templateCss, templateManifest } from "./templates.js";
+import {
+  renderHomeTemplate,
+  renderTemplate,
+  templateCss,
+  templateHasHome,
+  templateManifest,
+} from "./templates.js";
+import { themeCss } from "./theme.js";
 import { Catalog, NotFound } from "../domain/catalog.js";
 import { Conflict, InvalidReference, configSchema } from "../domain/config.js";
 import { transaction } from "../domain/transaction.js";
@@ -57,7 +64,7 @@ export class Application {
   readonly collectors: Collectors;
   readonly limits: Limits;
   readonly aiBilling: AiBilling;
-  private assets = new Map<string, { body: string; etag: string }>();
+  private assets = new Map<string, { body: Buffer; etag: string }>();
   constructor(
     readonly pool: Pool,
     readonly config: {
@@ -104,18 +111,18 @@ export class Application {
       headers: { "content-type": "text/html; charset=utf-8" },
     });
   }
-  private async asset(file: string) {
+  private async asset(file: string, type = "text/javascript") {
     let cached = this.assets.get(file);
     if (!cached) {
-      const body = await readFile(resolve("src/ui", file), "utf8");
+      const body = await readFile(resolve("src/ui", file));
       cached = {
         body,
         etag: '"' + createHash("sha256").update(body).digest("base64url").slice(0, 20) + '"',
       };
       this.assets.set(file, cached);
     }
-    return new Response(cached.body, {
-      headers: { "content-type": "text/javascript", etag: cached.etag },
+    return new Response(new Uint8Array(cached.body), {
+      headers: { "content-type": type, etag: cached.etag },
     });
   }
   async respond(request: Request) {
@@ -174,7 +181,8 @@ export class Application {
       path === "/" ||
       path === "/sitemap.xml" ||
       path === "/robots.txt" ||
-      /^\/[a-z]{2}\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(path);
+      /^\/[a-z]{2}\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(path) ||
+      /^\/(?:zh|en)(?:\/[a-z0-9-]+\/category\/[a-z0-9-]+)?$/.test(path);
     const cacheable =
       request.method === "GET" &&
       response.status === 200 &&
@@ -329,6 +337,17 @@ export class Application {
         });
       if (path === "/assets/network.css")
         return new Response(css, { headers: { "content-type": "text/css" } });
+      if (!admin) {
+        if (path === "/assets/toolso.css")
+          return this.asset("generated/toolso.css", "text/css");
+        const font = path.match(/^\/assets\/fonts\/(Geist|GeistMono)-Variable\.woff2$/);
+        if (font) return this.asset(`fonts/${font[1]}-Variable.woff2`, "font/woff2");
+        const theme = path.match(/^\/assets\/theme\/([0-9a-f]{6})\.css$/);
+        if (theme)
+          return new Response(themeCss(theme[1]!), {
+            headers: { "content-type": "text/css" },
+          });
+      }
       const file =
         path === "/assets/admin.js" && admin
           ? "admin.js"
@@ -354,7 +373,11 @@ export class Application {
                 ? "content-admin.js"
                 : path === "/assets/directory.js" && !admin
                   ? "directory.js"
-                  : null;
+                  : path === "/assets/toolso.js" && !admin
+                    ? "toolso.js"
+                    : path === "/assets/toolso-init.js" && !admin
+                      ? "toolso-init.js"
+                      : null;
       if (!file) throw new NotFound();
       return this.asset(file);
     }
@@ -929,17 +952,54 @@ export class Application {
       return this.json(await this.catalog.detail(ctx, item[1], item[2]));
     const parts = path.split("/");
     const language = path === "/" ? config.locales[0] : parts[1];
+    const localeRoot = parts.length === 2 && path !== "/";
     if (
-      path !== "/" &&
-      (!config.locales.includes(language as "zh" | "en") ||
-        parts[2] !== config.catalogPath ||
-        parts.length > 4)
+      !config.locales.includes(language as "zh" | "en") ||
+      (path !== "/" &&
+        !localeRoot &&
+        (parts[2] !== config.catalogPath ||
+          (parts.length > 4 && !(parts.length === 5 && parts[3] === "category"))))
     )
       throw new NotFound();
+    if (localeRoot && !templateHasHome(config.template)) throw new NotFound();
+    if ((path === "/" || localeRoot) && templateHasHome(config.template)) {
+      const [featured, categories] = await Promise.all([
+        this.catalog.browse(ctx, { locale: language, limit: 12 }),
+        this.catalog.categories(ctx, language),
+      ]);
+      return this.html(
+        renderHomeTemplate(config.template, {
+          kind: "home",
+          site: config,
+          origin: site.origin,
+          catalogPath: config.catalogPath,
+          locale: language,
+          total: featured.total,
+          featured: featured.items,
+          categories,
+          canonical: site.origin + (path === "/" ? "/" : `/${language}`),
+          alternates: config.locales.map((l) => ({
+            locale: l,
+            url: site.origin + (l === config.locales[0] ? "/" : `/${l}`),
+          })),
+          noindex: false,
+        }),
+      );
+    }
     if (parts.length === 4) {
       try {
         const item = await this.catalog.detail(ctx, language, parts[3]);
-        const alternates = await this.catalog.alternates(ctx, item.resource_id);
+        const [alternates, categories, related] = await Promise.all([
+          this.catalog.alternates(ctx, item.resource_id),
+          this.catalog.categories(ctx, language),
+          item.category_id
+            ? this.catalog.browse(ctx, {
+                locale: language,
+                category: item.category_id,
+                limit: 7,
+              })
+            : null,
+        ]);
         return this.html(
           renderTemplate(config.template, {
             kind: "detail",
@@ -948,6 +1008,10 @@ export class Application {
             catalogPath: config.catalogPath,
             locale: language,
             item,
+            categories,
+            related: (related?.items ?? [])
+              .filter((r) => r.resource_id !== item.resource_id)
+              .slice(0, 6),
             canonical:
               site.origin + `/${language}/${config.catalogPath}/${item.slug}`,
             alternates: alternates.map((a) => ({
@@ -983,11 +1047,18 @@ export class Application {
         );
       }
     }
+    const categories = await this.catalog.categories(ctx, language);
+    const categoryPage =
+      parts.length === 5 ? categories.find((c) => c.id === parts[4]) : undefined;
+    if (parts.length === 5 && !categoryPage) throw new NotFound();
+    const base = categoryPage
+      ? `/${config.catalogPath}/category/${categoryPage.id}`
+      : `/${config.catalogPath}`;
     const result = await this.catalog.browse(ctx, {
       ...options,
+      category: categoryPage?.id ?? options.category,
       locale: language,
     });
-    const categories = await this.catalog.categories(ctx, language);
     return this.html(
       renderTemplate(config.template, {
         kind: "directory",
@@ -998,16 +1069,17 @@ export class Application {
         result,
         categories,
         q: options.q,
-        category: options.category,
+        category: categoryPage?.id ?? options.category,
+        ...(categoryPage ? { categoryPage } : {}),
         canonical:
           site.origin +
-          `/${language}/${config.catalogPath}` +
+          `/${language}${base}` +
           (result.page > 1 ? "?page=" + result.page : ""),
         alternates: config.locales.map((l) => ({
           locale: l,
-          url: site.origin + `/${l}/${config.catalogPath}`,
+          url: site.origin + `/${l}${base}`,
         })),
-        noindex: !!options.q || !!options.category,
+        noindex: !!options.q || (!categoryPage && !!options.category),
       }),
     );
   }

@@ -1,7 +1,7 @@
 {
   "format": 1,
   "reviewedAt": "2026-10-21",
-  "lockfileSha256": "6c78cd34d2039c03f65eacab5795a9cbec983b7e17882aec07b0fcbdaebdc986",
+  "lockfileSha256": "ddc61e70d31bd0b71af3395d0a29bf50a5adba2c2a8407da6854a67851c6ba31",
   "notices": [
     {
       "name": "@esbuild/linux-arm64",
@@ -95,25 +95,31 @@
   "directDependencies": {
     "dependencies": {
       "@better-auth/oauth-provider": "1.7.10",
+      "@better-auth/passkey": "1.7.10",
       "better-auth": "1.7.10",
+      "clsx": "2.1.1",
+      "lucide-react": "0.562.0",
       "next": "16.4.2",
       "nodemailer": "10.1.2",
       "pg": "8.23.1",
       "react": "19.3.1",
       "react-dom": "19.3.1",
-      "zod": "4.6.7",
-      "@better-auth/passkey": "1.7.10"
+      "tailwind-merge": "2.6.0",
+      "zod": "4.6.7"
     },
     "devDependencies": {
       "@playwright/test": "1.64.1",
+      "@tailwindcss/typography": "0.5.16",
       "@types/node": "24.19.2",
       "@types/nodemailer": "8.0.2",
       "@types/pg": "8.23.1",
       "@types/react": "19.3.0",
+      "@types/react-dom": "19.3.0",
+      "geist": "1.5.1",
+      "tailwindcss": "3.4.17",
       "tsx": "4.23.15",
       "typescript": "5.9.3"
-    },
-    "optionalDependencies": {}
+    }
   },
   "libvipsSourceReview": "libvips-source-review.json",
   "removed": [

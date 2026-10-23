@@ -287,7 +287,10 @@ if (form) {
 
 // Renew only through the library endpoint so the browser receives the refreshed cookie.
 void fetch("/api/auth/get-session").catch(() => {});
-const accountLink = document.querySelector("header nav");
+// Templates with their own account menu ([data-session]) handle sign-out themselves.
+const accountLink = document.querySelector("[data-session]")
+  ? null
+  : document.querySelector("header nav");
 if (accountLink)
   void (async () => {
     try {

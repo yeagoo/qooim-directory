@@ -10,6 +10,12 @@ export const templateParamsSchema = z.strictObject({
   density: z.enum(["comfortable", "compact"]).optional(),
   eyebrow: z.string().max(100).optional(),
   footer: z.string().max(300).optional(),
+  // Brand color for templates that derive their palette from one hue (toolso).
+  accentColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+  motion: z.enum(["smooth", "crisp", "playful", "minimal"]).optional(),
 });
 const item = z.strictObject({
   id: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/),

@@ -78,10 +78,38 @@ export function check(rootPath = root) {
               );
             }
           }
-        } else if (!["react", "react/jsx-runtime"].includes(name))
+        } else if (
+          !["react", "react/jsx-runtime"].includes(name) &&
+          // UI helpers for the ported toolso template; they render plain markup.
+          !(
+            file.startsWith(resolve("src/templates") + "/") &&
+            ["lucide-react", "clsx", "tailwind-merge"].includes(name)
+          )
+        )
           errors.push(
             `${relative(rootPath, file)}: package not allowed ${name}`,
           );
+        else if (
+          name === "react" &&
+          ts.isImportDeclaration(node) &&
+          !node.importClause?.isTypeOnly
+        ) {
+          // Templates render once to static markup, and in the Next build `react` is the
+          // react-server build: hooks and context do not exist there. See toolso/runtime.ts.
+          const safe = ["Fragment", "Children", "cloneElement", "isValidElement", "forwardRef", "createElement"];
+          const clause = node.importClause;
+          if (clause?.name)
+            errors.push(`${relative(rootPath, file)}: default React import not allowed`);
+          const bindings = clause?.namedBindings;
+          if (bindings && ts.isNamespaceImport(bindings))
+            errors.push(`${relative(rootPath, file)}: namespace React import not allowed`);
+          if (bindings && ts.isNamedImports(bindings))
+            for (const el of bindings.elements)
+              if (!el.isTypeOnly && !safe.includes((el.propertyName ?? el.name).text))
+                errors.push(
+                  `${relative(rootPath, file)}: React ${(el.propertyName ?? el.name).text} not allowed in templates`,
+                );
+        }
       }
       ts.forEachChild(node, visit);
     }
