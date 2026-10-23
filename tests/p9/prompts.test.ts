@@ -369,15 +369,18 @@ test("P9 AI settings page selects prompt versions and admins create new ones", a
   } finally {
     await editor.close();
   }
-  // Viewers see the panel, but the server rejects a change.
+  // Viewers can browse versions but get no save button; the server rejects a change.
   const viewer = await f.browse(f.viewer, "#ai/atlas");
   try {
     const { page } = viewer;
     await page.waitForSelector("#ai-prompts #ai-prompt-seo");
     await page.selectOption("#ai-prompt-seo", "1");
-    await page.click("#save-ai-prompts");
-    await page.waitForSelector("#message.error");
-    assert.match((await page.textContent("#message")) ?? "", /没有此操作的权限/);
+    assert.equal(await page.locator("#save-ai-prompts, #create-ai-prompt").count(), 0);
+    assert.match((await page.textContent("#ai-prompts")) ?? "", /只读/);
+    await assert.rejects(
+      f.app.ai.saveConfig(f.viewer, { site: "atlas", promptVersions: { seo: 1 } }),
+      (error: { status?: number }) => error.status === 403,
+    );
     assert.equal((await f.app.ai.config(f.admin, "atlas")).promptVersions.seo, 3);
   } finally {
     await viewer.close();

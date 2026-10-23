@@ -346,7 +346,8 @@ test("P8 media version routes enforce site permissions and write audit rows", as
   assert.equal((await removeVersion(item.id, 2)).status, 200);
   const audit = (
     await f.pool.query(
-      "SELECT actor_id,site_id,action,detail FROM audit_event WHERE action LIKE 'media.%' AND detail->>'mediaId'=$1 ORDER BY id",
+      // Version routes only; M11 also audits the initial upload (covered in P11).
+      "SELECT actor_id,site_id,action,detail FROM audit_event WHERE action LIKE 'media.%' AND action<>'media.upload' AND detail->>'mediaId'=$1 ORDER BY id",
       [item.id],
     )
   ).rows;

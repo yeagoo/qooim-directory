@@ -48,14 +48,19 @@ function balanceState(balance) {
   if (balance.error) parts.push("错误：" + errorText(balance.error));
   return parts.join(" · ");
 }
-export async function renderAiBilling(site, workspace, api, notice) {
+// UI hint only; the server enforces every permission. Without access info
+// (older callers) the page shows every action.
+const READ_ONLY_NOTE = "只读：可以查看对账和余额，不能登记用量或修改余额设置。";
+export async function renderAiBilling(site, workspace, api, notice, access) {
+  const write = access ? Boolean(access.write) : true;
+  const off = write ? "" : " disabled";
   const query = "?site=" + encodeURIComponent(site);
   const [reconcile, balance] = await Promise.all([
     api("/ai/reconcile" + query),
     api("/ai/balance" + query),
   ]);
   const current = reconcile.months[0]?.month ?? "";
-  workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a> · <a href="#ai/${encodeURIComponent(site)}">AI 设置</a><span class="eyebrow"> / 对账</span><h1>AI 用量对账与余额 · ${escape(site)}</h1><p class="muted">把供应商账单里的 token 数登记到这里，与本系统记录的用量（含已汇总的旧任务）逐月对比。登记的数字只用于对账，不会修改预算或任务记录。</p><section class="panel" id="reconcile-panel"><h2>近 12 个月对账</h2><div id="reconcile-table">${reconcileTable(reconcile)}</div><p class="muted">差异比例 = (供应商合计 − 本系统合计) / 本系统合计；超过 ±5% 的月份会标红。本系统没有用量或供应商未登记时不计算比例。</p></section><section class="panel"><h2>登记供应商用量</h2><div class="split"><div><label for="reconcile-month">月份（YYYY-MM）</label><input id="reconcile-month" value="${escape(current)}" placeholder="2026-10" maxlength="7"><label for="reconcile-note">备注</label><input id="reconcile-note" maxlength="500" placeholder="例如：账单编号"></div><div><label for="reconcile-in">输入 token</label><input id="reconcile-in" type="number" min="0" step="1" value="0"><label for="reconcile-out">输出 token</label><input id="reconcile-out" type="number" min="0" step="1" value="0"></div></div><div class="actions"><button id="save-reconcile">保存本月数据</button></div><details><summary>批量导入 CSV</summary><p class="muted">表头 <code>month,tokens_in,tokens_out[,note]</code>，最多 120 行、64 KiB。任一行有误则整批不导入；已登记的月份会被覆盖。</p><label for="reconcile-csv">CSV 内容</label><textarea id="reconcile-csv" spellcheck="false" placeholder="month,tokens_in,tokens_out,note&#10;2026-09,120000,30000,九月账单"></textarea><div class="actions"><button id="import-reconcile" class="secondary">校验并导入</button></div><ul id="reconcile-errors"></ul></details></section><section class="panel" id="balance-panel"><h2>余额检查（可选）</h2><p class="muted">OpenAI-compatible 协议没有统一的余额接口。可以填写供应商的余额查询地址和 JSON 字段路径，后台任务会用本站 AI 的 API Key 以 GET 请求查询（每 6 小时自动一次）。读不到时显示“未知”。</p><div class="split"><div><label for="balance-url">余额端点（HTTPS）</label><input id="balance-url" value="${escape(balance.url)}" placeholder="https://api.example.com/user/balance"></div><div><label for="balance-field">字段路径</label><input id="balance-field" value="${escape(balance.field)}" placeholder="balance_infos.0.total_balance"><label><input id="balance-enabled" type="checkbox" ${balance.configured ? (balance.enabled ? "checked" : "") : "checked"}>启用余额检查</label></div></div><div class="actions"><button id="save-balance">保存余额设置</button><button id="check-balance" class="secondary"${balance.configured ? "" : " disabled"}>立即检查</button></div><p id="balance-state" class="muted">${escape(balanceState(balance))}</p></section>`;
+  workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a> · <a href="#ai/${encodeURIComponent(site)}">AI 设置</a><span class="eyebrow"> / 对账</span><h1>AI 用量对账与余额 · ${escape(site)}</h1><p class="muted">把供应商账单里的 token 数登记到这里，与本系统记录的用量（含已汇总的旧任务）逐月对比。登记的数字只用于对账，不会修改预算或任务记录。</p>${write ? "" : `<p class="muted access-note" id="access-note">${escape(READ_ONLY_NOTE)}</p>`}<section class="panel" id="reconcile-panel"><h2>近 12 个月对账</h2><div id="reconcile-table">${reconcileTable(reconcile)}</div><p class="muted">差异比例 = (供应商合计 − 本系统合计) / 本系统合计；超过 ±5% 的月份会标红。本系统没有用量或供应商未登记时不计算比例。</p></section>${write ? `<section class="panel"><h2>登记供应商用量</h2><div class="split"><div><label for="reconcile-month">月份（YYYY-MM）</label><input id="reconcile-month" value="${escape(current)}" placeholder="2026-10" maxlength="7"><label for="reconcile-note">备注</label><input id="reconcile-note" maxlength="500" placeholder="例如：账单编号"></div><div><label for="reconcile-in">输入 token</label><input id="reconcile-in" type="number" min="0" step="1" value="0"><label for="reconcile-out">输出 token</label><input id="reconcile-out" type="number" min="0" step="1" value="0"></div></div><div class="actions"><button id="save-reconcile">保存本月数据</button></div><details><summary>批量导入 CSV</summary><p class="muted">表头 <code>month,tokens_in,tokens_out[,note]</code>，最多 120 行、64 KiB。任一行有误则整批不导入；已登记的月份会被覆盖。</p><label for="reconcile-csv">CSV 内容</label><textarea id="reconcile-csv" spellcheck="false" placeholder="month,tokens_in,tokens_out,note&#10;2026-09,120000,30000,九月账单"></textarea><div class="actions"><button id="import-reconcile" class="secondary">校验并导入</button></div><ul id="reconcile-errors"></ul></details></section>` : ""}<section class="panel" id="balance-panel"><h2>余额检查（可选）</h2><p class="muted">OpenAI-compatible 协议没有统一的余额接口。可以填写供应商的余额查询地址和 JSON 字段路径，后台任务会用本站 AI 的 API Key 以 GET 请求查询（每 6 小时自动一次）。读不到时显示“未知”。</p><div class="split"><div><label for="balance-url">余额端点（HTTPS）</label><input id="balance-url"${off} value="${escape(balance.url)}" placeholder="https://api.example.com/user/balance"></div><div><label for="balance-field">字段路径</label><input id="balance-field"${off} value="${escape(balance.field)}" placeholder="balance_infos.0.total_balance"><label><input id="balance-enabled"${off} type="checkbox" ${balance.configured ? (balance.enabled ? "checked" : "") : "checked"}>启用余额检查</label></div></div>${write ? `<div class="actions"><button id="save-balance">保存余额设置</button><button id="check-balance" class="secondary"${balance.configured ? "" : " disabled"}>立即检查</button></div>` : ""}<p id="balance-state" class="muted">${escape(balanceState(balance))}</p></section>`;
   const $ = (selector) => workspace.querySelector(selector);
   const panel = $("#balance-panel");
   const active = () => document.body.contains(panel);
@@ -64,7 +69,8 @@ export async function renderAiBilling(site, workspace, api, notice) {
   };
   const showBalance = (data) => {
     $("#balance-state").textContent = balanceState(data);
-    $("#check-balance").disabled = !data.configured;
+    const check = $("#check-balance");
+    if (check) check.disabled = !data.configured;
   };
   const guard = async (button, work) => {
     button.disabled = true;
@@ -76,6 +82,7 @@ export async function renderAiBilling(site, workspace, api, notice) {
       button.disabled = false;
     }
   };
+  if (!write) return;
   $("#save-reconcile").addEventListener("click", (event) =>
     guard(event.currentTarget, async () => {
       const note = $("#reconcile-note").value.trim();

@@ -557,8 +557,10 @@ export async function pruneCollectors(
   // GitHub request mappings go with their task (ON DELETE CASCADE).
   const deletedTasks = await batches(
     `WITH doomed AS(SELECT id FROM collector_task
-       WHERE status IN ('done','failed','cancelled') AND completed_at<now()-$1::int*interval '1 day'
-       ORDER BY completed_at LIMIT $2 FOR UPDATE SKIP LOCKED)
+       WHERE status IN ('done','failed','cancelled')
+         AND (completed_at<now()-$1::int*interval '1 day'
+           OR (completed_at IS NULL AND created_at<now()-$1::int*interval '1 day'))
+       ORDER BY coalesce(completed_at,created_at) LIMIT $2 FOR UPDATE SKIP LOCKED)
      DELETE FROM collector_task t USING doomed WHERE t.id=doomed.id`,
     policy.collectorTaskDays,
   );

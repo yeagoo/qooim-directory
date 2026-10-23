@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — M6 配额与保留期、M7 运维 UI、M8 媒体版本、M9 AI 治理、M10 统一采集器
+## Unreleased — M6 配额与保留期、M7 运维 UI、M8 媒体版本、M9 AI 治理、M10 统一采集器、M11 收尾与加固
 
 开发方案见 [M6–M10](docs/FEATURE-PLAN-M6-M10.md)。
 
@@ -36,6 +36,18 @@
 - 余额检查（可选）：每站配置余额接口和 JSON 字段，由 Worker 带 API Key 发起请求（HTTPS、私网拒绝、固定 DNS、不跟随跳转、限时限量），每 6 小时自动检查一次，也可以手动排队检查。
 - 新增“AI 对账”页面；AI 任务列表显示提示词版本。
 - 迁移 `013-ai-governance.sql`；新增测试 `tests/p9/`。
+
+### Fixed（M11）
+
+- 单条采集候选审核接口（`POST /admin/api/collector-candidates/<id>/review`）从 M5 起一直返回 400，采集页的“接受为草稿”“拒绝”按钮因此无法使用。现已修复，并新增 HTTP 回归测试。
+- 媒体文件改为在数据库事务提交后才删除，提交失败时记录和文件都保留。
+- 已结束但没有写入 `completed_at` 的采集任务，现在也会被保留期清理。
+
+### Changed（M11）
+
+- 后台媒体、采集、AI、对账页面按当前操作者的角色隐藏或禁用无权执行的操作；`/admin/api/sites` 每行增加 `role` 字段。
+- 媒体上传和删除写审计日志（`media.upload`、`media.delete`）。
+- 新增测试 `tests/p11/`。
 
 ### Changed（M10 统一采集器）
 

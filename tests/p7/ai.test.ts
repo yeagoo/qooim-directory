@@ -421,15 +421,19 @@ test("P7 AI settings page task panel cancels, retries, filters and pages", async
   } finally {
     await session.close();
   }
-  // A read-only viewer sees the list; actions are rejected by the server.
+  // A read-only viewer sees the list without actions; the server still rejects them.
   const reader = await f.browse(f.viewer, "#ai/atlas");
   try {
     const { page } = reader;
     await page.waitForSelector(`#ai-job-list tr[data-id="${failed}"]`);
     await page.selectOption("#ai-job-status", "cancelled");
-    await page.click(`#ai-job-list tr[data-id="${pending}"] .retry-ai-job`);
-    await page.waitForSelector("#message.error");
-    assert.match((await page.textContent("#message")) ?? "", /没有此操作的权限/);
+    await page.waitForSelector(`#ai-job-list tr[data-id="${pending}"][data-status="cancelled"]`);
+    assert.equal(await page.locator("#ai-job-list .retry-ai-job, #ai-job-list .cancel-ai-job").count(), 0);
+    assert.match((await page.textContent("#access-note")) ?? "", /只读/);
+    await assert.rejects(
+      f.app.ai.retry(f.viewer, pending, { site: "atlas" }),
+      (error: { status?: number }) => error.status === 403,
+    );
   } finally {
     await reader.close();
   }

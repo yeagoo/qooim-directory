@@ -27,20 +27,20 @@ const kindLabels = { generate: "生成", translate: "翻译", seo: "SEO" };
 const errorLabels = { cancelled_by_operator: "操作员取消" };
 const time = (value) => (value ? new Date(value).toLocaleString("zh-CN") : "—");
 const jobsPanel = `<section class="panel" id="ai-jobs"><h2>任务</h2><div class="actions"><label for="ai-job-status">状态</label><select id="ai-job-status"><option value="">全部</option>${Object.entries(statusLabels).map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}</select><button id="refresh-ai-jobs" class="secondary">刷新任务</button></div><div class="table-wrap"><table id="ai-job-list"><thead><tr><th>类型</th><th>状态</th><th>错误</th><th>输入 / 输出 token</th><th>操作者</th><th>创建 / 结束</th><th>操作</th></tr></thead><tbody><tr><td colspan="7" class="muted">加载中…</td></tr></tbody></table></div><div class="actions"><button id="ai-jobs-prev" class="secondary" disabled>上一页</button><span id="ai-jobs-page" class="muted">第 1 页</span><button id="ai-jobs-next" class="secondary" disabled>下一页</button></div></section>`;
-function jobRow(job) {
+function jobRow(job, write = true) {
   const actions = [];
-  if (job.status === "pending" || job.status === "processing")
+  // Read-only operators get no cancel/retry buttons (the server needs site write).
+  if (write && (job.status === "pending" || job.status === "processing"))
     actions.push(`<button class="secondary cancel-ai-job" data-id="${escape(job.id)}">取消</button>`);
-  if (job.status === "failed" || job.status === "cancelled")
-    actions.push(
-      job.retriedBy
-        ? `<span class="muted">已重试</span>`
-        : `<button class="secondary retry-ai-job" data-id="${escape(job.id)}">重试</button>`,
-    );
+  if (job.status === "failed" || job.status === "cancelled") {
+    if (job.retriedBy) actions.push(`<span class="muted">已重试</span>`);
+    else if (write)
+      actions.push(`<button class="secondary retry-ai-job" data-id="${escape(job.id)}">重试</button>`);
+  }
   return `<tr data-id="${escape(job.id)}" data-status="${escape(job.status)}"><td>${escape(kindLabels[job.kind] || job.kind)}${job.retryOf ? `<br><span class="muted">重试自 ${escape(job.retryOf.slice(0, 8))}</span>` : ""}</td><td>${escape(statusLabels[job.status] || job.status)}</td><td>${job.error ? `<code>${escape(errorLabels[job.error] || job.error)}</code>` : "—"}</td><td>${number(job.tokens.input)} / ${number(job.tokens.output)}</td><td>${escape(job.actor ?? "—")}</td><td>${escape(time(job.createdAt))}<br><span class="muted">${escape(time(job.completedAt))}</span></td><td>${actions.join(" ") || "—"}</td></tr>`;
 }
 // Task list with its own filter/page state; actions disable the whole panel until done.
-function bindJobs(site, workspace, api, notice) {
+function bindJobs(site, workspace, api, notice, write = true) {
   const panel = workspace.querySelector("#ai-jobs");
   const state = { status: "", page: 1, busy: false, hasMore: false };
   const setBusy = (busy) => {
@@ -58,7 +58,7 @@ function bindJobs(site, workspace, api, notice) {
     const data = await api("/ai/jobs?" + query);
     state.hasMore = data.hasMore;
     panel.querySelector("#ai-job-list tbody").innerHTML =
-      data.items.map(jobRow).join("") ||
+      data.items.map((job) => jobRow(job, write)).join("") ||
       `<tr><td colspan="7" class="muted">${state.page > 1 ? "这一页没有任务。" : "暂无任务。"}</td></tr>`;
     panel.querySelector("#ai-jobs-page").textContent = `第 ${state.page} 页`;
   };
@@ -111,7 +111,7 @@ const versionLabel = (entry) =>
   `v${entry.version}${entry.builtin ? "（内置）" : entry.note ? `（${entry.note}）` : ""}`;
 // Per-kind version select with a read-only view of the chosen instructions; global
 // admins also get the form for creating a new (immutable) version.
-function promptsPanel(prompts, selected, global) {
+function promptsPanel(prompts, selected, global, write = true) {
   const kinds = promptKinds
     .map((kind) => {
       const list = prompts.kinds[kind] || [];
@@ -126,7 +126,10 @@ function promptsPanel(prompts, selected, global) {
   const create = global
     ? `<h3>新建版本</h3><p class="muted">版本创建后不能修改或删除；修改提示词就是新建一个版本，各站点需要自行选择后才会使用。</p><label for="ai-prompt-new-kind">任务类型</label><select id="ai-prompt-new-kind">${promptKinds.map((kind) => `<option value="${kind}">${escape(kindLabels[kind])}</option>`).join("")}</select><label for="ai-prompt-new-text">任务说明（最多 4000 字）</label><textarea id="ai-prompt-new-text" maxlength="4000" spellcheck="false"></textarea><label for="ai-prompt-new-note">备注（最多 200 字）</label><input id="ai-prompt-new-note" maxlength="200"><div class="actions"><button id="create-ai-prompt">创建新版本</button></div>`
     : `<p class="muted">只有站群管理员可以新建提示词版本。</p>`;
-  return `<section class="panel" id="ai-prompts"><h2>提示词版本</h2><p class="muted">只能自定义任务说明；系统提示（用户内容按不可信数据处理、只返回 JSON）和输出格式固定不变。任务创建时记录当时选用的版本，之后修改选择不影响已创建的任务。</p>${kinds}<div class="actions"><button id="save-ai-prompts">保存版本选择</button></div>${create}</section>`;
+  const save = write
+    ? `<div class="actions"><button id="save-ai-prompts">保存版本选择</button></div>`
+    : `<p class="muted">只读：可以查看各版本内容，不能修改本站的版本选择。</p>`;
+  return `<section class="panel" id="ai-prompts"><h2>提示词版本</h2><p class="muted">只能自定义任务说明；系统提示（用户内容按不可信数据处理、只返回 JSON）和输出格式固定不变。任务创建时记录当时选用的版本，之后修改选择不影响已创建的任务。</p>${kinds}${save}${create}</section>`;
 }
 function promptMeta(entry) {
   if (!entry) return "";
@@ -165,7 +168,7 @@ function bindPrompts(site, workspace, api, notice, prompts, rerender) {
       button.disabled = false;
     }
   };
-  panel.querySelector("#save-ai-prompts").addEventListener("click", (event) =>
+  panel.querySelector("#save-ai-prompts")?.addEventListener("click", (event) =>
     run(event.currentTarget, async () => {
       const promptVersions = Object.fromEntries(
         promptKinds.map((kind) => [kind, Number(panel.querySelector(`#ai-prompt-${kind}`).value)]),
@@ -188,17 +191,24 @@ function bindPrompts(site, workspace, api, notice, prompts, rerender) {
     }),
   );
 }
-export async function renderAi(site, workspace, api, notice) {
+// UI hint only; the server enforces every permission. Without access info
+// (older callers) the page asks /me and allows site writes.
+const READ_ONLY_NOTE = "只读：可以查看配置、提示词、用量和任务，不能修改。";
+export async function renderAi(site, workspace, api, notice, access) {
   const [config, usage, prompts, me] = await Promise.all([
     api("/ai/config?site=" + encodeURIComponent(site)),
     api("/ai/usage?site=" + encodeURIComponent(site)),
     api("/ai/prompts"),
-    api("/me"),
+    access ? null : api("/me"),
   ]);
-  workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / AI</span> · <a href="#ai-billing/${encodeURIComponent(site)}">用量对账与余额 →</a><h1>AI 生成与翻译 · ${escape(site)}</h1><p class="muted">服务端调用 OpenAI-compatible 端点；密钥加密保存，不回显。AI 输出只作为草稿建议，必须人工保存并发布。</p><section class="panel"><h2>供应商配置</h2><div class="split"><div><label for="ai-endpoint">HTTPS 端点</label><input id="ai-endpoint" value="${escape(config.endpoint)}" placeholder="https://api.openai.com/v1/chat/completions"><label for="ai-model">模型</label><input id="ai-model" value="${escape(config.model)}" placeholder="gpt-4.1-mini"></div><div><label for="ai-key">API Key</label><input id="ai-key" type="password" autocomplete="new-password" placeholder="${config.hasKey ? "已保存，留空保持不变" : "首次配置必填"}"><label for="ai-budget">月度 token 预算</label><input id="ai-budget" type="number" min="1000" max="100000000" step="1000" value="${config.monthlyTokens}"><label><input id="ai-enabled" type="checkbox" ${config.enabled ? "checked" : ""}>启用本站 AI</label></div></div><div class="actions"><button id="save-ai">保存配置</button><button id="refresh-ai" class="secondary">刷新</button></div><p id="ai-state" class="muted">${config.hasKey ? "已保存 API Key" : "尚未保存 API Key"} · 更新于 ${escape(config.updatedAt ?? "—")}</p></section>${promptsPanel(prompts, config.promptVersions || {}, Boolean(me.global_admin))}${usagePanel(usage)}${jobsPanel}<p id="message" role="status" aria-live="polite"></p>`;
-  workspace.querySelector("#refresh-ai")?.addEventListener("click", () => renderAi(site, workspace, api, notice));
-  bindPrompts(site, workspace, api, notice, prompts, () => renderAi(site, workspace, api, notice));
-  await bindJobs(site, workspace, api, notice);
+  const global = access ? Boolean(access.globalAdmin) : Boolean(me?.global_admin);
+  const write = access ? Boolean(access.write) : true;
+  const off = write ? "" : " disabled";
+  const rerender = () => renderAi(site, workspace, api, notice, access);
+  workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / AI</span> · <a href="#ai-billing/${encodeURIComponent(site)}">用量对账与余额 →</a><h1>AI 生成与翻译 · ${escape(site)}</h1><p class="muted">服务端调用 OpenAI-compatible 端点；密钥加密保存，不回显。AI 输出只作为草稿建议，必须人工保存并发布。</p>${write ? "" : `<p class="muted access-note" id="access-note">${escape(READ_ONLY_NOTE)}</p>`}<section class="panel"><h2>供应商配置</h2><div class="split"><div><label for="ai-endpoint">HTTPS 端点</label><input id="ai-endpoint"${off} value="${escape(config.endpoint)}" placeholder="https://api.openai.com/v1/chat/completions"><label for="ai-model">模型</label><input id="ai-model"${off} value="${escape(config.model)}" placeholder="gpt-4.1-mini"></div><div><label for="ai-key">API Key</label><input id="ai-key"${off} type="password" autocomplete="new-password" placeholder="${config.hasKey ? "已保存，留空保持不变" : "首次配置必填"}"><label for="ai-budget">月度 token 预算</label><input id="ai-budget"${off} type="number" min="1000" max="100000000" step="1000" value="${config.monthlyTokens}"><label><input id="ai-enabled"${off} type="checkbox" ${config.enabled ? "checked" : ""}>启用本站 AI</label></div></div><div class="actions">${write ? '<button id="save-ai">保存配置</button>' : ""}<button id="refresh-ai" class="secondary">刷新</button></div><p id="ai-state" class="muted">${config.hasKey ? "已保存 API Key" : "尚未保存 API Key"} · 更新于 ${escape(config.updatedAt ?? "—")}</p></section>${promptsPanel(prompts, config.promptVersions || {}, global, write)}${usagePanel(usage)}${jobsPanel}<p id="message" role="status" aria-live="polite"></p>`;
+  workspace.querySelector("#refresh-ai")?.addEventListener("click", rerender);
+  bindPrompts(site, workspace, api, notice, prompts, rerender);
+  await bindJobs(site, workspace, api, notice, write);
   workspace.querySelector("#save-ai")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -212,7 +222,7 @@ export async function renderAi(site, workspace, api, notice) {
         enabled: workspace.querySelector("#ai-enabled").checked,
         monthlyTokens: Number(workspace.querySelector("#ai-budget").value),
       });
-      await renderAi(site, workspace, api, notice);
+      await rerender();
       notice("AI 配置已保存。");
     } catch (error) {
       notice(error.message, true);

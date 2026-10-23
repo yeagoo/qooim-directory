@@ -68,12 +68,12 @@ const uncertain = (error) =>
   error instanceof TypeError || error instanceof SyntaxError;
 const sourceLabel = (s) =>
   s.kind === "npm" ? "npm: " + (s.config?.query ?? "") : s.config?.url ?? "";
-function taskRows(items) {
+function taskRows(items, manage = true) {
   return (
     items
       .map(
         (t) =>
-          `<tr data-task="${escape(t.id)}"><td>${escape(taskStatusLabels[t.status] || t.status)}${t.retryOf ? `<br><span class="muted">重试自 ${escape(t.retryOf.slice(0, 8))}</span>` : ""}</td><td>${escape(t.kind)}<br><span class="muted">${escape(t.source)}</span></td><td>${t.attempts}</td><td>${escape(t.error || t.result || "")}</td><td>${escape(time(t.createdAt))}${t.completedAt ? `<br><span class="muted">结束 ${escape(time(t.completedAt))}</span>` : ""}</td><td>${t.status === "failed" ? `<button class="secondary retry-task" data-id="${escape(t.id)}">重试</button>` : ""}</td></tr>`,
+          `<tr data-task="${escape(t.id)}"><td>${escape(taskStatusLabels[t.status] || t.status)}${t.retryOf ? `<br><span class="muted">重试自 ${escape(t.retryOf.slice(0, 8))}</span>` : ""}</td><td>${escape(t.kind)}<br><span class="muted">${escape(t.source)}</span></td><td>${t.attempts}</td><td>${escape(t.error || t.result || "")}</td><td>${escape(time(t.createdAt))}${t.completedAt ? `<br><span class="muted">结束 ${escape(time(t.completedAt))}</span>` : ""}</td><td>${manage && t.status === "failed" ? `<button class="secondary retry-task" data-id="${escape(t.id)}">重试</button>` : ""}</td></tr>`,
       )
       .join("") || '<tr><td colspan="6" class="muted">没有符合条件的任务。</td></tr>'
   );
@@ -89,7 +89,20 @@ function editForm(s) {
   const locale = s.config?.locale || "zh";
   return `<h2>编辑来源 · ${escape(s.kind)}</h2><p class="muted">版本 ${s.version}。保存后会取消该来源未完成的任务，并作废其待审核候选。</p><div class="split"><div>${fields}<label for="edit-locale">语言</label><select id="edit-locale"><option value="zh"${locale === "zh" ? " selected" : ""}>中文</option><option value="en"${locale === "en" ? " selected" : ""}>English</option></select></div><div><label for="edit-interval">同步间隔（小时，1–168）</label><input id="edit-interval" type="number" min="1" max="168" step="1" value="${hours}"><label><input id="edit-enabled" type="checkbox"${s.enabled ? " checked" : ""}>启用并参与定时采集</label></div></div><div class="actions"><button id="save-edit" data-id="${escape(s.id)}">保存修改</button><button id="cancel-edit" class="secondary">取消</button></div>`;
 }
-export async function renderCollectors(site, workspace, api, notice) {
+// UI hint only; the server enforces every permission. Sources, sync, task
+// retry and candidate history need a global admin; review needs site write.
+// Without access info (older callers) the page shows every action.
+function accessNote(manage, review) {
+  if (manage) return "";
+  const text = review
+    ? "仅站群管理员可以管理来源、同步、重试任务和查看候选历史；你可以审核候选。"
+    : "只读：可以查看来源、任务和候选，不能修改。仅站群管理员可以管理来源和同步。";
+  return `<p class="muted access-note" id="access-note">${escape(text)}</p>`;
+}
+export async function renderCollectors(site, workspace, api, notice, access) {
+  const manage = access ? Boolean(access.globalAdmin) : true;
+  const review = access ? Boolean(access.write) : true;
+  const rerender = () => renderCollectors(site, workspace, api, notice, access);
   const sources = await api("/collectors?site=" + encodeURIComponent(site));
   const candidates = await api(
     "/collector-candidates?site=" + encodeURIComponent(site),
@@ -99,16 +112,16 @@ export async function renderCollectors(site, workspace, api, notice) {
   const full = usage.sources >= usage.sourceLimit;
   const quota = `<p class="muted" id="collector-usage">来源 ${usage.sources} / ${usage.sourceLimit}；最近一小时采集 ${usage.runsLastHour} / ${usage.runsPerHour} 次${usage.runsPerHour === 0 ? "（本站已停用采集）" : ""}${full ? "；来源已达上限，不能新建" : ""}</p>`;
   const taskFilter = `<option value="">全部状态</option>${Object.entries(taskStatusLabels).map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}`;
-  workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / COLLECTORS</span><h1>垂直采集 · ${escape(site)}</h1><p class="muted">只采集公开 RSS/Atom、npm 官方搜索或受控 JSON；候选必须人工接受，接受后只创建草稿，不会自动发布。</p>${quota}<section class="panel"><h2>新建来源</h2><div class="split"><div><label for="collector-kind">类型</label><select id="collector-kind"><option value="rss">RSS / Atom</option><option value="npm">npm 搜索</option><option value="json">通用 JSON</option></select><label for="collector-config">配置 JSON</label><textarea id="collector-config" spellcheck="false">${escape(JSON.stringify(defaults.rss, null, 2))}</textarea></div><div><label for="collector-interval">间隔（秒）</label><input id="collector-interval" type="number" min="3600" max="604800" value="86400"><label><input id="collector-enabled" type="checkbox" checked>启用并参与定时采集</label></div></div><div class="actions"><button id="save-collector"${full ? " disabled" : ""}>保存来源</button><button id="refresh-collectors" class="secondary">刷新</button></div></section><section class="panel"><h2>来源 ${usage.sources} / ${usage.sourceLimit}</h2><div class="table-wrap"><table><thead><tr><th>类型</th><th>配置</th><th>状态</th><th>版本</th><th>操作</th></tr></thead><tbody>${sources.map((s) => `<tr><td>${escape(s.kind)}</td><td><code>${escape(JSON.stringify(s.config))}</code></td><td>${s.enabled ? "启用" : "停用"}<br><span class="muted">每 ${escape(Math.round((s.interval_seconds / 3600) * 100) / 100)} 小时</span></td><td>${s.version}</td><td>${s.kind === "github" ? `<a class="manage-github" href="#github">在“开源项目”页管理</a>` : `<button class="secondary sync-collector" data-id="${s.id}">立即同步</button><button class="secondary edit-collector" data-id="${s.id}">编辑</button><button class="secondary detail-collector" data-id="${s.id}">候选历史</button>`}</td></tr>`).join("") || '<tr><td colspan="5" class="muted">还没有采集来源。</td></tr>'}</tbody></table></div></section><section class="panel" id="collector-edit" hidden></section><section class="panel" id="collector-tasks"><h2>采集任务</h2><div class="actions"><label for="task-status">状态</label><select id="task-status">${taskFilter}</select><button id="task-prev" class="secondary" disabled>上一页</button><span id="task-page">第 1 页</span><button id="task-next" class="secondary"${tasks.hasMore ? "" : " disabled"}>下一页</button></div><div class="table-wrap"><table><thead><tr><th>状态</th><th>来源</th><th>尝试</th><th>错误 / 结果</th><th>时间</th><th>操作</th></tr></thead><tbody>${taskRows(tasks.items)}</tbody></table></div></section><section class="panel" id="collector-candidates"><h2>待审核候选 ${candidates.length}</h2><div class="actions"><label><input id="select-all-candidates" type="checkbox"${candidates.length ? "" : " disabled"}>全选</label><button id="batch-accept" disabled>批量接受为草稿</button><button id="batch-reject" class="secondary" disabled>批量拒绝</button></div><div id="collector-batch-result" hidden></div><div class="table-wrap"><table><thead><tr><th></th><th>标题 / URL</th><th>语言</th><th>类型</th><th>操作</th></tr></thead><tbody>${candidates.map((c) => `<tr><td><input type="checkbox" class="candidate-check" data-id="${c.id}" data-version="${c.version}" data-title="${escape(c.data?.translations?.[c.locale]?.title || c.data?.url || c.id)}" aria-label="选择候选"></td><td><strong>${escape(c.data?.translations?.[c.locale]?.title)}</strong><br><span class="muted">${escape(c.data?.url)}</span></td><td>${escape(c.locale)}</td><td>${escape(c.kind)}</td><td><button class="accept-collector" data-id="${c.id}" data-version="${c.version}">接受为草稿</button><button class="secondary reject-collector" data-id="${c.id}" data-version="${c.version}">拒绝</button></td></tr>`).join("") || '<tr><td colspan="5" class="muted">暂无待审核候选。</td></tr>'}</tbody></table></div></section><section class="panel" id="collector-history" hidden><h2>候选历史</h2><div class="table-wrap"><table><thead><tr><th>标题 / URL</th><th>外部 ID</th><th>状态</th><th>时间</th></tr></thead><tbody></tbody></table></div></section>`;
+  workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / COLLECTORS</span><h1>垂直采集 · ${escape(site)}</h1><p class="muted">只采集公开 RSS/Atom、npm 官方搜索或受控 JSON；候选必须人工接受，接受后只创建草稿，不会自动发布。</p>${quota}${accessNote(manage, review)}${manage ? `<section class="panel"><h2>新建来源</h2><div class="split"><div><label for="collector-kind">类型</label><select id="collector-kind"><option value="rss">RSS / Atom</option><option value="npm">npm 搜索</option><option value="json">通用 JSON</option></select><label for="collector-config">配置 JSON</label><textarea id="collector-config" spellcheck="false">${escape(JSON.stringify(defaults.rss, null, 2))}</textarea></div><div><label for="collector-interval">间隔（秒）</label><input id="collector-interval" type="number" min="3600" max="604800" value="86400"><label><input id="collector-enabled" type="checkbox" checked>启用并参与定时采集</label></div></div><div class="actions"><button id="save-collector"${full ? " disabled" : ""}>保存来源</button><button id="refresh-collectors" class="secondary">刷新</button></div></section>` : '<div class="actions"><button id="refresh-collectors" class="secondary">刷新</button></div>'}<section class="panel"><h2>来源 ${usage.sources} / ${usage.sourceLimit}</h2><div class="table-wrap"><table><thead><tr><th>类型</th><th>配置</th><th>状态</th><th>版本</th><th>操作</th></tr></thead><tbody>${sources.map((s) => `<tr><td>${escape(s.kind)}</td><td><code>${escape(JSON.stringify(s.config))}</code></td><td>${s.enabled ? "启用" : "停用"}<br><span class="muted">每 ${escape(Math.round((s.interval_seconds / 3600) * 100) / 100)} 小时</span></td><td>${s.version}</td><td>${s.kind === "github" ? `<a class="manage-github" href="#github">在“开源项目”页管理</a>` : manage ? `<button class="secondary sync-collector" data-id="${s.id}">立即同步</button><button class="secondary edit-collector" data-id="${s.id}">编辑</button><button class="secondary detail-collector" data-id="${s.id}">候选历史</button>` : '<span class="muted">—</span>'}</td></tr>`).join("") || '<tr><td colspan="5" class="muted">还没有采集来源。</td></tr>'}</tbody></table></div></section><section class="panel" id="collector-edit" hidden></section><section class="panel" id="collector-tasks"><h2>采集任务</h2><div class="actions"><label for="task-status">状态</label><select id="task-status">${taskFilter}</select><button id="task-prev" class="secondary" disabled>上一页</button><span id="task-page">第 1 页</span><button id="task-next" class="secondary"${tasks.hasMore ? "" : " disabled"}>下一页</button></div><div class="table-wrap"><table><thead><tr><th>状态</th><th>来源</th><th>尝试</th><th>错误 / 结果</th><th>时间</th><th>操作</th></tr></thead><tbody>${taskRows(tasks.items, manage)}</tbody></table></div></section><section class="panel" id="collector-candidates"><h2>待审核候选 ${candidates.length}</h2>${review ? `<div class="actions"><label><input id="select-all-candidates" type="checkbox"${candidates.length ? "" : " disabled"}>全选</label><button id="batch-accept" disabled>批量接受为草稿</button><button id="batch-reject" class="secondary" disabled>批量拒绝</button></div>` : ""}<div id="collector-batch-result" hidden></div><div class="table-wrap"><table><thead><tr><th></th><th>标题 / URL</th><th>语言</th><th>类型</th><th>操作</th></tr></thead><tbody>${candidates.map((c) => `<tr><td>${review ? `<input type="checkbox" class="candidate-check" data-id="${c.id}" data-version="${c.version}" data-title="${escape(c.data?.translations?.[c.locale]?.title || c.data?.url || c.id)}" aria-label="选择候选">` : ""}</td><td><strong>${escape(c.data?.translations?.[c.locale]?.title)}</strong><br><span class="muted">${escape(c.data?.url)}</span></td><td>${escape(c.locale)}</td><td>${escape(c.kind)}</td><td>${review ? `<button class="accept-collector" data-id="${c.id}" data-version="${c.version}">接受为草稿</button><button class="secondary reject-collector" data-id="${c.id}" data-version="${c.version}">拒绝</button>` : '<span class="muted">—</span>'}</td></tr>`).join("") || '<tr><td colspan="5" class="muted">暂无待审核候选。</td></tr>'}</tbody></table></div></section><section class="panel" id="collector-history" hidden><h2>候选历史</h2><div class="table-wrap"><table><thead><tr><th>标题 / URL</th><th>外部 ID</th><th>状态</th><th>时间</th></tr></thead><tbody></tbody></table></div></section>`;
   const kind = workspace.querySelector("#collector-kind"),
     config = workspace.querySelector("#collector-config");
-  kind.addEventListener("change", () => {
+  kind?.addEventListener("change", () => {
     config.value = JSON.stringify(defaults[kind.value], null, 2);
   });
   workspace.querySelector("#refresh-collectors").addEventListener("click", () =>
-    renderCollectors(site, workspace, api, notice),
+    rerender(),
   );
-  workspace.querySelector("#save-collector").addEventListener("click", async (event) => {
+  workspace.querySelector("#save-collector")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     button.disabled = true;
     try {
@@ -120,7 +133,7 @@ export async function renderCollectors(site, workspace, api, notice) {
         intervalSeconds: Number(workspace.querySelector("#collector-interval").value),
         expectedVersion: 0,
       });
-      await renderCollectors(site, workspace, api, notice);
+      await rerender();
       notice("采集来源已保存。");
     } catch (error) {
       notice(error.message, true);
@@ -182,7 +195,7 @@ export async function renderCollectors(site, workspace, api, notice) {
                 : hours * 3600,
             expectedVersion: source.version,
           });
-          await renderCollectors(site, workspace, api, notice);
+          await rerender();
           notice("来源已更新。");
         } catch (error) {
           save.disabled = false;
@@ -212,7 +225,7 @@ export async function renderCollectors(site, workspace, api, notice) {
             ...(status ? { status } : {}),
           }).toString(),
       );
-      taskPanel.querySelector("tbody").innerHTML = taskRows(result.items);
+      taskPanel.querySelector("tbody").innerHTML = taskRows(result.items, manage);
       taskPanel.querySelector("#task-page").textContent = `第 ${result.page} 页`;
       prev.disabled = result.page <= 1;
       next.disabled = !result.hasMore;
@@ -301,7 +314,7 @@ export async function renderCollectors(site, workspace, api, notice) {
             ? "已接受并创建草稿：" + (result.resourceId || "")
             : "候选已拒绝。",
         );
-        await renderCollectors(site, workspace, api, notice);
+        await rerender();
       } catch (error) {
         notice(error.message, true);
         button.disabled = false;
@@ -312,6 +325,7 @@ export async function renderCollectors(site, workspace, api, notice) {
   const candidatePanel = workspace.querySelector("#collector-candidates");
   const checks = [...candidatePanel.querySelectorAll(".candidate-check")];
   const selectAll = candidatePanel.querySelector("#select-all-candidates");
+  if (!selectAll) return;
   const batchButtons = [
     candidatePanel.querySelector("#batch-accept"),
     candidatePanel.querySelector("#batch-reject"),
@@ -350,7 +364,7 @@ export async function renderCollectors(site, workspace, api, notice) {
         const ok = result.accepted + result.rejected;
         const summary = `${decision === "accept" ? "批量接受为草稿" : "批量拒绝"}：成功 ${ok} 条，失败 ${result.failed} 条`;
         const failures = result.results.filter((item) => !item.ok);
-        await renderCollectors(site, workspace, api, notice);
+        await rerender();
         const box = workspace.querySelector("#collector-batch-result");
         if (box) {
           box.innerHTML = `<p><strong>${escape(summary)}</strong></p>${failures.length ? `<ul>${failures.map((item) => `<li>${escape(titles.get(item.id) || item.id)}：${escape(item.error)}</li>`).join("")}</ul>` : ""}`;

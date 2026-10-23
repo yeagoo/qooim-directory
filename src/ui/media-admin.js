@@ -80,7 +80,11 @@ const STATUS = {
   failed: "失败",
   skipped: "未上传",
 };
-export async function renderMedia(site, workspace, api, notice) {
+// UI hint only; the server enforces every permission. Without access info
+// (older callers) the page shows every action.
+const READ_ONLY_NOTE = "只读：可以查看和预览图片及历史版本，不能上传、替换、恢复或删除。";
+export async function renderMedia(site, workspace, api, notice, access) {
+  const write = access ? Boolean(access.write) : true;
   let items = [],
     usage = null,
     busy = false,
@@ -111,9 +115,13 @@ export async function renderMedia(site, workspace, api, notice) {
     }
   };
   const itemCard = (item) =>
-    `<article class="site-card media-item" data-id="${escape(item.id)}"><img src="${escape(item.adminUrl)}" alt="${escape(item.alt)}" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px"><h2>${escape(item.filename)} <span class="badge media-version" title="当前版本">v${Number(item.version) || 1}</span></h2><p class="muted">${escape(item.mime)} · ${item.width}×${item.height} · ${size(item.bytes)}</p><p>${escape(item.alt)}</p><div class="actions"><button class="secondary copy-media" data-id="${escape(item.id)}" data-alt="${escape(item.alt)}">复制引用 JSON</button><button class="secondary replace-media" data-id="${escape(item.id)}">替换图片</button><button class="secondary history-media" data-id="${escape(item.id)}">历史版本</button><button class="secondary delete-media" data-id="${escape(item.id)}">删除</button></div></article>`;
+    `<article class="site-card media-item" data-id="${escape(item.id)}"><img src="${escape(item.adminUrl)}" alt="${escape(item.alt)}" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px"><h2>${escape(item.filename)} <span class="badge media-version" title="当前版本">v${Number(item.version) || 1}</span></h2><p class="muted">${escape(item.mime)} · ${item.width}×${item.height} · ${size(item.bytes)}</p><p>${escape(item.alt)}</p><div class="actions"><button class="secondary copy-media" data-id="${escape(item.id)}" data-alt="${escape(item.alt)}">复制引用 JSON</button>${write ? `<button class="secondary replace-media" data-id="${escape(item.id)}">替换图片</button>` : ""}<button class="secondary history-media" data-id="${escape(item.id)}">历史版本</button>${write ? `<button class="secondary delete-media" data-id="${escape(item.id)}">删除</button>` : ""}</div></article>`;
   const draw = () => {
-    workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / MEDIA</span><h1>媒体库 · ${escape(site)}</h1><p class="muted">只支持 JPEG、PNG、WebP；单文件不超过 10 MiB。图片按内容哈希存储，删除前会检查线上/草稿引用。${escape(FREEZE_NOTE)}</p>${quota(usage)}<section class="panel"><h2>上传图片</h2><div class="split"><div><label for="media-file">图片文件</label><input id="media-file" type="file" accept="image/jpeg,image/png,image/webp"></div><div><label for="media-alt">替代文本（必填）</label><input id="media-alt" maxlength="200" placeholder="描述图片内容"></div></div><div class="actions"><button id="upload-media">上传</button><button id="refresh-media" class="secondary">刷新</button></div></section><section class="panel" id="media-batch-panel"></section><section class="panel" id="media-replace" hidden></section><section class="panel" id="media-history" hidden></section><section class="panel"><h2>已上传 ${items.length} 张</h2><div class="grid" id="media-list">${items.map(itemCard).join("") || '<p class="muted">还没有上传图片。</p>'}</div></section><p id="message" role="status" aria-live="polite"></p>`;
+    workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / MEDIA</span><h1>媒体库 · ${escape(site)}</h1><p class="muted">只支持 JPEG、PNG、WebP；单文件不超过 10 MiB。图片按内容哈希存储，删除前会检查线上/草稿引用。${escape(FREEZE_NOTE)}</p>${write ? "" : `<p class="muted access-note" id="access-note">${escape(READ_ONLY_NOTE)}</p>`}${quota(usage)}${
+      write
+        ? '<section class="panel"><h2>上传图片</h2><div class="split"><div><label for="media-file">图片文件</label><input id="media-file" type="file" accept="image/jpeg,image/png,image/webp"></div><div><label for="media-alt">替代文本（必填）</label><input id="media-alt" maxlength="200" placeholder="描述图片内容"></div></div><div class="actions"><button id="upload-media">上传</button><button id="refresh-media" class="secondary">刷新</button></div></section><section class="panel" id="media-batch-panel"></section><section class="panel" id="media-replace" hidden></section>'
+        : '<div class="actions"><button id="refresh-media" class="secondary">刷新</button></div>'
+    }<section class="panel" id="media-history" hidden></section><section class="panel"><h2>已上传 ${items.length} 张</h2><div class="grid" id="media-list">${items.map(itemCard).join("") || '<p class="muted">还没有上传图片。</p>'}</div></section><p id="message" role="status" aria-live="polite"></p>`;
     $("#refresh-media")?.addEventListener("click", () => guarded(load));
     $("#upload-media")?.addEventListener("click", upload);
     for (const button of workspace.querySelectorAll(".delete-media"))
@@ -247,7 +255,7 @@ export async function renderMedia(site, workspace, api, notice) {
   const drawReplace = () => {
     const panel = $("#media-replace");
     if (!panel) return;
-    const item = items.find((entry) => entry.id === replaceId);
+    const item = write && items.find((entry) => entry.id === replaceId);
     if (!item) {
       replaceId = null;
       panel.hidden = true;
@@ -307,7 +315,7 @@ export async function renderMedia(site, workspace, api, notice) {
       : version.pinned
         ? "该版本被已发布或曾发布的内容引用，不能删除"
         : "";
-    return `<article class="site-card version-row" data-version="${Number(version.version)}"><img src="${escape(version.adminUrl)}" alt="v${Number(version.version)} 预览" loading="lazy" style="width:100%;max-height:140px;object-fit:contain;border-radius:6px"><h2>v${Number(version.version)} ${labels(version)}</h2><p class="muted">${escape(version.filename)} · ${escape(version.mime)} · ${version.width}×${version.height} · ${size(version.bytes)}</p><p class="muted">${escape(when(version.createdAt))}${version.createdBy ? " · " + escape(version.createdBy) : ""}</p><div class="actions">${version.current ? "" : `<button class="secondary restore-version" data-version="${Number(version.version)}">设为当前版本</button>`}<button class="secondary delete-version" data-version="${Number(version.version)}"${why ? ` data-locked="1" disabled title="${escape(why)}"` : ' title="永久删除此版本的文件"'}>删除此版本</button></div></article>`;
+    return `<article class="site-card version-row" data-version="${Number(version.version)}"><img src="${escape(version.adminUrl)}" alt="v${Number(version.version)} 预览" loading="lazy" style="width:100%;max-height:140px;object-fit:contain;border-radius:6px"><h2>v${Number(version.version)} ${labels(version)}</h2><p class="muted">${escape(version.filename)} · ${escape(version.mime)} · ${version.width}×${version.height} · ${size(version.bytes)}</p><p class="muted">${escape(when(version.createdAt))}${version.createdBy ? " · " + escape(version.createdBy) : ""}</p>${write ? `<div class="actions">${version.current ? "" : `<button class="secondary restore-version" data-version="${Number(version.version)}">设为当前版本</button>`}<button class="secondary delete-version" data-version="${Number(version.version)}"${why ? ` data-locked="1" disabled title="${escape(why)}"` : ' title="永久删除此版本的文件"'}>删除此版本</button></div>` : ""}</article>`;
   };
   const drawHistory = () => {
     const panel = $("#media-history");
@@ -318,7 +326,7 @@ export async function renderMedia(site, workspace, api, notice) {
       return;
     }
     panel.hidden = false;
-    panel.innerHTML = `<h2>历史版本 · ${escape(history.media.filename)} <span class="badge">当前 v${Number(history.media.version) || 1}</span></h2><p class="muted">设为当前版本会以旧版本内容生成一个新版本，不改动历史。${escape(FREEZE_NOTE)}被内容引用的版本和当前版本不能删除。</p><div class="grid" id="media-versions">${history.versions.map(versionRow).join("") || '<p class="muted">没有版本记录。</p>'}</div><div class="actions"><button id="close-history" class="secondary">关闭历史</button></div>`;
+    panel.innerHTML = `<h2>历史版本 · ${escape(history.media.filename)} <span class="badge">当前 v${Number(history.media.version) || 1}</span></h2><p class="muted">${write ? `设为当前版本会以旧版本内容生成一个新版本，不改动历史。${escape(FREEZE_NOTE)}被内容引用的版本和当前版本不能删除。` : "只读：可以预览各版本，不能恢复或删除。"}</p><div class="grid" id="media-versions">${history.versions.map(versionRow).join("") || '<p class="muted">没有版本记录。</p>'}</div><div class="actions"><button id="close-history" class="secondary">关闭历史</button></div>`;
     $("#close-history").addEventListener("click", () => {
       history = null;
       drawHistory();

@@ -59,3 +59,5 @@ pnpm release:check:image   通过（package.json / compose.yaml 未改动）
 - 上传和删除素材本身仍然不写审计日志（与 M3 一致），只有替换、恢复、删除版本写审计。
 
 > 补记（2026-10-23）：M10 提交后补跑了 `pnpm test:docker`，通过，见 [M10 验收](ACCEPTANCE-M10-20261023.md#docker-验收覆盖-m6m10)。
+
+> 补记（2026-10-23）：本文“保留”中属于开发工作的事项已在 M11 处理，见 [M11 验收](ACCEPTANCE-M11-20261023.md#已解决的历史保留项)。

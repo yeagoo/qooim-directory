@@ -56,3 +56,5 @@ pnpm release:check:image   通过（package.json / compose.yaml 未改动）
 - 主机上有一个本次会话之前遗留的测试数据库容器 `navigation-p0-037a9361…`（已运行 47 小时），没有清理。
 
 > 补记（2026-10-23）：M10 提交后补跑了 `pnpm test:docker`，通过，见 [M10 验收](ACCEPTANCE-M10-20261023.md#docker-验收覆盖-m6m10)。
+
+> 补记（2026-10-23）：本文“保留”中属于开发工作的事项已在 M11 处理，见 [M11 验收](ACCEPTANCE-M11-20261023.md#已解决的历史保留项)。

@@ -274,7 +274,7 @@ test("P8 pinned versions cannot be deleted and a stale delete shows the server e
   }
 });
 
-test("P8 viewer can browse history but mutations are rejected with an error", async () => {
+test("P8 viewer can browse history but sees no mutation controls", async () => {
   const item = await upload(400);
   await replace(item.id, 401);
   const viewer = await f.browse(f.viewer, "#media/atlas");
@@ -285,13 +285,19 @@ test("P8 viewer can browse history but mutations are rejected with an error", as
     assert.equal((await page.textContent(`${card(item.id)} .media-version`))?.trim(), "v2");
     await openHistory(page, item.id);
     assert.equal(await page.locator("#media-history .version-row").count(), 2);
-    await page.click(`${row(1)} .restore-version`);
-    await page.waitForFunction(() =>
-      document.querySelector("#message")?.className.includes("error"),
+    // Mutation controls are hidden; the server still rejects the request.
+    assert.equal(
+      await page
+        .locator(".restore-version, .delete-version, .replace-media, .delete-media, #upload-media")
+        .count(),
+      0,
+    );
+    assert.match((await page.textContent("#access-note")) ?? "", /只读/);
+    await assert.rejects(
+      f.app.media.restore(f.viewer, item.id, 1),
+      (error: { status?: number }) => error.status === 403,
     );
     assert.equal(await current(item.id), 2);
-    // The page stays usable after the rejected request.
-    assert.equal(await page.isEnabled(`${row(1)} .restore-version`), true);
     assert.deepEqual(await versions(item.id), [1, 2]);
   } finally {
     await viewer.close();

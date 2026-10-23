@@ -69,7 +69,11 @@ export async function collectorsHttp(
       .strictObject({ site: z.string(), decision: z.enum(["accept", "reject"]), expectedVersion: z.number().int().positive() })
       .parse(await body());
     return Response.json(
-      await collectors.review(actor, value.site, review[1]!, value),
+      // review() validates {decision, expectedVersion} strictly; site travels separately.
+      await collectors.review(actor, value.site, review[1]!, {
+        decision: value.decision,
+        expectedVersion: value.expectedVersion,
+      }),
     );
   }
   if (action.startsWith("/collectors") || action.startsWith("/collector-candidates"))

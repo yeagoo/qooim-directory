@@ -119,7 +119,8 @@ export class Sites {
   async list(actor: Operator) {
     return (
       await this.pool.query(
-        `SELECT s.id,s.host,s.active,s.revision,s.draft_version,s.config,a.origin,a.center_site,a.state,a.error_code
+        `SELECT s.id,s.host,s.active,s.revision,s.draft_version,s.config,a.origin,a.center_site,a.state,a.error_code,
+    CASE WHEN u.global_admin THEN 'admin' ELSE (SELECT g.role FROM operator_grant g WHERE g.user_id=u.id AND g.site_id=s.id) END AS role
   FROM site s JOIN auth_instance a ON a.site_id=s.id JOIN operator_user u ON u.id=$1 AND NOT u.disabled
   WHERE u.global_admin OR EXISTS(SELECT 1 FROM operator_grant g WHERE g.user_id=u.id AND g.site_id=s.id) ORDER BY s.id`,
         [actor.id],

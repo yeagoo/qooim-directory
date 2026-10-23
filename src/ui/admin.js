@@ -143,6 +143,15 @@ async function render() {
     }
   }
 }
+// UI hint only: the server still enforces every permission.
+function accessFor(siteId) {
+  const role = sites.find((site) => site.id === siteId)?.role;
+  return {
+    role: role ?? null,
+    globalAdmin: Boolean(me?.global_admin),
+    write: Boolean(me?.global_admin) || role === "editor",
+  };
+}
 async function renderView(scope) {
   const { api, notice } = scope;
   const route = location.hash.slice(1);
@@ -154,17 +163,31 @@ async function renderView(scope) {
       workspace,
       api,
       notice,
+      accessFor(decodeURIComponent(route.slice(11))),
     );
   if (route.startsWith("ai/"))
-    return renderAi(decodeURIComponent(route.slice(3)), workspace, api, notice);
+    return renderAi(
+      decodeURIComponent(route.slice(3)),
+      workspace,
+      api,
+      notice,
+      accessFor(decodeURIComponent(route.slice(3))),
+    );
   if (route.startsWith("media/"))
-    return renderMedia(decodeURIComponent(route.slice(6)), workspace, api, notice);
+    return renderMedia(
+      decodeURIComponent(route.slice(6)),
+      workspace,
+      api,
+      notice,
+      accessFor(decodeURIComponent(route.slice(6))),
+    );
   if (route.startsWith("ai-billing/"))
     return renderAiBilling(
       decodeURIComponent(route.slice(11)),
       workspace,
       api,
       notice,
+      accessFor(decodeURIComponent(route.slice(11))),
     );
   if (route.startsWith("limits/"))
     return renderLimits(

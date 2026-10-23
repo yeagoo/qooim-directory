@@ -62,6 +62,10 @@ const replaceSchema = z.strictObject({
   alt: z.string().trim().min(1).max(200).optional(),
   data: z.string().min(1),
 });
+type StoredFile = { sha256: string; mime: Mime };
+// Files a locked mutation hands back for unlinking once its transaction has ended:
+// `committed` after a successful commit, `failed` after a rollback (including a failed COMMIT).
+type Release = { committed: StoredFile[]; failed: StoredFile[] };
 type MediaRow = {
   id: string;
   site_id: string;
@@ -190,8 +194,10 @@ export class Media {
     const target = this.path(value.site, sha, info.mime);
     await mkdir(join(this.root, value.site), { recursive: true, mode: 0o700 });
     // Quota check, file placement and insert are serialized per site; orphan cleanup
-    // takes the same lock before deciding a file is unreferenced.
-    const row = await this.locked(value.site, async (client) => {
+    // takes the same lock before deciding a file is unreferenced. The file is placed
+    // before the row commits; if the transaction fails it is unlinked afterwards, unless
+    // something references it by then.
+    const row = await this.mutate(value.site, async (client, release) => {
       const existing = (
         await client.query(
           `SELECT ${COLUMNS} FROM media WHERE site_id=$1 AND sha256=$2 ORDER BY created_at,id LIMIT 1`,
@@ -201,8 +207,10 @@ export class Media {
       if (existing) {
         // Identical content is already some media's current version: reuse it without
         // consuming quota, restoring the file if it went missing.
-        if (!(await this.regularFile(target)))
+        if (!(await this.regularFile(target))) {
           await this.place(value.site, target, data);
+          release.failed.push({ sha256: sha, mime: info.mime });
+        }
         return existing;
       }
       // Content kept only as a historical version still gets a new media row, but its
@@ -217,25 +225,32 @@ export class Media {
         );
       if (!stored && usage.bytes + data.length > limits.mediaBytes)
         throw this.bytesError(limits.mediaBytes, usage.bytes, data.length);
-      if (!stored || !(await this.regularFile(target)))
+      if (!stored || !(await this.regularFile(target))) {
         await this.place(value.site, target, data);
-      return this.guarded(client, value.site, sha, info.mime, async () => {
-        const created = (
-          await client.query(
-            `INSERT INTO media(site_id,filename,mime,bytes,width,height,sha256,alt,created_by)
-             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
-             RETURNING ${COLUMNS}`,
-            [value.site, value.filename, info.mime, data.length, info.width, info.height, sha, value.alt, actor.id],
-          )
-        ).rows[0];
-        // media mirrors its current version; media_version keeps the history.
+        release.failed.push({ sha256: sha, mime: info.mime });
+      }
+      const created = (
         await client.query(
-          `INSERT INTO media_version(media_id,version,filename,mime,bytes,width,height,sha256,created_by)
-           SELECT id,version,filename,mime,bytes,width,height,sha256,created_by FROM media WHERE id=$1`,
-          [created.id],
-        );
-        return created;
+          `INSERT INTO media(site_id,filename,mime,bytes,width,height,sha256,alt,created_by)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           RETURNING ${COLUMNS}`,
+          [value.site, value.filename, info.mime, data.length, info.width, info.height, sha, value.alt, actor.id],
+        )
+      ).rows[0];
+      // media mirrors its current version; media_version keeps the history.
+      await client.query(
+        `INSERT INTO media_version(media_id,version,filename,mime,bytes,width,height,sha256,created_by)
+         SELECT id,version,filename,mime,bytes,width,height,sha256,created_by FROM media WHERE id=$1`,
+        [created.id],
+      );
+      // Only a newly created media is audited; a dedupe hit changes nothing.
+      await this.audit(client, actor, value.site, "media.upload", {
+        mediaId: created.id,
+        sha256: sha,
+        bytes: data.length,
+        filename: value.filename,
       });
+      return created;
     });
     return this.dto(row);
   }
@@ -249,7 +264,7 @@ export class Media {
     const site = current.site_id,
       target = this.path(site, sha, info.mime);
     await mkdir(join(this.root, site), { recursive: true, mode: 0o700 });
-    const row = await this.locked(site, async (client) => {
+    const row = await this.mutate(site, async (client, release) => {
       const media = await this.lockRow(client, id);
       if (media.sha256 === sha)
         throw new HttpError(409, "新图片与当前版本内容相同，无需替换");
@@ -261,30 +276,30 @@ export class Media {
         if (usage.bytes + data.length > limits.mediaBytes)
           throw this.bytesError(limits.mediaBytes, usage.bytes, data.length);
       }
-      if (!stored || !(await this.regularFile(target)))
+      if (!stored || !(await this.regularFile(target))) {
         await this.place(site, target, data);
-      return this.guarded(client, site, sha, info.mime, async () => {
-        const updated = await this.newVersion(client, actor, media, {
-          filename: value.filename,
-          mime: info.mime,
-          bytes: data.length,
-          width: info.width,
-          height: info.height,
-          sha256: sha,
-          restoredFrom: null,
-          alt: value.alt,
-        });
-        await this.audit(client, actor, site, "media.replace", {
-          mediaId: id,
-          version: updated.version,
-          previousVersion: media.version,
-          filename: value.filename,
-          sha256: sha,
-          bytes: data.length,
-          ...(value.alt === undefined ? {} : { alt: value.alt }),
-        });
-        return updated;
+        release.failed.push({ sha256: sha, mime: info.mime });
+      }
+      const updated = await this.newVersion(client, actor, media, {
+        filename: value.filename,
+        mime: info.mime,
+        bytes: data.length,
+        width: info.width,
+        height: info.height,
+        sha256: sha,
+        restoredFrom: null,
+        alt: value.alt,
       });
+      await this.audit(client, actor, site, "media.replace", {
+        mediaId: id,
+        version: updated.version,
+        previousVersion: media.version,
+        filename: value.filename,
+        sha256: sha,
+        bytes: data.length,
+        ...(value.alt === undefined ? {} : { alt: value.alt }),
+      });
+      return updated;
     });
     return this.dto(row);
   }
@@ -323,24 +338,27 @@ export class Media {
     return this.dto(row);
   }
   // Deletes one non-current version. The caller has already checked publications do
-  // not pin it; the stored file goes only when no other version in the site uses it.
+  // not pin it; the stored file goes only when no other version in the site uses it,
+  // and only after the deletion has committed.
   async removeVersion(actor: Operator, id: string, version: number) {
     const current = await this.row(id);
     await this.operators.require(actor, current.site_id, true);
     const site = current.site_id;
-    await this.locked(site, async (client) => {
+    await this.mutate(site, async (client, release) => {
       const media = await this.lockRow(client, id);
       const target = (
         await client.query(
           "DELETE FROM media_version WHERE media_id=$1 AND version=$2 AND version<>$3 RETURNING sha256,mime",
           [id, version, media.version],
         )
-      ).rows[0] as { sha256: string; mime: Mime } | undefined;
+      ).rows[0] as StoredFile | undefined;
       if (!target) {
         if (media.version === version) throw new HttpError(409, "不能删除当前版本");
         throw new HttpError(404, "媒体版本不存在");
       }
-      const fileRemoved = await this.removeIfUnreferenced(client, site, target.sha256, target.mime);
+      // fileRemoved: the deletion left the file unreferenced, so it is unlinked after commit.
+      const fileRemoved = !(await this.referenced(client, site, target.sha256, target.mime));
+      if (fileRemoved) release.committed.push(target);
       await this.audit(client, actor, site, "media.version.delete", {
         mediaId: id,
         version,
@@ -417,22 +435,39 @@ export class Media {
   async remove(actor: Operator, id: string) {
     const row = await this.row(id);
     await this.operators.require(actor, row.site_id, true);
-    // Under the upload lock so a concurrent re-upload of the same image keeps its file.
-    // Files are shared between versions and media, so each is re-checked before removal.
-    await this.locked(row.site_id, async (client) => {
+    // Under the upload lock; files are shared between versions and media, so only those
+    // left unreferenced by this deletion are handed back, and unlinked after commit.
+    const site = row.site_id;
+    await this.mutate(site, async (client, release) => {
       const files = (
         await client.query(
           `SELECT sha256,mime FROM media WHERE id=$1
            UNION SELECT sha256,mime FROM media_version WHERE media_id=$1`,
           [id],
         )
-      ).rows as { sha256: string; mime: Mime }[];
+      ).rows as StoredFile[];
+      const versions = Number(
+        (
+          await client.query(
+            "SELECT count(*)::int AS n FROM media_version WHERE media_id=$1",
+            [id],
+          )
+        ).rows[0].n,
+      );
       const deleted = (
         await client.query("DELETE FROM media WHERE id=$1", [id])
       ).rowCount;
       if (!deleted) return;
       for (const file of files)
-        await this.removeIfUnreferenced(client, row.site_id, file.sha256, file.mime);
+        if (!(await this.referenced(client, site, file.sha256, file.mime)))
+          release.committed.push(file);
+      // filesRemoved counts files this deletion left unreferenced; they are unlinked after
+      // commit, and any the follow-up cannot remove are left to orphan cleanup.
+      await this.audit(client, actor, site, "media.delete", {
+        mediaId: id,
+        versions,
+        filesRemoved: release.committed.length,
+      });
     });
   }
   async adminFile(actor: Operator, id: string) {
@@ -579,27 +614,40 @@ export class Media {
       ).rowCount,
     );
   }
-  // Callers hold the site lock, so no concurrent upload can start referencing the file.
-  private async removeIfUnreferenced(client: PoolClient, site: string, sha: string, mime: Mime) {
-    if (await this.referenced(client, site, sha, mime)) return false;
-    await rm(this.path(site, sha, mime), { force: true });
-    return true;
-  }
-  // Runs the row writes after a file was placed; on failure the file goes unless still referenced.
-  private async guarded<T>(
-    client: PoolClient,
+  // Runs a locked mutation and unlinks files only once its transaction has ended, so a
+  // failed COMMIT never leaves a row whose file is gone. `committed` files are unlinked
+  // after a successful commit, `failed` ones (just placed) after a rollback.
+  private async mutate<T>(
     site: string,
-    sha: string,
-    mime: Mime,
-    work: () => Promise<T>,
+    work: (client: PoolClient, release: Release) => Promise<T>,
   ) {
-    await client.query("SAVEPOINT media_write");
+    const release: Release = { committed: [], failed: [] };
+    let result: T;
     try {
-      return await work();
+      result = await this.locked(site, (client) => work(client, release));
     } catch (error) {
-      await client.query("ROLLBACK TO SAVEPOINT media_write");
-      await this.removeIfUnreferenced(client, site, sha, mime);
+      await this.sweep(site, release.failed);
       throw error;
+    }
+    await this.sweep(site, release.committed);
+    return result;
+  }
+  // The site lock ended with the transaction, so a concurrent upload of the same content
+  // may have committed a reference since. Re-take the lock, re-check each file and unlink
+  // it while holding the lock. A file this step skips (process exit, database or file
+  // system error) is only an unreferenced orphan, which cleanupOrphans removes after the
+  // grace period, so failures here are logged and never surface to the caller: the
+  // mutation itself has already committed or rolled back.
+  private async sweep(site: string, files: StoredFile[]) {
+    if (!files.length) return;
+    try {
+      await this.locked(site, async (client) => {
+        for (const file of files)
+          if (!(await this.referenced(client, site, file.sha256, file.mime)))
+            await rm(this.path(site, file.sha256, file.mime), { force: true });
+      });
+    } catch {
+      console.error("Media file removal deferred to orphan cleanup");
     }
   }
   private async lockRow(client: PoolClient, id: string) {
