@@ -1,10 +1,12 @@
-// Ported from toolso-ai-open src/features/tools/components/tool-card.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: takes a PublicResource; links via localePath; logo is always the initial-letter avatar (Qoo.IM has no logos); pricing badge replaced by GitHub stars/language when a project exists; CompareButton (upperstory) dropped.
+// Ported from toolso-ai-open src/features/tools/components/tool-card.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: takes a PublicResource; links via localePath; the logo comes from the site media library (initial-letter avatar without one); the text under the title is the tagline, falling back to the description; the footer shows the pricing badge, or GitHub stars/language for a repository without pricing; CompareButton (upperstory) dropped.
 import { ArrowUpRight, Star } from "lucide-react";
 import type { PublicResource } from "../../../../public/sdk.js";
+import Image from "../../shims/next-image.js";
 import Link from "../../shims/next-link.js";
 import { useLocale, useTranslations } from "../../shims/next-intl.js";
 import { localePath } from "../../runtime.js";
 import { plainText } from "./plain-text.js";
+import { pricingBadge, pricingLabel } from "./pricing.js";
 import { compactNumber, domainOf } from "./resource.js";
 
 interface Props {
@@ -24,7 +26,10 @@ export function ToolCard({ tool, visitLabel, headingAs: Heading = "h2", index, n
   const tq = useTranslations("qooim.catalog.github");
   const domain = domainOf(tool.url);
   const project = tool.project ?? null;
-  const showFooter = Boolean(project || (visitLabel && tool.url));
+  const t = useTranslations();
+  const pricing = pricingBadge(tool.details?.pricing);
+  const summary = tool.details?.tagline || tool.description;
+  const showFooter = Boolean(pricing || project || (visitLabel && tool.url));
   return (
     <div className={`flex h-full flex-col gap-2 ${className ?? ""}`}>
     <Link
@@ -32,11 +37,23 @@ export function ToolCard({ tool, visitLabel, headingAs: Heading = "h2", index, n
       className="surface-card group flex flex-1 flex-col p-5"
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary ring-1 ring-foreground/5">
-          <span className="text-lg font-semibold text-muted-foreground">
-            {tool.title.charAt(0).toUpperCase()}
-          </span>
-        </div>
+        {tool.logo ? (
+          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-foreground/10">
+            <Image
+              src={tool.logo.url}
+              alt={tool.logo.alt || tool.title}
+              fill
+              loading="lazy"
+              className="object-cover"
+            />
+          </div>
+        ) : (
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary ring-1 ring-foreground/5">
+            <span className="text-lg font-semibold text-muted-foreground">
+              {tool.title.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
         <span className="relative mt-1 flex h-5 min-w-5 items-center justify-end" aria-hidden>
           {typeof index === "number" && (
             <span className="num text-xs text-muted-foreground/70 transition-all duration-300 ease-expo group-hover:-translate-y-1 group-hover:opacity-0">
@@ -62,9 +79,9 @@ export function ToolCard({ tool, visitLabel, headingAs: Heading = "h2", index, n
         )}
       </div>
 
-      {tool.description && (
+      {summary && (
         <p className="mt-3 line-clamp-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-          {plainText(tool.description)}
+          {plainText(summary)}
         </p>
       )}
 
@@ -74,7 +91,12 @@ export function ToolCard({ tool, visitLabel, headingAs: Heading = "h2", index, n
 
       {showFooter && (
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-border/70 pt-3.5">
-          {project ? (
+          {pricing ? (
+            <span className="eyebrow inline-flex items-center gap-2 !text-[0.625rem] text-foreground/80">
+              <span className={`h-1.5 w-1.5 rounded-full bg-gradient-to-br ${pricing.gradient}`} />
+              {pricingLabel(pricing, t)}
+            </span>
+          ) : project ? (
             <span className="eyebrow inline-flex items-center gap-2 !text-[0.625rem] text-foreground/80">
               <Star aria-hidden className="h-3 w-3" />
               <span className="sr-only">{tq("stars")}</span>

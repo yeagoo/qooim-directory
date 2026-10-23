@@ -8,8 +8,10 @@
 import type { PublicCategory, PublicResource, TemplateHomePage, TemplatePage } from "../../../public/sdk.js";
 import type { Seo } from "../document.js";
 import { messages } from "../i18n/messages.js";
+import { extra } from "../i18n/extra.js";
 import {
   buildBreadcrumbList,
+  buildFaqPage,
   buildItemList,
   buildOrganization,
   buildSoftwareApplication,
@@ -34,7 +36,8 @@ function message(page: Base, key: string, values: Record<string, string | number
         (node, part) => (node && typeof node === "object" ? (node as Record<string, unknown>)[part] : undefined),
         root,
       );
-  const found = walk(messages[localeOf(page)]) ?? walk(messages.en);
+  const locale = localeOf(page);
+  const found = walk(messages[locale]) ?? walk(extra[locale]) ?? walk(messages.en) ?? walk(extra.en);
   const text = typeof found === "string" ? found : key;
   return text
     .replace(/\{(\w+)\}/g, (whole, name: string) => (name in values ? String(values[name]) : whole))
@@ -53,6 +56,7 @@ const homeUrl = (page: Base) =>
   page.origin + (page.locale === (page.site.locales[0] ?? page.locale) ? "/" : `/${page.locale}`);
 const catalogUrl = (page: Base) => `${page.origin}/${page.locale}/${page.catalogPath}`;
 const categoryUrl = (page: Base, id: string) => `${catalogUrl(page)}/category/${encodeURIComponent(id)}`;
+const tagUrl = (page: Base, id: string) => `${catalogUrl(page)}/tag/${encodeURIComponent(id)}`;
 const itemUrl = (page: Base, item: Pick<PublicResource, "locale" | "slug">) =>
   `${page.origin}/${item.locale}/${page.catalogPath}/${item.slug}`;
 const absolute = (page: Base, url: string | null | undefined) => {
@@ -87,6 +91,7 @@ export function homeSeo(page: TemplateHomePage): Seo {
 
 export function directorySeo(page: Directory): Seo {
   const category: PublicCategory | undefined = page.categoryPage;
+  const tag: PublicCategory | undefined = page.tagPage;
   const pageSuffix = page.result.page > 1 ? ` · ${message(page, "tools.category.page", { page: page.result.page })}` : "";
   const listName = category ? category.label : message(page, "tools.title");
   const items = page.result.items.map((item) => ({ name: item.title, url: itemUrl(page, item) }));
@@ -106,6 +111,17 @@ export function directorySeo(page: Directory): Seo {
       ],
     };
   }
+  if (tag) {
+    const browse = message(page, "qooim.catalog.tag.browseTag", { tag: `#${tag.label}` });
+    return {
+      title: titled(page, `${browse}${pageSuffix}`),
+      description: browse,
+      jsonLd: [
+        buildBreadcrumbList([homeCrumb(page), catalogCrumb(page), { name: `#${tag.label}`, url: tagUrl(page, tag.id) }]),
+        buildItemList(`#${tag.label}`, items),
+      ],
+    };
+  }
   return {
     title: titled(page, (page.q ? `${page.q} · ` : "") + listName + pageSuffix),
     description: page.site.tagline?.trim() || message(page, "seo.tools.description"),
@@ -118,18 +134,19 @@ export function detailSeo(page: Detail): Seo {
   const category = item.category_id ? page.categories?.find((c) => c.id === item.category_id) : undefined;
   const url = itemUrl(page, item);
   const description = item.seo_description || item.description || `${message(page, "tools.subtitle")} - ${item.title}`;
+  const faqs = item.details?.faqs ?? [];
   return {
     // An editor's SEO title wins; otherwise toolso's `${tool.name} - ${listLabel}`.
     title: titled(page, item.seo_title || `${item.title} - ${message(page, "tools.title")}`),
     description,
-    image: item.image?.url,
+    image: item.image?.url ?? item.logo?.url,
     type: "article",
     jsonLd: [
       buildSoftwareApplication({
         name: item.title,
         description: item.description || item.seo_description,
         url: item.url || url,
-        image: absolute(page, item.image?.url),
+        image: absolute(page, item.logo?.url ?? item.image?.url),
         applicationSubCategory: category?.label,
       }),
       buildBreadcrumbList([
@@ -138,6 +155,7 @@ export function detailSeo(page: Detail): Seo {
         ...(category ? [{ name: category.label, url: categoryUrl(page, category.id) }] : []),
         { name: item.title, url },
       ]),
+      ...(faqs.length > 0 ? [buildFaqPage(faqs.map((f) => ({ q: f.question, a: f.answer })))] : []),
     ],
   };
 }

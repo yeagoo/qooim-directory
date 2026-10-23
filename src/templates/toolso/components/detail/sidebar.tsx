@@ -1,11 +1,12 @@
-// Ported from toolso-ai-open src/features/tools/components/detail/sidebar.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: takes page data; the quick-info card shows the category and domain (no publish date); favorite/share are the static hook buttons; cordis plugin panels, the upperstory compare block and the J/K hint dropped; links via localePath, the visit link is a plain external link (target=_blank, rel=noopener noreferrer).
+// Ported from toolso-ai-open src/features/tools/components/detail/sidebar.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: takes page data; the quick-info card shows every category of the entry (falling back to the primary one), the domain, pricing, the publish and update dates and the tags; favorite/share are the static hook buttons; cordis plugin panels, the upperstory compare block and the J/K hint dropped; links via localePath, the visit link is a plain external link (target=_blank, rel=noopener noreferrer).
 import { ArrowUpRight } from "lucide-react";
-import type { PublicCategory, PublicResource } from "../../../../public/sdk.js";
+import type { PublicCategory, PublicResource, PublicTerm } from "../../../../public/sdk.js";
 import Link from "../../shims/next-link.js";
-import { useTranslations } from "../../shims/next-intl.js";
+import { useLocale, useTranslations } from "../../shims/next-intl.js";
 import { localePath } from "../../runtime.js";
 import { CategoryIcon } from "../catalog/category-icon.js";
-import { domainOf, externalUrl } from "../catalog/resource.js";
+import { pricingBadge, pricingLabel } from "../catalog/pricing.js";
+import { domainOf, externalUrl, formatDate } from "../catalog/resource.js";
 import { FavoriteButton } from "./favorite-button.js";
 import { SectionToc, type DetailSection } from "./section-nav.js";
 import { ShareButton } from "./share-button.js";
@@ -27,26 +28,37 @@ export function DetailSidebar({
 }) {
   const t = useTranslations("tools");
   const td = useTranslations("tools.detail");
+  const tq = useTranslations("qooim.catalog.detail");
+  const root = useTranslations();
+  const locale = useLocale();
   const domain = domainOf(tool.url);
   const websiteUrl = externalUrl(tool.url);
+  const categories: PublicTerm[] = tool.categories?.length ? tool.categories : category ? [category] : [];
+  const tags = tool.tags ?? [];
+  const pricing = pricingBadge(tool.details?.pricing);
+  const published = formatDate(tool.published_at, locale);
+  const updated = formatDate(tool.updated_at, locale);
   return (
     <aside className="space-y-4">
-      {/* 1. Quick Info card：分类 / 域名 — 不跟随滚动 */}
-      {(category || domain) && (
+      {/* 1. Quick Info card：分类 / 域名 / 定价 / 日期 / 标签 — 不跟随滚动 */}
+      {(categories.length > 0 || domain || pricing || published || tags.length > 0) && (
         <div className="space-y-5 rounded-2xl border border-border bg-card p-5 text-sm">
-          {category && (
+          {categories.length > 0 && (
             <div>
               <div className="eyebrow mb-2.5">
                 {t("categories")}
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <Link
-                  href={localePath(`/category/${category.id}`)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:border-foreground/40 hover:bg-hover"
-                >
-                  <CategoryIcon slug={category.id} size={14} />
-                  <span>{category.label}</span>
-                </Link>
+                {categories.map((c) => (
+                  <Link
+                    key={c.id}
+                    href={localePath(`/category/${c.id}`)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:border-foreground/40 hover:bg-hover"
+                  >
+                    <CategoryIcon slug={c.id} size={14} />
+                    <span>{c.label}</span>
+                  </Link>
+                ))}
               </div>
             </div>
           )}
@@ -63,6 +75,51 @@ export function DetailSidebar({
               >
                 {domain}
               </a>
+            </div>
+          )}
+          {pricing && (
+            <div>
+              <div className="eyebrow mb-1.5">
+                {root("navigation.main.pricing")}
+              </div>
+              <div className="inline-flex items-center gap-2 text-foreground">
+                <span className={`h-1.5 w-1.5 rounded-full bg-gradient-to-br ${pricing.gradient}`} />
+                {pricingLabel(pricing, root)}
+              </div>
+            </div>
+          )}
+          {published && tool.published_at && (
+            <div>
+              <div className="eyebrow mb-1.5">
+                {td("published")}
+              </div>
+              <time dateTime={tool.published_at} className="tabular-nums text-foreground">{published}</time>
+            </div>
+          )}
+          {updated && tool.updated_at && updated !== published && (
+            <div>
+              <div className="eyebrow mb-1.5">
+                {tq("updated")}
+              </div>
+              <time dateTime={tool.updated_at} className="tabular-nums text-foreground">{updated}</time>
+            </div>
+          )}
+          {tags.length > 0 && (
+            <div>
+              <div className="eyebrow mb-2.5">
+                {tq("tags")}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map((tag) => (
+                  <Link
+                    key={tag.id}
+                    href={localePath(`/tag/${tag.id}`)}
+                    className="num rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-hover hover:text-foreground"
+                  >
+                    #{tag.label}
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </div>

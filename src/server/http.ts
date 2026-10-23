@@ -182,7 +182,7 @@ export class Application {
       path === "/sitemap.xml" ||
       path === "/robots.txt" ||
       /^\/[a-z]{2}\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(path) ||
-      /^\/(?:zh|en)(?:\/[a-z0-9-]+\/category\/[a-z0-9-]+)?$/.test(path);
+      /^\/(?:zh|en)(?:\/[a-z0-9-]+\/(?:category|tag)\/[a-z0-9-]+)?$/.test(path);
     const cacheable =
       request.method === "GET" &&
       response.status === 200 &&
@@ -919,6 +919,7 @@ export class Application {
       locale,
       q: url.searchParams.get("q") ?? "",
       category: url.searchParams.get("category") || undefined,
+      tag: url.searchParams.get("tag") || undefined,
       page: url.searchParams.get("page") ?? 1,
     };
     if (path === "/api/catalog")
@@ -927,6 +928,8 @@ export class Application {
       return this.json(await this.catalog.browse(ctx, options));
     if (path === "/api/categories")
       return this.json(await this.catalog.categories(ctx, locale));
+    if (path === "/api/tags")
+      return this.json(await this.catalog.tags(ctx, locale));
     if (path === "/robots.txt")
       return new Response(
         `User-agent: *\nAllow: /\nSitemap: ${site.origin}/sitemap.xml\n`,
@@ -958,7 +961,8 @@ export class Application {
       (path !== "/" &&
         !localeRoot &&
         (parts[2] !== config.catalogPath ||
-          (parts.length > 4 && !(parts.length === 5 && parts[3] === "category"))))
+          (parts.length > 4 &&
+            !(parts.length === 5 && (parts[3] === "category" || parts[3] === "tag")))))
     )
       throw new NotFound();
     if (localeRoot && !templateHasHome(config.template)) throw new NotFound();
@@ -1054,21 +1058,30 @@ export class Application {
         );
       }
     }
-    const categories = await this.catalog.categories(ctx, language);
-    const categoryPage =
-      parts.length === 5 ? categories.find((c) => c.id === parts[4]) : undefined;
-    if (parts.length === 5 && !categoryPage) throw new NotFound();
-    const base = categoryPage
-      ? `/${config.catalogPath}/category/${categoryPage.id}`
+    const [categories, tags] = await Promise.all([
+      this.catalog.categories(ctx, language),
+      this.catalog.tags(ctx, language),
+    ]);
+    // /<locale>/<catalog>/category/<id> and /tag/<id> are indexable term pages.
+    const termKind = parts.length === 5 ? (parts[3] as "category" | "tag") : null;
+    const term = termKind
+      ? (termKind === "tag" ? tags : categories).find((c) => c.id === parts[4])
+      : undefined;
+    if (termKind && !term) throw new NotFound();
+    const categoryPage = termKind === "category" ? term : undefined;
+    const tagPage = termKind === "tag" ? term : undefined;
+    const base = term
+      ? `/${config.catalogPath}/${termKind}/${term.id}`
       : `/${config.catalogPath}`;
     const result = await this.catalog.browse(ctx, {
       ...options,
       category: categoryPage?.id ?? options.category,
+      tag: tagPage?.id ?? options.tag,
       locale: language,
     });
-    const categoryLocales =
-      categoryPage && result.page === 1
-        ? new Set(await this.catalog.categoryLocales(ctx, categoryPage.id))
+    const termLocales =
+      term && termKind && result.page === 1
+        ? new Set(await this.catalog.taxonomyLocales(ctx, termKind, term.id))
         : null;
     return this.html(
       renderTemplate(config.template, {
@@ -1079,9 +1092,12 @@ export class Application {
         locale: language,
         result,
         categories,
+        tags,
         q: options.q,
         category: categoryPage?.id ?? options.category,
+        tag: tagPage?.id ?? options.tag,
         ...(categoryPage ? { categoryPage } : {}),
+        ...(tagPage ? { tagPage } : {}),
         canonical:
           site.origin +
           `/${language}${base}` +
@@ -1090,12 +1106,15 @@ export class Application {
           result.page > 1
             ? []
             : config.locales
-                .filter((l) => !categoryLocales || categoryLocales.has(l))
+                .filter((l) => !termLocales || termLocales.has(l))
                 .map((l) => ({
                   locale: l,
                   url: site.origin + `/${l}${base}`,
                 })),
-        noindex: !!options.q || (!categoryPage && !!options.category),
+        noindex:
+          !!options.q ||
+          (!!options.category && !categoryPage) ||
+          (!!options.tag && !tagPage),
       }),
     );
   }

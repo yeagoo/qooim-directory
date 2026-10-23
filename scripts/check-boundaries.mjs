@@ -80,10 +80,11 @@ export function check(rootPath = root) {
           }
         } else if (
           !["react", "react/jsx-runtime"].includes(name) &&
-          // UI helpers for the ported toolso template; they render plain markup.
+          // UI helpers for the ported toolso template; they render plain markup. react-markdown
+          // (with remark-gfm) renders listing Markdown to elements without raw HTML (M13a).
           !(
             file.startsWith(resolve("src/templates") + "/") &&
-            ["lucide-react", "clsx", "tailwind-merge"].includes(name)
+            ["lucide-react", "clsx", "tailwind-merge", "react-markdown", "remark-gfm"].includes(name)
           )
         )
           errors.push(

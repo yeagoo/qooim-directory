@@ -79,13 +79,25 @@ function publicationRows(rows, bulk = false) {
     )
     .join("");
 }
-function categoryButtons(rows) {
+function categoryButtons(rows, kind = "category") {
   return rows
     .map(
       (c) =>
-        `<button class="secondary edit-category" data-id="${escape(c.id)}">${escape(Object.values(c.labels)[0])}</button>`,
+        `<button class="secondary edit-${kind}" data-id="${escape(c.id)}">${escape(Object.values(c.labels)[0])}</button>`,
     )
     .join("");
+}
+// Editor for a flat per-site taxonomy (categories, tags); bound in renderContent.
+function taxonomyPanel(kind, label, rows) {
+  return `<section class="panel"><h2>本站${label}</h2><div class="actions" id="${kind}-choices">${categoryButtons(rows, kind)}</div><div class="split"><div><label for="${kind}-id">标识</label><input id="${kind}-id"><label for="${kind}-labels">名称 JSON</label><input id="${kind}-labels" value='{"zh":"新${label}"}'></div><div><label for="${kind}-rank">排序（较小的在前）</label><input id="${kind}-rank" type="number" value="0"><label><input type="checkbox" id="${kind}-active" checked>启用${label}</label></div></div><div class="actions"><button id="save-${kind}">保存${label}</button><button id="new-${kind}" class="secondary">新增${label}</button></div></section>`;
+}
+// Extra categories and tags of a published record, in candidate form (omitted when empty).
+function publishedTerms(p) {
+  const extra = (p?.category_ids ?? []).filter((id) => id !== p?.category_id);
+  return {
+    ...(extra.length ? { extraCategoryIds: extra } : {}),
+    ...(p?.tag_ids?.length ? { tagIds: p.tag_ids } : {}),
+  };
 }
 function download(name, data) {
   const a = document.createElement("a");
@@ -95,6 +107,20 @@ function download(name, data) {
   a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+// Applies the resource form (URL, titles, descriptions) to the master JSON. Only those
+// fields have form inputs; every other field, including the rich translation fields
+// (tagline, features, FAQ, content, ...), is kept from the JSON. A language with no
+// title, description or other fields is dropped, as before.
+export function applyResourceForm(data, form) {
+  const next = { ...data, url: form.url, translations: {} };
+  for (const lang of ["zh", "en"]) {
+    const { title, description } = form[lang];
+    const { title: _t, description: _d, ...rest } = data.translations?.[lang] ?? {};
+    if (title || description || Object.keys(rest).length)
+      next.translations[lang] = { title, description, ...rest };
+  }
+  return next;
 }
 export function splitResourceExchange(bundle) {
   if (
@@ -151,7 +177,7 @@ export async function renderResources(
     selectionGeneration = 0,
     bundle = null,
     fileGeneration = 0;
-  root.innerHTML = `<span class="eyebrow">THE SHARED LIBRARY</span><h1>共享事实，各站表达。</h1><p class="muted">主档更新保留历史版本。各站选择新版并发布后，线上内容才会更新。</p><div class="split"><section class="panel"><h2>资源主档</h2><label for="resource-search">按标识查找</label><input id="resource-search" value="${escape(query)}"><button class="secondary" id="search-resources">查找</button><button class="secondary" id="refresh-resources">刷新列表（保留编辑）</button><div class="table-wrap"><table id="resource-list"><thead><tr><th>标识</th><th>版本</th><th>操作</th></tr></thead><tbody>${resourceRows(resources)}</tbody></table></div></section><section class="panel"><h2 id="resource-heading">新增资源</h2><label for="resource-id">稳定标识</label><input id="resource-id" placeholder="my-resource"><label for="resource-url">网站地址</label><input id="resource-url" type="url"><label for="resource-zh-title">中文名称</label><input id="resource-zh-title"><label for="resource-zh-description">中文说明</label><textarea id="resource-zh-description"></textarea><label for="resource-en-title">English name（可选）</label><input id="resource-en-title"><label for="resource-en-description">English description（可选）</label><textarea id="resource-en-description"></textarea><label for="resource-data">完整内容 JSON（与表单同步）</label><textarea id="resource-data"></textarea><label><input type="checkbox" id="resource-public" checked>允许公开展示</label><label for="resource-note">内部备注</label><textarea id="resource-note"></textarea><div class="actions"><button id="save-resource">保存新版本</button><button id="new-resource" class="secondary">新增另一条</button></div><pre id="resource-history"></pre></section></div><section class="panel"><h2>文件协作</h2><p class="muted">交换文件不包含内部备注。导入先整体检查，任何版本冲突都会阻止整批写入。</p><button id="export-resources" class="secondary">导出此页资源 JSON</button><label for="resource-file">选择资源文件</label><input id="resource-file" type="file" accept=".json"><div class="actions"><button id="check-import" class="secondary">检查导入</button><button id="apply-import">执行导入</button></div><pre id="import-result"></pre></section>`;
+  root.innerHTML = `<span class="eyebrow">THE SHARED LIBRARY</span><h1>共享事实，各站表达。</h1><p class="muted">主档更新保留历史版本。各站选择新版并发布后，线上内容才会更新。</p><div class="split"><section class="panel"><h2>资源主档</h2><label for="resource-search">按标识查找</label><input id="resource-search" value="${escape(query)}"><button class="secondary" id="search-resources">查找</button><button class="secondary" id="refresh-resources">刷新列表（保留编辑）</button><div class="table-wrap"><table id="resource-list"><thead><tr><th>标识</th><th>版本</th><th>操作</th></tr></thead><tbody>${resourceRows(resources)}</tbody></table></div></section><section class="panel"><h2 id="resource-heading">新增资源</h2><label for="resource-id">稳定标识</label><input id="resource-id" placeholder="my-resource"><label for="resource-url">网站地址</label><input id="resource-url" type="url"><label for="resource-zh-title">中文名称</label><input id="resource-zh-title"><label for="resource-zh-description">中文说明</label><textarea id="resource-zh-description"></textarea><label for="resource-en-title">English name（可选）</label><input id="resource-en-title"><label for="resource-en-description">English description（可选）</label><textarea id="resource-en-description"></textarea><label for="resource-data">完整内容 JSON（与表单同步）</label><textarea id="resource-data"></textarea><p class="muted">表单只编辑名称和说明。定价 pricing（free、freemium、paid、trial、open-source、contact）以及各语言的 tagline、features、useCases、pros、cons、content（Markdown）、faqs 在 JSON 中编辑，表单改动会保留这些字段。</p><label><input type="checkbox" id="resource-public" checked>允许公开展示</label><label for="resource-note">内部备注</label><textarea id="resource-note"></textarea><div class="actions"><button id="save-resource">保存新版本</button><button id="new-resource" class="secondary">新增另一条</button></div><pre id="resource-history"></pre></section></div><section class="panel"><h2>文件协作</h2><p class="muted">交换文件不包含内部备注。导入先整体检查，任何版本冲突都会阻止整批写入。</p><button id="export-resources" class="secondary">导出此页资源 JSON</button><label for="resource-file">选择资源文件</label><input id="resource-file" type="file" accept=".json"><div class="actions"><button id="check-import" class="secondary">检查导入</button><button id="apply-import">执行导入</button></div><pre id="import-result"></pre></section>`;
   const editor = editorGuard(root, "#resource-id");
   const resourceList = root.querySelector("#resource-list");
   const alive = () => root.querySelector("#resource-list") === resourceList;
@@ -291,20 +317,15 @@ export async function renderResources(
     root.querySelector("#resource-" + field).addEventListener("input", () => {
       try {
         const data = JSON.parse(root.querySelector("#resource-data").value);
-        data.url = root.querySelector("#resource-url").value;
-        data.translations = {};
-        for (const lang of ["zh", "en"]) {
-          const title = root.querySelector(
-              "#resource-" + lang + "-title",
-            ).value,
-            description = root.querySelector(
-              "#resource-" + lang + "-description",
-            ).value;
-          if (title || description)
-            data.translations[lang] = { title, description };
-        }
+        const value = (field) =>
+          root.querySelector("#resource-" + field).value;
+        const next = applyResourceForm(data, {
+          url: value("url"),
+          zh: { title: value("zh-title"), description: value("zh-description") },
+          en: { title: value("en-title"), description: value("en-description") },
+        });
         root.querySelector("#resource-data").value = JSON.stringify(
-          data,
+          next,
           null,
           2,
         );
@@ -560,6 +581,7 @@ export async function renderContent(
       api(base + "/publications?page=" + page),
       api(base + "/categories"),
       api(base + "/submissions?page=" + page),
+      api(base + "/tags"),
     ]);
   } catch (error) {
     if (load.current() && ready()) throw error;
@@ -568,14 +590,13 @@ export async function renderContent(
     load.finish();
   }
   if (!load.current() || !ready()) return;
-  const [publications, categories, submissions] = loaded;
+  const [publications, categories, submissions, tags] = loaded;
   let selected = null,
     selectionGeneration = 0,
     writeBusy = false,
     baselineText = "",
-    category = null,
     operation = crypto.randomUUID();
-  root.innerHTML = `<a href="#site/${escape(site)}">← 站点配置</a><span class="eyebrow"> / CONTENT DESK</span><h1>本站内容 · ${escape(site)}</h1><section class="panel"><h2>发布记录</h2>${bulk ? `<div class="actions"><button class="secondary" id="bulk-select-drafts">选择有草稿</button><button id="bulk-publish">批量发布选中</button><span class="muted" id="bulk-status">选择有草稿的记录</span></div>` : ""}<div class="table-wrap"><table id="publication-list"><thead><tr>${bulk ? "<th>选择</th>" : ""}<th>资源 / 语言</th><th>线上状态</th><th>主档</th><th>操作</th></tr></thead><tbody>${publicationRows(publications, bulk)}</tbody></table></div></section><section class="panel"><h2>内容草稿</h2><div class="split"><div><label for="publication-resource">资源标识</label><input id="publication-resource"><label for="publication-locale">语言</label><select id="publication-locale"><option value="zh">中文</option><option value="en">English</option></select></div><div><label for="publication-candidate">完整候选 JSON</label><textarea id="publication-candidate"></textarea></div></div><div class="actions"><button id="stage-content">保存草稿</button><button id="publish-content">发布草稿</button><button id="preview-content" class="secondary">预览</button><button id="diff-content" class="secondary">载入并比较主档新版</button><button id="diagnose-content" class="secondary">检查可见性</button><button id="unpublish-content" class="secondary">下架</button><button id="new-content" class="secondary">分发新资源</button></div><p class="muted">overrides 只覆盖本站文案；比较新版优先保留已保存草稿，没有草稿时采用线上记录。请先保存本页编辑再比较。保存草稿不更改线上内容。</p><pre id="content-result"></pre></section><section class="panel"><h2>AI 辅助</h2><p class="muted">只生成候选文案，不会自动保存或发布。需要先在站点页“AI 设置”启用并配置供应商。</p><div class="split"><div><label for="ai-kind">操作</label><select id="ai-kind"><option value="generate">生成/改写标题与说明</option><option value="translate">翻译标题与说明</option><option value="seo">生成 SEO 标题与说明</option></select><label for="ai-brief">额外要求（可选）</label><input id="ai-brief" maxlength="500" placeholder="例如：更简洁，面向开发者"></div></div><div class="actions"><button id="ai-run">生成建议</button><button id="ai-apply" class="secondary" disabled>应用到候选 JSON</button></div><pre id="ai-result"></pre></section><section class="panel"><h2>本站分类</h2><div class="actions" id="category-choices">${categoryButtons(categories)}</div><div class="split"><div><label for="category-id">标识</label><input id="category-id"><label for="category-labels">名称 JSON</label><input id="category-labels" value='{"zh":"新分类"}'></div><div><label for="category-rank">排序（较小的在前）</label><input id="category-rank" type="number" value="0"><label><input type="checkbox" id="category-active" checked>启用分类</label></div></div><div class="actions"><button id="save-category">保存分类</button><button id="new-category" class="secondary">新增分类</button></div></section><section class="panel"><h2>投稿审核</h2>${submissions.map((s, i) => `<article class="resource"><strong>${escape(s.data.title)}</strong><p>${escape(s.data.url)}</p><p>${escape(s.data.description)}</p><p class="muted review-status">${escape(s.status)} · ${escape(s.note)}</p>${s.resource_id ? `<p class="project-facts review-resource">生成草稿资源：${escape(s.resource_id)}</p>` : ""}${s.status === "pending" ? `<label for="review-note-${i}">审核说明</label><input id="review-note-${i}" maxlength="500"><div class="actions"><button class="review" data-index="${i}" data-decision="accepted">接受为资源草稿</button><button class="review secondary" data-index="${i}" data-decision="rejected">拒绝</button></div>` : ""}</article>`).join("") || '<p class="muted">暂无投稿。</p>'}</section>`;
+  root.innerHTML = `<a href="#site/${escape(site)}">← 站点配置</a><span class="eyebrow"> / CONTENT DESK</span><h1>本站内容 · ${escape(site)}</h1><section class="panel"><h2>发布记录</h2>${bulk ? `<div class="actions"><button class="secondary" id="bulk-select-drafts">选择有草稿</button><button id="bulk-publish">批量发布选中</button><span class="muted" id="bulk-status">选择有草稿的记录</span></div>` : ""}<div class="table-wrap"><table id="publication-list"><thead><tr>${bulk ? "<th>选择</th>" : ""}<th>资源 / 语言</th><th>线上状态</th><th>主档</th><th>操作</th></tr></thead><tbody>${publicationRows(publications, bulk)}</tbody></table></div></section><section class="panel"><h2>内容草稿</h2><div class="split"><div><label for="publication-resource">资源标识</label><input id="publication-resource"><label for="publication-locale">语言</label><select id="publication-locale"><option value="zh">中文</option><option value="en">English</option></select></div><div><label for="publication-candidate">完整候选 JSON</label><textarea id="publication-candidate"></textarea></div></div><div class="actions"><button id="stage-content">保存草稿</button><button id="publish-content">发布草稿</button><button id="preview-content" class="secondary">预览</button><button id="diff-content" class="secondary">载入并比较主档新版</button><button id="diagnose-content" class="secondary">检查可见性</button><button id="unpublish-content" class="secondary">下架</button><button id="new-content" class="secondary">分发新资源</button></div><p class="muted">overrides 只覆盖本站文案（可含 tagline、content，以及媒体库图片 image、logo）；categoryId 是主分类，extraCategoryIds、tagIds 填本站其他分类和标签的标识。比较新版优先保留已保存草稿，没有草稿时采用线上记录。请先保存本页编辑再比较。保存草稿不更改线上内容。</p><pre id="content-result"></pre></section><section class="panel"><h2>AI 辅助</h2><p class="muted">只生成候选文案，不会自动保存或发布。需要先在站点页“AI 设置”启用并配置供应商。</p><div class="split"><div><label for="ai-kind">操作</label><select id="ai-kind"><option value="generate">生成/改写标题与说明</option><option value="translate">翻译标题与说明</option><option value="seo">生成 SEO 标题与说明</option></select><label for="ai-brief">额外要求（可选）</label><input id="ai-brief" maxlength="500" placeholder="例如：更简洁，面向开发者"></div></div><div class="actions"><button id="ai-run">生成建议</button><button id="ai-apply" class="secondary" disabled>应用到候选 JSON</button></div><pre id="ai-result"></pre></section>${taxonomyPanel("category", "分类", categories)}${taxonomyPanel("tag", "标签", tags)}<section class="panel"><h2>投稿审核</h2>${submissions.map((s, i) => `<article class="resource"><strong>${escape(s.data.title)}</strong><p>${escape(s.data.url)}</p><p>${escape(s.data.description)}</p><p class="muted review-status">${escape(s.status)} · ${escape(s.note)}</p>${s.resource_id ? `<p class="project-facts review-resource">生成草稿资源：${escape(s.resource_id)}</p>` : ""}${s.status === "pending" ? `<label for="review-note-${i}">审核说明</label><input id="review-note-${i}" maxlength="500"><div class="actions"><button class="review" data-index="${i}" data-decision="accepted">接受为资源草稿</button><button class="review secondary" data-index="${i}" data-decision="rejected">拒绝</button></div>` : ""}</article>`).join("") || '<p class="muted">暂无投稿。</p>'}</section>`;
   root
     .querySelector(".table-wrap")
     .insertAdjacentHTML(
@@ -619,6 +640,7 @@ export async function renderContent(
         resourceVersion: p?.resource_version ?? 1,
         slug: p?.slug ?? p?.id ?? "new-resource",
         categoryId: p?.category_id ?? null,
+        ...publishedTerms(p),
         rank: p?.rank ?? 0,
         overrides: p?.overrides ?? {},
       },
@@ -802,6 +824,12 @@ export async function renderContent(
           candidate: null,
           slug: draft?.slug ?? baseline.slug,
           category_id: draft?.categoryId ?? null,
+          category_ids: [
+            ...new Set(
+              [draft?.categoryId, ...(draft?.extraCategoryIds ?? [])].filter(Boolean),
+            ),
+          ],
+          tag_ids: [...new Set(draft?.tagIds ?? [])],
           rank: draft?.rank ?? 0,
           overrides: draft?.overrides ?? {},
           source_version: draft?.resourceVersion ?? baseline.source_version,
@@ -992,69 +1020,72 @@ export async function renderContent(
       aiBusy = false;
     }
   });
-  let categorySelection = 0;
-  const categoryNode = root.querySelector("#category-id");
-  const categoryChoices = root.querySelector("#category-choices");
-  const populateCategory = (c) => {
-    categorySelection++;
-    category = c;
-    root.querySelector("#category-id").value = c?.id ?? "";
-    root.querySelector("#category-id").readOnly = !!c;
-    root.querySelector("#category-labels").value = JSON.stringify(
-      c?.labels ?? { zh: "新分类" },
-    );
-    root.querySelector("#category-rank").value = c?.rank ?? 0;
-    root.querySelector("#category-active").checked = c?.active ?? true;
-  };
-  categoryChoices.addEventListener("click", (event) => {
-    const button = event.target.closest(".edit-category");
-    if (button && categoryChoices.contains(button))
-      populateCategory(categories.find((c) => c.id === button.dataset.id));
-  });
-  bind(root, "new-category", notice, async () => populateCategory(null));
-  bind(root, "save-category", notice, async () => {
-    const selection = categorySelection;
-    const value = {
-      id: root.querySelector("#category-id").value,
-      labels: JSON.parse(root.querySelector("#category-labels").value),
-      rank: Number(root.querySelector("#category-rank").value),
-      active: root.querySelector("#category-active").checked,
-      expectedVersion: category?.version ?? 0,
+  // Categories and tags share one editor shape; each keeps its own selection.
+  for (const [kind, label, rows] of [
+    ["category", "分类", categories],
+    ["tag", "标签", tags],
+  ]) {
+    let current = null,
+      selection = 0;
+    const idNode = root.querySelector(`#${kind}-id`);
+    const choices = root.querySelector(`#${kind}-choices`);
+    const populateTerm = (c) => {
+      selection++;
+      current = c;
+      idNode.value = c?.id ?? "";
+      idNode.readOnly = !!c;
+      root.querySelector(`#${kind}-labels`).value = JSON.stringify(
+        c?.labels ?? { zh: "新" + label },
+      );
+      root.querySelector(`#${kind}-rank`).value = c?.rank ?? 0;
+      root.querySelector(`#${kind}-active`).checked = c?.active ?? true;
     };
-    let result;
-    try {
-      result = await api(base + "/categories", value);
-    } catch (error) {
-      if (
-        alive() &&
-        selection === categorySelection &&
-        categoryNode.value === value.id
-      )
-        throw error;
-      return;
-    }
-    if (!alive()) return;
-    let saved = categories.find((c) => c.id === value.id);
-    const record = {
-      id: value.id,
-      labels: value.labels,
-      rank: value.rank,
-      active: value.active,
-      version: result.version,
-    };
-    if (saved) Object.assign(saved, record);
-    else {
-      saved = record;
-      categories.push(saved);
-    }
-    categories.sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id));
-    categoryChoices.innerHTML = categoryButtons(categories);
-    if (selection === categorySelection && categoryNode.value === value.id) {
-      category = saved;
-      categoryNode.readOnly = true;
-      notice("分类已保存。");
-    }
-  });
+    choices.addEventListener("click", (event) => {
+      const button = event.target.closest(".edit-" + kind);
+      if (button && choices.contains(button))
+        populateTerm(rows.find((c) => c.id === button.dataset.id));
+    });
+    bind(root, "new-" + kind, notice, async () => populateTerm(null));
+    bind(root, "save-" + kind, notice, async () => {
+      const started = selection;
+      const value = {
+        id: idNode.value,
+        labels: JSON.parse(root.querySelector(`#${kind}-labels`).value),
+        rank: Number(root.querySelector(`#${kind}-rank`).value),
+        active: root.querySelector(`#${kind}-active`).checked,
+        expectedVersion: current?.version ?? 0,
+      };
+      let result;
+      try {
+        result = await api(base + (kind === "tag" ? "/tags" : "/categories"), value);
+      } catch (error) {
+        if (alive() && started === selection && idNode.value === value.id)
+          throw error;
+        return;
+      }
+      if (!alive()) return;
+      let saved = rows.find((c) => c.id === value.id);
+      const record = {
+        id: value.id,
+        labels: value.labels,
+        rank: value.rank,
+        active: value.active,
+        version: result.version,
+      };
+      if (saved) Object.assign(saved, record);
+      else {
+        saved = record;
+        rows.push(saved);
+      }
+      rows.sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id));
+      choices.innerHTML = categoryButtons(rows, kind);
+      if (started === selection && idNode.value === value.id) {
+        current = saved;
+        idNode.readOnly = true;
+        notice(label + "已保存。");
+      }
+    });
+  }
   for (const b of root.querySelectorAll(".review"))
     b.addEventListener("click", async () => {
       const article = b.closest("article");

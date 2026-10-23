@@ -1,4 +1,4 @@
-// Ported from toolso-ai-open src/app/[locale]/(marketing)/tools/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; head data (title, OG, JSON-LD) comes from lib/seo.ts; long-form sections (overview, features, pros/cons, how-to, alternatives, FAQ), cordis plugin blocks, view counter and adjacent-tool links dropped (no data); a GitHub repository section stands in for them when the resource has a project; the contents list covers the GitHub and related blocks; the category sidebar uses the page's categories.
+// Ported from toolso-ai-open src/app/[locale]/(marketing)/tools/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; head data (title, OG, JSON-LD) comes from lib/seo.ts; the long-form sections come from the listing's rich fields (overview = Markdown content, key features, use cases, pros/cons, FAQ) instead of parsed content, and how-to/tips/audience/platforms/pricing prose and alternatives are dropped (no data); cordis plugin blocks, view counter and adjacent-tool links dropped; a GitHub repository section follows the pros/cons when the resource has a project; the contents list covers every rendered section; the category sidebar uses the page's categories.
 import type { TemplatePage } from "../../../public/sdk.js";
 import { Document } from "../document.js";
 import { detailSeo } from "../lib/seo.js";
@@ -10,6 +10,9 @@ import { localePath } from "../runtime.js";
 import { Background } from "../components/background.js";
 import { CategorySidebar } from "../components/catalog/category-sidebar.js";
 import { DetailBreadcrumb } from "../components/detail/breadcrumb.js";
+import { DetailFaq } from "../components/detail/faq.js";
+import { DetailProseSection } from "../components/detail/prose-section.js";
+import { DetailProsCons } from "../components/detail/pros-cons.js";
 import { DetailGithub } from "../components/detail/github.js";
 import { DetailHero } from "../components/detail/hero.js";
 import { DetailRelated } from "../components/detail/related.js";
@@ -35,14 +38,26 @@ function ToolDetail({ page }: { page: Page }) {
   const t = useTranslations("tools");
   const td = useTranslations("tools.detail");
   const tq = useTranslations("qooim.catalog.github");
+  const tm = useTranslations("qooim.catalog.detail");
   const tool = page.item;
+  const details = tool.details ?? {};
+  const features = details.features ?? [];
+  const useCases = details.useCases ?? [];
+  const pros = details.pros ?? [];
+  const cons = details.cons ?? [];
+  const faqs = details.faqs ?? [];
   const categories = page.categories ?? [];
   const related = page.related ?? [];
   const primaryCategory = tool.category_id ? categories.find((c) => c.id === tool.category_id) : undefined;
 
   // 实际会渲染的章节清单:目录、章节条、章节序号都以它为准。
   const nav: DetailSection[] = [];
+  if (details.content) nav.push({ slug: "overview", title: tm("overview") });
+  if (features.length > 0) nav.push({ slug: "features", title: tm("keyFeatures") });
+  if (useCases.length > 0) nav.push({ slug: "use-cases", title: tm("useCases") });
+  if (pros.length > 0 || cons.length > 0) nav.push({ slug: "pros-cons", title: tm("prosCons") });
   if (tool.project) nav.push({ slug: "github", title: tq("title") });
+  if (faqs.length > 0) nav.push({ slug: "faq", title: td("faq") });
   if (related.length > 0) nav.push({ slug: "related", title: td("relatedTools") });
   const secNo = (navSlug: string) => {
     const i = nav.findIndex((n) => n.slug === navSlug);
@@ -84,7 +99,32 @@ function ToolDetail({ page }: { page: Page }) {
 
               {/* ===== 正文 sections（仍在左列内）===== */}
               <div className="space-y-16 pt-10 md:space-y-20">
+                {details.content && (
+                  <DetailProseSection slug="overview" title={tm("overview")} index={secNo("overview")} body={details.content} />
+                )}
+
+                {features.length > 0 && (
+                  <DetailProseSection slug="features" title={tm("keyFeatures")} index={secNo("features")} items={features} />
+                )}
+
+                {useCases.length > 0 && (
+                  <DetailProseSection slug="use-cases" title={tm("useCases")} index={secNo("use-cases")} items={useCases} />
+                )}
+
+                {(pros.length > 0 || cons.length > 0) && (
+                  <DetailProsCons
+                    index={secNo("pros-cons")}
+                    title={tm("prosCons")}
+                    prosTitle={tm("pros")}
+                    consTitle={tm("cons")}
+                    pros={pros}
+                    cons={cons}
+                  />
+                )}
+
                 {tool.project && <DetailGithub slug="github" index={secNo("github")} project={tool.project} />}
+
+                {faqs.length > 0 && <DetailFaq index={secNo("faq")} title={td("faq")} faq={faqs} />}
 
                 <DetailSimilarCta />
               </div>{/* /正文 sections */}

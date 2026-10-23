@@ -42,7 +42,30 @@ export type PublicResource = {
   image?: { url: string; alt: string } | null;
   category_id?: string | null;
   rank?: number;
+  /** M13a. Square logo from the site's media library. */
+  logo?: { url: string; alt: string } | null;
+  /** M13a. Directory items carry only tagline and pricing; detail pages carry every field. */
+  details?: PublicDetails;
+  /** M13a. Every visible category of the entry, the primary one first. */
+  categories?: PublicTerm[];
+  tags?: PublicTerm[];
+  /** M13a. ISO 8601 UTC: first publication on this site, and the latest republish. */
+  published_at?: string | null;
+  updated_at?: string | null;
 };
+export type PublicPricing = "free" | "freemium" | "paid" | "trial" | "open-source" | "contact";
+export type PublicDetails = {
+  tagline?: string;
+  features?: string[];
+  useCases?: string[];
+  pros?: string[];
+  cons?: string[];
+  /** Untrusted Markdown. Render it with a sanitizing renderer; never insert it as HTML. */
+  content?: string;
+  faqs?: { question: string; answer: string }[];
+  pricing?: PublicPricing;
+};
+export type PublicTerm = { id: string; label: string };
 export type PublicCategory = { id: string; label: string; count: number };
 export type TemplatePage = {
   preview?: boolean;
@@ -65,8 +88,13 @@ export type TemplatePage = {
       categories: PublicCategory[];
       q: string;
       category?: string;
+      /** M13a. Active ?tag= filter, or the tag of a tag page. */
+      tag?: string;
       /** Set when the page is a category's own URL rather than a ?category= filter. */
       categoryPage?: PublicCategory;
+      /** M13a. Visible tags of this locale, and the tag of a tag page. */
+      tags?: PublicCategory[];
+      tagPage?: PublicCategory;
     }
   | { kind: "detail"; item: PublicResource; categories?: PublicCategory[]; related?: PublicResource[] }
   | { kind: "missing" }

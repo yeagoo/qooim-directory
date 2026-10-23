@@ -1,7 +1,7 @@
 {
   "format": 1,
   "reviewedAt": "2026-10-21",
-  "lockfileSha256": "ddc61e70d31bd0b71af3395d0a29bf50a5adba2c2a8407da6854a67851c6ba31",
+  "lockfileSha256": "70a3be3688f38fd5af564cc5b691098b2177c3ab70f5b8a3a83129a52d9123e8",
   "notices": [
     {
       "name": "@esbuild/linux-arm64",
@@ -118,6 +118,8 @@
       "pg": "8.23.1",
       "react": "19.3.1",
       "react-dom": "19.3.1",
+      "react-markdown": "10.1.0",
+      "remark-gfm": "4.0.1",
       "tailwind-merge": "2.6.0",
       "zod": "4.6.7"
     },

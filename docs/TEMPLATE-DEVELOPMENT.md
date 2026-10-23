@@ -94,3 +94,17 @@ pnpm check
 pnpm test:p12
 pnpm template:preview
 ```
+
+## M13a：富字段、标签和多分类
+
+在 API v1 上继续只增不改，老模板不需要修改。
+
+- **条目新增字段**（`PublicResource`，都是可选的）：
+  - `logo`：本站媒体库中的方形图，结构同 `image`；
+  - `details`：`tagline`、`features`、`useCases`、`pros`、`cons`、`content`（Markdown）、`faqs`、`pricing`。目录页条目只带 `tagline` 和 `pricing`，详情页带全部字段；
+  - `categories`：条目所属的全部分类，主分类在前；
+  - `tags`：本站标签；
+  - `published_at`、`updated_at`：本站首次发布时间和最近一次发布时间，ISO 8601 UTC 格式。
+- **标签页**：`/<locale>/<catalogPath>/tag/<id>` 渲染目录页，同时传入 `tagPage`；目录页还会传入本语言可见的 `tags`。标签页和分类页一样会被索引，`?tag=` 筛选结果页是 noindex，标签不存在时返回 404。
+- **Markdown 必须当作不可信内容处理**：不能把它当作 HTML 直接插入页面。React 模板可以使用 `react-markdown` 和 `remark-gfm`（模板目录允许导入这两个包），不要启用原始 HTML，并保留默认的链接过滤。字符串模板如果要显示长文，需要自己做转义。
+- **公开 API**：`/api/tags?locale=` 返回标签及条目数；`/api/search` 支持 `tag=` 参数。

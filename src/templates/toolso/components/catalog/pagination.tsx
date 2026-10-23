@@ -75,10 +75,11 @@ export function Pagination({
 }
 
 /** Catalog/category URL for page N, keeping the search and filter (Qoo.IM's server routes). */
-export function pageHref(base: string, params: { q?: string; category?: string }, page: number) {
+export function pageHref(base: string, params: { q?: string; category?: string; tag?: string }, page: number) {
   const query = new URLSearchParams();
   if (params.q) query.set("q", params.q);
   if (params.category) query.set("category", params.category);
+  if (params.tag) query.set("tag", params.tag);
   if (page > 1) query.set("page", String(page));
   const qs = query.toString();
   return qs ? `${base}?${qs}` : base;

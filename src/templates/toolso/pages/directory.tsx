@@ -1,9 +1,9 @@
-// Ported from toolso-ai-open src/features/tools/components/tools-list-view.tsx (used by app/[locale]/(marketing)/tools/page.tsx and tools/page/[page]/page.tsx) and app/[locale]/(marketing)/category/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; one component renders the catalog (with ?q=/?category=/?page=N) and a category's own page (page.categoryPage); head data (title, canonical, JSON-LD, robots) comes from lib/seo.ts; cordis/upperstory/nexablocks filters, rel=prev/next <link>s and the category description dropped (no data); catalog subtitle is the site tagline.
+// Ported from toolso-ai-open src/features/tools/components/tools-list-view.tsx (used by app/[locale]/(marketing)/tools/page.tsx and tools/page/[page]/page.tsx) and app/[locale]/(marketing)/category/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; one component renders the catalog (with ?q=/?category=/?tag=/?page=N), and another a category's or tag's own page (page.categoryPage / page.tagPage; toolso had no tag pages, they reuse the category layout with a "#" heading and sibling tags); head data (title, canonical, JSON-LD, robots) comes from lib/seo.ts; cordis/upperstory/nexablocks filters, rel=prev/next <link>s and the category description dropped (no data); catalog subtitle is the site tagline.
 import type { TemplatePage } from "../../../public/sdk.js";
 import { Document } from "../document.js";
 import { directorySeo } from "../lib/seo.js";
 import { SiteChrome } from "../components/site-chrome.js";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Hash } from "lucide-react";
 import Link from "../shims/next-link.js";
 import { useTranslations } from "../shims/next-intl.js";
 import { localePath } from "../runtime.js";
@@ -20,7 +20,9 @@ export function DirectoryPage({ page }: { page: Page }) {
   return (
     <Document page={page} seo={directorySeo(page)}>
       <SiteChrome>
-        <main>{page.categoryPage ? <CategoryView page={page} /> : <ToolsListView page={page} />}</main>
+        <main>
+          {page.categoryPage || page.tagPage ? <TermView page={page} /> : <ToolsListView page={page} />}
+        </main>
       </SiteChrome>
     </Document>
   );
@@ -74,7 +76,8 @@ function ToolsListView({ page }: { page: Page }) {
               currentSearch={page.q}
               currentPage={current}
               totalPages={totalPages}
-              pageHref={(n) => pageHref(base, { q: page.q, category: page.category }, n)}
+              currentTag={page.tag}
+              pageHref={(n) => pageHref(base, { q: page.q, category: page.category, tag: page.tag }, n)}
               translations={translations}
             />
           </div>
@@ -84,20 +87,26 @@ function ToolsListView({ page }: { page: Page }) {
   );
 }
 
-/** 分类页(/category/<id>)。 */
-function CategoryView({ page }: { page: Page }) {
-  const category = page.categoryPage!;
+/** 分类页(/category/<id>)与标签页(/tag/<id>)。 */
+function TermView({ page }: { page: Page }) {
+  const isTag = !page.categoryPage;
+  const term = (page.categoryPage ?? page.tagPage)!;
+  const kind = isTag ? "tag" : "category";
   const t = useTranslations("tools");
   const tc = useTranslations("tools.category");
+  const tt = useTranslations("qooim.catalog.tag");
   const td = useTranslations("tools.detail");
   const { total, items: tools, limit } = page.result;
   const current = page.result.page;
   const totalPages = Math.max(1, Math.ceil(total / limit));
-  const base = localePath(`/category/${category.id}`);
+  const base = localePath(`/${kind}/${term.id}`);
+  const label = isTag ? `#${term.label}` : term.label;
+  const icon = (id: string, size: number) =>
+    isTag ? <Hash aria-hidden className={size > 16 ? "h-5 w-5" : "h-3.5 w-3.5"} /> : <CategoryIcon slug={id} size={size} />;
 
   // 其它分类（排除自身），按 toolCount 倒排取前 16
-  const siblings = page.categories
-    .filter((c) => c.id !== category.id && c.count > 0)
+  const siblings = (isTag ? page.tags ?? [] : page.categories)
+    .filter((c) => c.id !== term.id && c.count > 0)
     .sort((a, b) => b.count - a.count)
     .slice(0, 16);
 
@@ -110,21 +119,21 @@ function CategoryView({ page }: { page: Page }) {
           crumbs={[
             { name: td("home"), href: localePath("/") },
             { name: t("title"), href: localePath("/tools") },
-            { name: category.label },
+            { name: label },
           ]}
-          icon={<CategoryIcon slug={category.id} size={22} />}
-          title={category.label}
-          meta={tc("toolsCount", { count: page.q ? total : category.count })}
+          icon={icon(term.id, 22)}
+          title={label}
+          meta={tc("toolsCount", { count: page.q ? total : term.count })}
         />
 
         {/* Sibling categories */}
         {siblings.length > 0 && (
           <div className="mb-10">
-            <div className="eyebrow mb-3">{tc("browseOther")}</div>
+            <div className="eyebrow mb-3">{isTag ? tt("browseOther") : tc("browseOther")}</div>
             <div className="flex flex-wrap gap-2">
               {siblings.map((c) => (
-                <Link key={c.id} href={localePath(`/category/${c.id}`)} className={chipClass}>
-                  <CategoryIcon slug={c.id} size={14} />
+                <Link key={c.id} href={localePath(`/${kind}/${c.id}`)} className={chipClass}>
+                  {icon(c.id, 14)}
                   <span>{c.label}</span>
                   <span className="num text-xs text-muted-foreground">{c.count}</span>
                 </Link>
@@ -143,7 +152,7 @@ function CategoryView({ page }: { page: Page }) {
         {/* Tools grid */}
         {tools.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
-            {tc("noToolsInCategory")}
+            {isTag ? tt("noToolsWithTag") : tc("noToolsInCategory")}
           </div>
         ) : (
           <div data-spotlight className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

@@ -87,6 +87,25 @@ export function buildItemList(name: string, items: ItemListEntry[]) {
   };
 }
 
+/* ============ FAQPage ============ */
+
+export interface FaqEntry {
+  q: string;
+  a: string;
+}
+
+export function buildFaqPage(entries: FaqEntry[]) {
+  return {
+    "@context": SCHEMA,
+    "@type": "FAQPage",
+    mainEntity: entries.map((e) => ({
+      "@type": "Question",
+      name: e.q,
+      acceptedAnswer: { "@type": "Answer", text: e.a },
+    })),
+  };
+}
+
 /* ============ WebSite (was <WebSiteJsonLd>) ============ */
 
 export interface WebSiteJsonLdInput {

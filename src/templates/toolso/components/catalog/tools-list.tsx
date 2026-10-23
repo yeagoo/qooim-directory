@@ -1,4 +1,4 @@
-// Ported from toolso-ai-open src/features/tools/components/tools-list.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: server-rendered without hydration: search is a GET form to the catalog (`q`, keeping a ?category= filter), category chips and pager buttons are links (chips go to category pages, pages use ?page=N), the "+N / Less" chip toggle is the data-toggle hook of /assets/toolso.js; Spotlight is the data-spotlight hook; takes Qoo.IM page data; per-site empty-state illustration dropped.
+// Ported from toolso-ai-open src/features/tools/components/tools-list.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: server-rendered without hydration: search is a GET form to the catalog (`q`, keeping ?category= and ?tag= filters), category chips and pager buttons are links (chips go to category pages, pages use ?page=N), the "+N / Less" chip toggle is the data-toggle hook of /assets/toolso.js; Spotlight is the data-spotlight hook; takes Qoo.IM page data; per-site empty-state illustration dropped.
 import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { PublicCategory, PublicResource } from "../../../../public/sdk.js";
@@ -20,6 +20,8 @@ interface ToolsListProps {
   tools: PublicResource[];
   categories: PublicCategory[];
   currentCategory?: string;
+  /** Active ?tag= filter, kept by the search form. */
+  currentTag?: string;
   currentSearch?: string;
   currentPage: number;
   totalPages: number;
@@ -37,6 +39,7 @@ export function ToolsList({
   tools,
   categories,
   currentCategory,
+  currentTag,
   currentSearch,
   currentPage,
   totalPages,
@@ -102,6 +105,7 @@ export function ToolsList({
             />
           </div>
           {currentCategory && <input type="hidden" name="category" value={currentCategory} />}
+          {currentTag && <input type="hidden" name="tag" value={currentTag} />}
           <button
             type="submit"
             aria-label={searchLabel}

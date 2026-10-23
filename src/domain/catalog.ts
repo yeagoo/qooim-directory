@@ -3,6 +3,27 @@ import { IdentityStore } from "./identity.js";
 import { z } from "zod";
 import type { Config } from "./config.js";
 export class NotFound extends Error {}
+// A category/tag id is usable publicly when it is active and labelled in the row's locale.
+const visible = (table: "category" | "tag", id: string, alias = "p") =>
+  `EXISTS(SELECT 1 FROM ${table} t WHERE t.site_id=${alias}.site_id AND t.id=${id} AND t.active AND length(trim(t.labels->>${alias}.locale))>0)`;
+// Labelled, active categories/tags of a row in the row's own order.
+const labelled = (table: "category" | "tag", ids: string, alias: string) =>
+  `(SELECT coalesce(jsonb_agg(jsonb_build_object('id',t.id,'label',t.labels->>${alias}.locale) ORDER BY array_position(${alias}.${ids},t.id)),'[]'::jsonb)
+    FROM ${table} t WHERE t.site_id=${alias}.site_id AND t.id=ANY(${alias}.${ids}) AND t.active AND length(trim(t.labels->>${alias}.locale))>0)`;
+const iso = (column: string) => `to_char(${column} AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"')`;
+/** The public columns of a public_listing row; `details` is the expression for the rich fields. */
+const columns = (alias: string, details: string) =>
+  [
+    "resource_id,slug,title,description,url,locale,category_id,rank,version,seo_title,seo_description,project,image,logo"
+      .split(",")
+      .map((c) => `${alias}.${c}`)
+      .join(","),
+    `${details} AS details`,
+    `${labelled("category", "category_ids", alias)} AS categories`,
+    `${labelled("tag", "tag_ids", alias)} AS tags`,
+    `${iso(alias + ".published_at")} AS published_at`,
+    `${iso(alias + ".updated_at")} AS updated_at`,
+  ].join(",");
 export type SiteContext = Readonly<{ siteId: string; host: string }>;
 export class Catalog {
   private contexts = new WeakSet<object>();
@@ -92,29 +113,33 @@ export class Catalog {
   }
   async browse(ctx: SiteContext, input: unknown, favoriteUser?: string) {
     this.check(ctx);
+    const slugId = z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{0,63}$/)
+      .optional();
     const options = z
       .strictObject({
         locale: z.enum(["zh", "en"]),
         q: z.string().max(200).default(""),
-        category: z
-          .string()
-          .regex(/^[a-z][a-z0-9-]{0,63}$/)
-          .optional(),
+        category: slugId,
+        tag: slugId,
         page: z.coerce.number().int().min(1).max(100000).default(1),
         limit: z.coerce.number().int().min(1).max(100).default(24),
       })
       .parse(input);
     const q = options.q.trim().replace(/[%_]/g, " ").slice(0, 200);
+    // Cards get the short rich fields only; long text stays on the detail page.
     const { rows } = await this.pool.query(
       `WITH filtered AS (
-      SELECT p.resource_id,p.slug,p.title,p.description,p.url,p.locale,p.category_id,p.rank,p.version,p.seo_title,p.seo_description,p.project,p.image,
+      SELECT ${columns("p", "p.details-ARRAY['content','faqs','features','useCases','pros','cons']")},
         CASE WHEN $3='' THEN 0
           ELSE similarity(lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description),lower($3))
         END AS score
       FROM public_listing p
       WHERE p.site_id=$1 AND p.locale=$2
       AND ($3='' OR lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description) LIKE '%'||lower($3)||'%')
-      AND ($4::text IS NULL OR p.category_id=$4)
+      AND ($4::text IS NULL OR ($4=ANY(p.category_ids) AND ${visible("category", "$4")}))
+      AND ($8::text IS NULL OR ($8=ANY(p.tag_ids) AND ${visible("tag", "$8")}))
       AND ($5::uuid IS NULL OR EXISTS(SELECT 1 FROM favorite f WHERE f.site_id=p.site_id AND f.resource_id=p.resource_id AND f.user_id=$5))
     ), paged AS(SELECT * FROM filtered ORDER BY score DESC,rank,slug LIMIT $6 OFFSET $7)
     SELECT (SELECT count(*)::int FROM filtered) AS total,COALESCE((SELECT jsonb_agg(to_jsonb(paged)-'score' ORDER BY score DESC,rank,slug) FROM paged),'[]'::jsonb) AS items`,
@@ -126,6 +151,7 @@ export class Catalog {
         favoriteUser ?? null,
         options.limit,
         (options.page - 1) * options.limit,
+        options.tag ?? null,
       ],
     );
     return { ...rows[0], page: options.page, limit: options.limit } as {
@@ -139,28 +165,41 @@ export class Catalog {
     this.check(ctx);
     const row = (
       await this.pool.query(
-        "SELECT resource_id,slug,title,description,url,locale,category_id,rank,version,seo_title,seo_description,project,image FROM public_listing WHERE site_id=$1 AND locale=$2 AND slug=$3",
+        `SELECT ${columns("p", "p.details")} FROM public_listing p WHERE p.site_id=$1 AND p.locale=$2 AND p.slug=$3`,
         [ctx.siteId, locale, slug],
       )
     ).rows[0];
     if (!row) throw new NotFound();
     return row as PublicItem;
   }
-  async categories(ctx: SiteContext, locale: string) {
+  /** Active categories with visible entries in this locale, primary or extra. */
+  categories(ctx: SiteContext, locale: string) {
+    return this.taxonomy(ctx, "category", locale);
+  }
+  /** Active tags with visible entries in this locale. */
+  tags(ctx: SiteContext, locale: string) {
+    return this.taxonomy(ctx, "tag", locale);
+  }
+  private async taxonomy(ctx: SiteContext, table: "category" | "tag", locale: string) {
     this.check(ctx);
+    const ids = table === "tag" ? "tag_ids" : "category_ids";
     return (
       await this.pool.query(
-        `SELECT c.id,c.labels->>$2 AS label,count(*)::int AS count FROM category c JOIN public_listing p ON p.site_id=c.site_id AND p.category_id=c.id AND p.locale=$2 WHERE c.site_id=$1 GROUP BY c.id,c.labels,c.rank ORDER BY c.rank,c.id`,
+        `SELECT t.id,t.labels->>$2 AS label,count(*)::int AS count FROM ${table} t JOIN public_listing p ON p.site_id=t.site_id AND t.id=ANY(p.${ids}) AND p.locale=$2
+         WHERE t.site_id=$1 AND t.active AND length(trim(t.labels->>$2))>0 GROUP BY t.id,t.labels,t.rank ORDER BY t.rank,t.id`,
         [ctx.siteId, locale],
       )
     ).rows as { id: string; label: string; count: number }[];
   }
-  async categoryLocales(ctx: SiteContext, category: string) {
+  /** Locales in which a category (or tag) has visible entries, for hreflang. */
+  async taxonomyLocales(ctx: SiteContext, table: "category" | "tag", id: string) {
     this.check(ctx);
+    const ids = table === "tag" ? "tag_ids" : "category_ids";
     return (
       await this.pool.query(
-        "SELECT DISTINCT locale FROM public_listing WHERE site_id=$1 AND category_id=$2 ORDER BY locale",
-        [ctx.siteId, category],
+        `SELECT DISTINCT p.locale FROM public_listing p JOIN ${table} t ON t.site_id=p.site_id AND t.id=$2
+         WHERE p.site_id=$1 AND $2=ANY(p.${ids}) AND t.active AND length(trim(t.labels->>p.locale))>0 ORDER BY p.locale`,
+        [ctx.siteId, id],
       )
     ).rows.map((row) => row.locale as "zh" | "en");
   }
@@ -207,4 +246,10 @@ export type PublicItem = {
   seo_title: string;
   seo_description: string;
   image: { url: string; alt: string } | null;
+  logo: { url: string; alt: string } | null;
+  details: import("../public/sdk.js").PublicDetails;
+  categories: import("../public/sdk.js").PublicTerm[];
+  tags: import("../public/sdk.js").PublicTerm[];
+  published_at: string | null;
+  updated_at: string | null;
 };
