@@ -1,9 +1,9 @@
-// Ported from toolso-ai-open src/features/tools/components/tools-list-view.tsx (used by app/[locale]/(marketing)/tools/page.tsx and tools/page/[page]/page.tsx) and app/[locale]/(marketing)/category/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; one component renders the catalog (with ?q=/?category=/?tag=/?page=N), and another a category's or tag's own page (page.categoryPage / page.tagPage; toolso had no tag pages, they reuse the category layout with a "#" heading and sibling tags); head data (title, canonical, JSON-LD, robots) comes from lib/seo.ts; cordis/upperstory/nexablocks filters, rel=prev/next <link>s and the category description dropped (no data); catalog subtitle is the site tagline.
+// Ported from toolso-ai-open src/features/tools/components/tools-list-view.tsx (used by app/[locale]/(marketing)/tools/page.tsx and tools/page/[page]/page.tsx) and app/[locale]/(marketing)/category/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; one component renders the catalog (with ?q=/?category=/?tag=/?page=N), and another a category's, tag's or collection's own page (page.categoryPage / page.tagPage / page.collectionPage; toolso had no tag pages, they reuse the category layout with a "#" heading and sibling tags; a collection page follows toolso's hot page: flame icon, the collection description, cards numbered by curated rank, no siblings); head data (title, canonical, JSON-LD, robots) comes from lib/seo.ts; cordis/upperstory/nexablocks filters, rel=prev/next <link>s and the category description dropped (no data); catalog subtitle is the site tagline.
 import type { TemplatePage } from "../../../public/sdk.js";
 import { Document } from "../document.js";
 import { directorySeo } from "../lib/seo.js";
 import { SiteChrome } from "../components/site-chrome.js";
-import { ChevronRight, Hash } from "lucide-react";
+import { ChevronRight, Flame, Hash } from "lucide-react";
 import Link from "../shims/next-link.js";
 import { useTranslations } from "../shims/next-intl.js";
 import { localePath } from "../runtime.js";
@@ -21,7 +21,7 @@ export function DirectoryPage({ page }: { page: Page }) {
     <Document page={page} seo={directorySeo(page)}>
       <SiteChrome>
         <main>
-          {page.categoryPage || page.tagPage ? <TermView page={page} /> : <ToolsListView page={page} />}
+          {page.categoryPage || page.tagPage || page.collectionPage ? <TermView page={page} /> : <ToolsListView page={page} />}
         </main>
       </SiteChrome>
     </Document>
@@ -87,14 +87,16 @@ function ToolsListView({ page }: { page: Page }) {
   );
 }
 
-/** 分类页(/category/<id>)与标签页(/tag/<id>)。 */
+/** 分类页(/category/<id>)、标签页(/tag/<id>)与榜单页(/collection/<id>)。 */
 function TermView({ page }: { page: Page }) {
-  const isTag = !page.categoryPage;
-  const term = (page.categoryPage ?? page.tagPage)!;
-  const kind = isTag ? "tag" : "category";
+  const kind = page.categoryPage ? "category" : page.tagPage ? "tag" : "collection";
+  const isTag = kind === "tag";
+  const isCollection = kind === "collection";
+  const term = (page.categoryPage ?? page.tagPage ?? page.collectionPage)!;
   const t = useTranslations("tools");
   const tc = useTranslations("tools.category");
   const tt = useTranslations("qooim.catalog.tag");
+  const tl = useTranslations("qooim.catalog.collection");
   const td = useTranslations("tools.detail");
   const { total, items: tools, limit } = page.result;
   const current = page.result.page;
@@ -102,10 +104,16 @@ function TermView({ page }: { page: Page }) {
   const base = localePath(`/${kind}/${term.id}`);
   const label = isTag ? `#${term.label}` : term.label;
   const icon = (id: string, size: number) =>
-    isTag ? <Hash aria-hidden className={size > 16 ? "h-5 w-5" : "h-3.5 w-3.5"} /> : <CategoryIcon slug={id} size={size} />;
+    isCollection ? (
+      <Flame aria-hidden className="h-5 w-5" />
+    ) : isTag ? (
+      <Hash aria-hidden className={size > 16 ? "h-5 w-5" : "h-3.5 w-3.5"} />
+    ) : (
+      <CategoryIcon slug={id} size={size} />
+    );
 
-  // 其它分类（排除自身），按 toolCount 倒排取前 16
-  const siblings = (isTag ? page.tags ?? [] : page.categories)
+  // 其它分类（排除自身），按 toolCount 倒排取前 16;榜单页没有同级列表
+  const siblings = (isCollection ? [] : isTag ? page.tags ?? [] : page.categories)
     .filter((c) => c.id !== term.id && c.count > 0)
     .sort((a, b) => b.count - a.count)
     .slice(0, 16);
@@ -123,6 +131,7 @@ function TermView({ page }: { page: Page }) {
           ]}
           icon={icon(term.id, 22)}
           title={label}
+          description={page.collectionPage?.description || undefined}
           meta={tc("toolsCount", { count: page.q ? total : term.count })}
         />
 
@@ -152,12 +161,17 @@ function TermView({ page }: { page: Page }) {
         {/* Tools grid */}
         {tools.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
-            {isTag ? tt("noToolsWithTag") : tc("noToolsInCategory")}
+            {isCollection ? tl("empty") : isTag ? tt("noToolsWithTag") : tc("noToolsInCategory")}
           </div>
         ) : (
           <div data-spotlight className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {tools.map((tool) => (
-              <ToolCard key={tool.resource_id} tool={tool} />
+            {tools.map((tool, i) => (
+              <ToolCard
+                key={tool.resource_id}
+                tool={tool}
+                // Curated rank; a search re-orders by relevance, so no numbers then.
+                index={isCollection && !page.q ? (current - 1) * limit + i + 1 : undefined}
+              />
             ))}
           </div>
         )}

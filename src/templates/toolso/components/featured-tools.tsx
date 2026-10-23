@@ -1,11 +1,11 @@
-// Ported from toolso-ai-open src/components/featured-tools.tsx and src/features/tools/components/tool-card.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: takes Qoo.IM PublicResource items; hrefs via LocaleLink/localePath instead of siteLocaleHref; the card shows the title initial (no logo data), the host of the resource URL as its domain, GitHub stars where the resource has a project (no pricing data), and no upperstory note/compare button; CategoryIcon via catalog/category-icon; Spotlight is the [data-spotlight] hook.
+// Ported from toolso-ai-open src/components/featured-tools.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: takes Qoo.IM PublicResource items; hrefs via LocaleLink/localePath instead of siteLocaleHref; cards are the shared catalog ToolCard (logo, tagline, pricing, GitHub stars; no upperstory note/compare button); the section link target is a prop (`href`, the catalog by default) so a curated collection can reuse the block; CategoryIcon via catalog/category-icon; Spotlight is the [data-spotlight] hook.
 import type { PublicResource } from "../../../public/sdk.js";
-import { ArrowRight, ArrowUpRight, Star } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { SectionHeader, sectionLinkClass } from "./section-header.js";
 import { Spotlight } from "./spotlight.js";
 import { LocaleLink } from "./locale-link.js";
 import { CategoryIcon } from "./navigation/category-mark.js";
-import { useLocale } from "../shims/next-intl.js";
+import { ToolCard } from "./catalog/tool-card.js";
 
 interface CategoryData {
   id: string;
@@ -21,6 +21,8 @@ interface FeaturedToolsProps {
   index?: string;
   /** 首页已有独立分类版块时不再重复分类条 */
   showCategories?: boolean;
+  /** Section link target (toolso-style path); the catalog unless a collection reuses the block. */
+  href?: string;
   labels: {
     featuredTitle: string;
     featuredSubtitle: string;
@@ -30,7 +32,7 @@ interface FeaturedToolsProps {
   };
 }
 
-export function FeaturedTools({ tools, categories, index, showCategories = true, labels }: FeaturedToolsProps) {
+export function FeaturedTools({ tools, categories, index, showCategories = true, href = "/tools", labels }: FeaturedToolsProps) {
   return (
     <div className="relative z-20">
       <SectionHeader
@@ -39,7 +41,7 @@ export function FeaturedTools({ tools, categories, index, showCategories = true,
         description={labels.featuredSubtitle}
         action={
           tools.length > 0 ? (
-            <LocaleLink href="/tools" className={sectionLinkClass}>
+            <LocaleLink href={href} className={sectionLinkClass}>
               {labels.viewAllTools}
               <ArrowRight className="h-4 w-4 transition-transform duration-300 ease-expo group-hover:translate-x-1" />
             </LocaleLink>
@@ -91,99 +93,6 @@ export function FeaturedTools({ tools, categories, index, showCategories = true,
           {labels.noTools}
         </div>
       )}
-    </div>
-  );
-}
-
-function hostOf(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "") || null;
-  } catch {
-    return null;
-  }
-}
-
-// toolso src/features/tools/components/tool-card.tsx, for the home page grid.
-function ToolCard({
-  tool,
-  visitLabel,
-  headingAs: Heading = "h2",
-  index,
-  className,
-}: {
-  tool: PublicResource;
-  visitLabel?: string;
-  /** 标题语义层级:列表页卡片是 h2,嵌在版块里(首页精选)用 h3 */
-  headingAs?: "h2" | "h3";
-  /** 右上角序号(目录索引母题);悬停时让位给箭头 */
-  index?: number;
-  className?: string;
-}) {
-  const locale = useLocale();
-  const domain = hostOf(tool.url);
-  const stars = tool.project ? new Intl.NumberFormat(locale, { notation: "compact" }).format(tool.project.stars) : null;
-  const showFooter = Boolean(stars || (visitLabel && tool.url));
-  return (
-    <div className={`flex h-full flex-col gap-2 ${className ?? ""}`}>
-    <LocaleLink
-      href={`/tools/${tool.slug}`}
-      className="surface-card group flex flex-1 flex-col p-5"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary ring-1 ring-foreground/5">
-          <span className="text-lg font-semibold text-muted-foreground">
-            {tool.title.charAt(0).toUpperCase()}
-          </span>
-        </div>
-        <span className="relative mt-1 flex h-5 min-w-5 items-center justify-end" aria-hidden>
-          {typeof index === "number" && (
-            <span className="num text-xs text-muted-foreground/70 transition-all duration-300 ease-expo group-hover:-translate-y-1 group-hover:opacity-0">
-              {String(index).padStart(2, "0")}
-            </span>
-          )}
-          <ArrowUpRight
-            className={`absolute right-0 h-4 w-4 text-primary transition-all duration-300 ease-expo group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100 ${
-              typeof index === "number"
-                ? "translate-y-1 opacity-0"
-                : "-translate-x-0.5 translate-y-0.5 text-muted-foreground/50 opacity-100 group-hover:text-primary"
-            }`}
-          />
-        </span>
-      </div>
-
-      <div className="mt-5 min-w-0">
-        <Heading className="truncate text-[1.0625rem] font-semibold leading-snug tracking-tight text-foreground">
-          {tool.title}
-        </Heading>
-        {domain && (
-          <p className="num mt-0.5 truncate text-xs text-muted-foreground">{domain}</p>
-        )}
-      </div>
-
-      {tool.description && (
-        <p className="mt-3 line-clamp-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-          {tool.description}
-        </p>
-      )}
-
-      {showFooter && (
-        <div className="mt-5 flex items-center justify-between gap-3 border-t border-border/70 pt-3.5">
-          {stars ? (
-            <span className="eyebrow inline-flex items-center gap-1.5 !text-[0.625rem] text-foreground/80">
-              <Star className="h-3 w-3" aria-hidden />
-              <span className="num">{stars}</span>
-            </span>
-          ) : (
-            <span />
-          )}
-          {visitLabel && tool.url && (
-            <span className="text-xs text-muted-foreground transition-colors group-hover:text-foreground">
-              {visitLabel}
-            </span>
-          )}
-        </div>
-      )}
-    </LocaleLink>
     </div>
   );
 }

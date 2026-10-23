@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Config } from "./config.js";
 export class NotFound extends Error {}
 // A category/tag id is usable publicly when it is active and labelled in the row's locale.
-const visible = (table: "category" | "tag", id: string, alias = "p") =>
+const visible = (table: "category" | "tag" | "collection", id: string, alias = "p") =>
   `EXISTS(SELECT 1 FROM ${table} t WHERE t.site_id=${alias}.site_id AND t.id=${id} AND t.active AND length(trim(t.labels->>${alias}.locale))>0)`;
 // Labelled, active categories/tags of a row in the row's own order.
 const labelled = (table: "category" | "tag", ids: string, alias: string) =>
@@ -123,6 +123,7 @@ export class Catalog {
         q: z.string().max(200).default(""),
         category: slugId,
         tag: slugId,
+        collection: slugId,
         page: z.coerce.number().int().min(1).max(100000).default(1),
         limit: z.coerce.number().int().min(1).max(100).default(24),
       })
@@ -135,16 +136,19 @@ export class Catalog {
       SELECT p.*,
         CASE WHEN $3='' THEN 0
           ELSE similarity(lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description),lower($3))
-        END AS score
+        END AS score,
+        ci.rank AS collection_rank
       FROM public_listing p
+      LEFT JOIN collection_item ci ON $9::text IS NOT NULL AND ci.site_id=p.site_id AND ci.collection_id=$9 AND ci.resource_id=p.resource_id
       WHERE p.site_id=$1 AND p.locale=$2
       AND ($3='' OR lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description) LIKE '%'||lower($3)||'%')
       AND ($4::text IS NULL OR ($4=ANY(p.category_ids) AND ${visible("category", "$4")}))
       AND ($8::text IS NULL OR ($8=ANY(p.tag_ids) AND ${visible("tag", "$8")}))
+      AND ($9::text IS NULL OR (ci.resource_id IS NOT NULL AND ${visible("collection", "$9")}))
       AND ($5::uuid IS NULL OR EXISTS(SELECT 1 FROM favorite f WHERE f.site_id=p.site_id AND f.resource_id=p.resource_id AND f.user_id=$5))
-    ), paged AS(SELECT * FROM filtered ORDER BY score DESC,rank,slug LIMIT $6 OFFSET $7)
-    SELECT (SELECT count(*)::int FROM filtered) AS total,COALESCE((SELECT jsonb_agg(to_jsonb(r)-'score' ORDER BY r.score DESC,r.rank,r.slug)
-      FROM (SELECT ${columns("paged", "paged.details-ARRAY['content','faqs','features','useCases','pros','cons']")},paged.score FROM paged) r),'[]'::jsonb) AS items`,
+    ), paged AS(SELECT * FROM filtered ORDER BY score DESC,collection_rank,rank,slug LIMIT $6 OFFSET $7)
+    SELECT (SELECT count(*)::int FROM filtered) AS total,COALESCE((SELECT jsonb_agg(to_jsonb(r)-'score'-'collection_rank' ORDER BY r.score DESC,r.collection_rank,r.rank,r.slug)
+      FROM (SELECT ${columns("paged", "paged.details-ARRAY['content','faqs','features','useCases','pros','cons']")},paged.score,paged.collection_rank FROM paged) r),'[]'::jsonb) AS items`,
       [
         ctx.siteId,
         options.locale,
@@ -154,6 +158,7 @@ export class Catalog {
         options.limit,
         (options.page - 1) * options.limit,
         options.tag ?? null,
+        options.collection ?? null,
       ],
     );
     return { ...rows[0], page: options.page, limit: options.limit } as {
@@ -193,14 +198,30 @@ export class Catalog {
       )
     ).rows as { id: string; label: string; count: number }[];
   }
-  /** Locales in which a category (or tag) has visible entries, for hreflang. */
-  async taxonomyLocales(ctx: SiteContext, table: "category" | "tag", id: string) {
+  /** Active collections with visible entries in this locale, with their description. */
+  async collections(ctx: SiteContext, locale: string) {
     this.check(ctx);
-    const ids = table === "tag" ? "tag_ids" : "category_ids";
+    return (
+      await this.pool.query(
+        `SELECT t.id,t.labels->>$2 AS label,coalesce(t.descriptions->>$2,'') AS description,count(*)::int AS count
+         FROM collection t JOIN collection_item i ON i.site_id=t.site_id AND i.collection_id=t.id
+         JOIN public_listing p ON p.site_id=i.site_id AND p.resource_id=i.resource_id AND p.locale=$2
+         WHERE t.site_id=$1 AND t.active AND length(trim(t.labels->>$2))>0 GROUP BY t.id,t.labels,t.descriptions,t.rank ORDER BY t.rank,t.id`,
+        [ctx.siteId, locale],
+      )
+    ).rows as { id: string; label: string; description: string; count: number }[];
+  }
+  /** Locales in which a category, tag or collection has visible entries, for hreflang. */
+  async taxonomyLocales(ctx: SiteContext, table: "category" | "tag" | "collection", id: string) {
+    this.check(ctx);
+    const member =
+      table === "collection"
+        ? "EXISTS(SELECT 1 FROM collection_item i WHERE i.site_id=p.site_id AND i.collection_id=$2 AND i.resource_id=p.resource_id)"
+        : `$2=ANY(p.${table === "tag" ? "tag_ids" : "category_ids"})`;
     return (
       await this.pool.query(
         `SELECT DISTINCT p.locale FROM public_listing p JOIN ${table} t ON t.site_id=p.site_id AND t.id=$2
-         WHERE p.site_id=$1 AND $2=ANY(p.${ids}) AND t.active AND length(trim(t.labels->>p.locale))>0 ORDER BY p.locale`,
+         WHERE p.site_id=$1 AND ${member} AND t.active AND length(trim(t.labels->>p.locale))>0 ORDER BY p.locale`,
         [ctx.siteId, id],
       )
     ).rows.map((row) => row.locale as "zh" | "en");

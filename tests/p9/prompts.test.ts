@@ -67,8 +67,8 @@ function recording() {
 
 test("P9 prompt list includes built-in v1 and only global admins create versions", async () => {
   const initial = await (await f.api("/ai/prompts")).json();
-  assert.deepEqual(Object.keys(initial.kinds).sort(), ["generate", "seo", "translate"]);
-  for (const kind of ["generate", "translate", "seo"] as const)
+  assert.deepEqual(Object.keys(initial.kinds).sort(), ["enrich", "generate", "seo", "translate"]);
+  for (const kind of ["generate", "translate", "seo", "enrich"] as const)
     assert.deepEqual(initial.kinds[kind], [
       {
         version: 1,
@@ -157,16 +157,16 @@ test("P9 prompt list includes built-in v1 and only global admins create versions
 test("P9 sites select existing prompt versions with write permission", async () => {
   await createPrompt("seo", "Custom SEO v2");
   const initial = await (await f.api("/ai/config?site=atlas")).json();
-  assert.deepEqual(initial.promptVersions, { generate: 1, translate: 1, seo: 1 });
+  assert.deepEqual(initial.promptVersions, { generate: 1, translate: 1, seo: 1, enrich: 1 });
   // An unconfigured site reports the defaults too.
   assert.deepEqual(
     (await (await f.api("/ai/config?site=notes")).json()).promptVersions,
-    { generate: 1, translate: 1, seo: 1 },
+    { generate: 1, translate: 1, seo: 1, enrich: 1 },
   );
   // Full config save with a partial selection.
   const saved = await post("/ai/config", { ...config, promptVersions: { seo: 2 } });
   assert.equal(saved.status, 200);
-  assert.deepEqual((await saved.json()).promptVersions, { generate: 1, translate: 1, seo: 2 });
+  assert.deepEqual((await saved.json()).promptVersions, { generate: 1, translate: 1, seo: 2, enrich: 1 });
   assert.deepEqual(
     (await f.pool.query("SELECT prompt_versions FROM ai_config WHERE site_id='atlas'")).rows[0]
       .prompt_versions,
@@ -182,7 +182,7 @@ test("P9 sites select existing prompt versions with write permission", async () 
   // Saving the provider config without promptVersions keeps the selection; key stays optional.
   assert.deepEqual(
     (await f.app.ai.saveConfig(f.editor, { ...config, model: "m2" })).promptVersions,
-    { generate: 1, translate: 1, seo: 2 },
+    { generate: 1, translate: 1, seo: 2, enrich: 1 },
   );
   // Selection-only save; version 1 is the default and is not stored.
   await createPrompt("translate", "Custom translate v2");
@@ -190,8 +190,9 @@ test("P9 sites select existing prompt versions with write permission", async () 
     generate: 1,
     translate: 2,
     seo: 2,
+    enrich: 1,
   });
-  assert.deepEqual((await select({ seo: 1 })).promptVersions, { generate: 1, translate: 2, seo: 1 });
+  assert.deepEqual((await select({ seo: 1 })).promptVersions, { generate: 1, translate: 2, seo: 1, enrich: 1 });
   assert.deepEqual(
     (await f.pool.query("SELECT prompt_versions FROM ai_config WHERE site_id='atlas'")).rows[0]
       .prompt_versions,

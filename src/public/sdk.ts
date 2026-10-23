@@ -67,6 +67,8 @@ export type PublicDetails = {
 };
 export type PublicTerm = { id: string; label: string };
 export type PublicCategory = { id: string; label: string; count: number };
+/** M13b. A curated list (hot, editor's picks, ...); `count` is its visible entries in this locale. */
+export type PublicCollection = PublicCategory & { description: string };
 export type TemplatePage = {
   preview?: boolean;
   site: TemplateSite;
@@ -95,6 +97,8 @@ export type TemplatePage = {
       /** M13a. Visible tags of this locale, and the tag of a tag page. */
       tags?: PublicCategory[];
       tagPage?: PublicCategory;
+      /** M13b. The collection of a collection page; its entries keep the curated order. */
+      collectionPage?: PublicCollection;
     }
   | { kind: "detail"; item: PublicResource; categories?: PublicCategory[]; related?: PublicResource[] }
   | { kind: "missing" }
@@ -106,6 +110,8 @@ export type TemplateHomePage = PageBase & {
   total: number;
   featured: PublicResource[];
   categories: PublicCategory[];
+  /** M13b. Visible collections, each with its first entries in curated order. */
+  collections?: (PublicCollection & { items: PublicResource[] })[];
 };
 /** A full HTML string, or a React element rendered to static markup on the server (no hydration). */
 export type TemplateOutput = string | ReactElement;
@@ -159,10 +165,10 @@ export function pagination(page: Extract<TemplatePage, { kind: "directory" }>) {
   const link = (number: number) => {
     const params = new URLSearchParams();
     if (page.q) params.set("q", page.q);
-    if (page.categoryPage || page.tagPage) {
+    if (page.categoryPage || page.tagPage || page.collectionPage) {
       params.set("page", String(number));
-      const kind = page.categoryPage ? "category" : "tag",
-        term = (page.categoryPage ?? page.tagPage)!;
+      const kind = page.categoryPage ? "category" : page.tagPage ? "tag" : "collection",
+        term = (page.categoryPage ?? page.tagPage ?? page.collectionPage)!;
       return `/${page.locale}/${page.catalogPath}/${kind}/${term.id}?${params}`;
     }
     if (page.category) params.set("category", page.category);

@@ -1,4 +1,4 @@
-// Ported from toolso-ai-open src/app/[locale]/(marketing)/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: generic-directory branch only (cordis, nexablocks and upperstory homes dropped); synchronous, data from TemplateHomePage instead of DB queries; fixed section order featured → categories → cta (toolso read it from site.curation.homeSections); featured keeps toolso's default count of 8 in the server's order (no siteSeededOrder shuffle, no lead categories); no per-site intro/FAQ (getSiteCopy) and no per-site imagery; JSON-LD and metadata are left to lib/seo.ts; the root is <main> because SiteChrome has no <main> of its own.
+// Ported from toolso-ai-open src/app/[locale]/(marketing)/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: generic-directory branch only (cordis, nexablocks and upperstory homes dropped); synchronous, data from TemplateHomePage instead of DB queries; fixed section order featured → categories → cta (toolso read it from site.curation.homeSections), where the site's curated collections (TemplateHomePage.collections, toolso's tool_collection) replace the featured block with one block per collection (label, description, curated order, link to the collection page), and featured stays when there are none; featured keeps toolso's default count of 8 in the server's order (no siteSeededOrder shuffle, no lead categories); no per-site intro/FAQ (getSiteCopy) and no per-site imagery; JSON-LD and metadata are left to lib/seo.ts; the root is <main> because SiteChrome has no <main> of its own.
 import type { TemplateHomePage } from "../../../public/sdk.js";
 import { Document } from "../document.js";
 import { homeSeo } from "../lib/seo.js";
@@ -12,7 +12,7 @@ import { HomeCategories } from "../components/home-categories.js";
 import { getTranslations } from "../shims/next-intl.js";
 
 const FEATURED_COUNT = 8;
-const SECTIONS = ["featured", "categories", "cta"] as const;
+type Section = "featured" | "categories" | "cta" | `collection:${string}`;
 
 export function HomePage({ page }: { page: TemplateHomePage }) {
   return (
@@ -28,17 +28,48 @@ export function HomePage({ page }: { page: TemplateHomePage }) {
 function Home({ page }: { page: TemplateHomePage }) {
   const tt = getTranslations("tools");
   const tHome = getTranslations("qooim.home");
+  const tc = getTranslations("qooim.catalog.collection");
 
   // 有工具的分类按工具数排序 → 分类条/分类版块突出热门分类
   const categories = page.categories
     .filter((c) => c.count > 0)
     .sort((a, b) => b.count - a.count);
   const tools = page.featured.slice(0, FEATURED_COUNT);
+  const collections = (page.collections ?? []).filter((c) => c.items.length > 0);
+  const SECTIONS: Section[] = [
+    ...(collections.length ? collections.map((c) => `collection:${c.id}` as const) : ["featured" as const]),
+    "categories",
+    "cta",
+  ];
 
   // 版块序号(「01」「02」…):按实际渲染顺序编号
-  const sectionNo = (kind: (typeof SECTIONS)[number]) => String(SECTIONS.indexOf(kind) + 1).padStart(2, "0");
+  const sectionNo = (kind: Section) => String(SECTIONS.indexOf(kind) + 1).padStart(2, "0");
+  const categoryData = categories.map((c) => ({ id: c.id, slug: c.id, name: c.label, toolCount: c.count }));
 
-  const renderSection = (kind: (typeof SECTIONS)[number]) => {
+  const renderSection = (kind: Section) => {
+    if (kind.startsWith("collection:")) {
+      const collection = collections.find((c) => `collection:${c.id}` === kind)!;
+      return (
+        <section key={kind} id={`collection-${collection.id}`} className="relative py-16 md:py-24">
+          <Container>
+            <FeaturedTools
+              tools={collection.items.slice(0, FEATURED_COUNT)}
+              categories={categoryData}
+              index={sectionNo(kind)}
+              showCategories={false}
+              href={`/collection/${collection.id}`}
+              labels={{
+                featuredTitle: collection.label,
+                featuredSubtitle: collection.description,
+                visitWebsite: tt("visitWebsite"),
+                noTools: tt("noTools"),
+                viewAllTools: tc("viewList"),
+              }}
+            />
+          </Container>
+        </section>
+      );
+    }
     switch (kind) {
       case "featured":
         return (
@@ -46,7 +77,7 @@ function Home({ page }: { page: TemplateHomePage }) {
             <Container>
               <FeaturedTools
                 tools={tools}
-                categories={categories.map((c) => ({ id: c.id, slug: c.id, name: c.label, toolCount: c.count }))}
+                categories={categoryData}
                 index={sectionNo("featured")}
                 showCategories={!SECTIONS.includes("categories")}
                 labels={{

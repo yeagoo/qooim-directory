@@ -23,7 +23,7 @@ const statusLabels = {
   failed: "失败",
   cancelled: "已取消",
 };
-const kindLabels = { generate: "生成", translate: "翻译", seo: "SEO" };
+const kindLabels = { generate: "生成", translate: "翻译", seo: "SEO", enrich: "富字段" };
 const errorLabels = { cancelled_by_operator: "操作员取消" };
 const time = (value) => (value ? new Date(value).toLocaleString("zh-CN") : "—");
 const jobsPanel = `<section class="panel" id="ai-jobs"><h2>任务</h2><div class="actions"><label for="ai-job-status">状态</label><select id="ai-job-status"><option value="">全部</option>${Object.entries(statusLabels).map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}</select><button id="refresh-ai-jobs" class="secondary">刷新任务</button></div><div class="table-wrap"><table id="ai-job-list"><thead><tr><th>类型</th><th>状态</th><th>错误</th><th>输入 / 输出 token</th><th>操作者</th><th>创建 / 结束</th><th>操作</th></tr></thead><tbody><tr><td colspan="7" class="muted">加载中…</td></tr></tbody></table></div><div class="actions"><button id="ai-jobs-prev" class="secondary" disabled>上一页</button><span id="ai-jobs-page" class="muted">第 1 页</span><button id="ai-jobs-next" class="secondary" disabled>下一页</button></div></section>`;
@@ -106,7 +106,7 @@ function bindJobs(site, workspace, api, notice, write = true) {
   });
   return run(load);
 }
-const promptKinds = ["generate", "translate", "seo"];
+const promptKinds = ["generate", "translate", "seo", "enrich"];
 const versionLabel = (entry) =>
   `v${entry.version}${entry.builtin ? "（内置）" : entry.note ? `（${entry.note}）` : ""}`;
 // Per-kind version select with a read-only view of the chosen instructions; global

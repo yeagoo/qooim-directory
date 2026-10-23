@@ -108,3 +108,9 @@ pnpm template:preview
 - **标签页**：`/<locale>/<catalogPath>/tag/<id>` 渲染目录页，同时传入 `tagPage`；目录页还会传入本语言可见的 `tags`。标签页和分类页一样会被索引，`?tag=` 筛选结果页是 noindex，标签不存在时返回 404。
 - **Markdown 必须当作不可信内容处理**：不能把它当作 HTML 直接插入页面。React 模板可以使用 `react-markdown` 和 `remark-gfm`（模板目录允许导入这两个包），不要启用原始 HTML，并保留默认的链接过滤。字符串模板如果要显示长文，需要自己做转义。
 - **公开 API**：`/api/tags?locale=` 返回标签及条目数；`/api/search` 支持 `tag=` 参数。
+
+## M13b：榜单
+
+- **榜单页**：`/<locale>/<catalogPath>/collection/<id>` 渲染目录页，同时传入 `collectionPage`（`PublicCollection`：`id`、`label`、`description`、`count`）。条目按榜单里的顺序排列；有关键词时按相关度排序。榜单页会被索引，hreflang 只列出该榜单有条目的语言。榜单不存在、已停用或在该语言下没有名称或可见条目时，返回 404。
+- **首页**：`TemplateHomePage.collections` 提供最多 4 个可见榜单，每个附带前 8 个条目。
+- **公开 API**：`/api/collections?locale=` 返回榜单及条目数；`/api/search` 支持 `collection=` 参数。

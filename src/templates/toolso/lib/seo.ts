@@ -1,5 +1,5 @@
 // Ported from toolso-ai-open src/lib/metadata.ts (title template, __BRAND__ substitution) and the
-// generateMetadata/JSON-LD blocks of src/app/[locale]/(marketing)/{page,tools/page,category/[slug]/page,
+// generateMetadata/JSON-LD blocks of src/app/[locale]/(marketing)/{page,tools/page,category/[slug]/page,hot/page,
 // tools/[slug]/page}.tsx (Apache-2.0, Copyright 2025 CoolChange.AI).
 // Changes: computed from the template page DTO only. These functions run while the props for
 // <Document> are built, i.e. before Document calls provide(), so they must not touch the render
@@ -57,6 +57,7 @@ const homeUrl = (page: Base) =>
 const catalogUrl = (page: Base) => `${page.origin}/${page.locale}/${page.catalogPath}`;
 const categoryUrl = (page: Base, id: string) => `${catalogUrl(page)}/category/${encodeURIComponent(id)}`;
 const tagUrl = (page: Base, id: string) => `${catalogUrl(page)}/tag/${encodeURIComponent(id)}`;
+const collectionUrl = (page: Base, id: string) => `${catalogUrl(page)}/collection/${encodeURIComponent(id)}`;
 const itemUrl = (page: Base, item: Pick<PublicResource, "locale" | "slug">) =>
   `${page.origin}/${item.locale}/${page.catalogPath}/${item.slug}`;
 const absolute = (page: Base, url: string | null | undefined) => {
@@ -108,6 +109,17 @@ export function directorySeo(page: Directory): Seo {
           { name: category.label, url: categoryUrl(page, category.id) },
         ]),
         buildItemList(listName, items),
+      ],
+    };
+  }
+  const collection = page.collectionPage;
+  if (collection) {
+    return {
+      title: titled(page, `${collection.label}${pageSuffix}`),
+      description: collection.description || collection.label,
+      jsonLd: [
+        buildBreadcrumbList([homeCrumb(page), catalogCrumb(page), { name: collection.label, url: collectionUrl(page, collection.id) }]),
+        buildItemList(collection.label, items),
       ],
     };
   }

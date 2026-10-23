@@ -29,6 +29,10 @@ export default {
       browseOther: "Browse other tags",
       noToolsWithTag: "No tools with this tag yet",
     },
+    collection: {
+      empty: "No tools in this list yet",
+      viewList: "View the full list",
+    },
     submitSimilarHint: "Recommend it to us so more people can discover it.",
     otherLanguages: "This page is available in:",
     localeNames: { zh: "中文", en: "English" },
@@ -61,6 +65,10 @@ export default {
       browseTag: "标签为 {tag} 的工具",
       browseOther: "浏览其他标签",
       noToolsWithTag: "这个标签下还没有工具",
+    },
+    collection: {
+      empty: "这个榜单还没有工具",
+      viewList: "查看完整榜单",
     },
     submitSimilarHint: "推荐给我们，让更多人发现它。",
     otherLanguages: "该页面有以下语言版本：",

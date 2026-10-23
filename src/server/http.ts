@@ -182,7 +182,7 @@ export class Application {
       path === "/sitemap.xml" ||
       path === "/robots.txt" ||
       /^\/[a-z]{2}\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(path) ||
-      /^\/(?:zh|en)(?:\/[a-z0-9-]+\/(?:category|tag)\/[a-z0-9-]+)?$/.test(path);
+      /^\/(?:zh|en)(?:\/[a-z0-9-]+\/(?:category|tag|collection)\/[a-z0-9-]+)?$/.test(path);
     const cacheable =
       request.method === "GET" &&
       response.status === 200 &&
@@ -920,6 +920,7 @@ export class Application {
       q: url.searchParams.get("q") ?? "",
       category: url.searchParams.get("category") || undefined,
       tag: url.searchParams.get("tag") || undefined,
+      collection: url.searchParams.get("collection") || undefined,
       page: url.searchParams.get("page") ?? 1,
     };
     if (path === "/api/catalog")
@@ -930,6 +931,8 @@ export class Application {
       return this.json(await this.catalog.categories(ctx, locale));
     if (path === "/api/tags")
       return this.json(await this.catalog.tags(ctx, locale));
+    if (path === "/api/collections")
+      return this.json(await this.catalog.collections(ctx, locale));
     if (path === "/robots.txt")
       return new Response(
         `User-agent: *\nAllow: /\nSitemap: ${site.origin}/sitemap.xml\n`,
@@ -962,7 +965,7 @@ export class Application {
         !localeRoot &&
         (parts[2] !== config.catalogPath ||
           (parts.length > 4 &&
-            !(parts.length === 5 && (parts[3] === "category" || parts[3] === "tag")))))
+            !(parts.length === 5 && ["category", "tag", "collection"].includes(parts[3]!)))))
     )
       throw new NotFound();
     if (localeRoot && !templateHasHome(config.template)) throw new NotFound();
@@ -974,10 +977,20 @@ export class Application {
         headers: { location: "/" + url.search },
       });
     if ((path === "/" || localeRoot) && templateHasHome(config.template)) {
-      const [featured, categories] = await Promise.all([
+      const [featured, categories, lists] = await Promise.all([
         this.catalog.browse(ctx, { locale: language, limit: 12 }),
         this.catalog.categories(ctx, language),
+        this.catalog.collections(ctx, language),
       ]);
+      // The first four collections, eight entries each, in curated order.
+      const collections = await Promise.all(
+        lists.slice(0, 4).map(async (list) => ({
+          ...list,
+          items: (
+            await this.catalog.browse(ctx, { locale: language, collection: list.id, limit: 8 })
+          ).items,
+        })),
+      );
       return this.html(
         renderHomeTemplate(config.template, {
           kind: "home",
@@ -988,6 +1001,7 @@ export class Application {
           total: featured.total,
           featured: featured.items,
           categories,
+          collections,
           canonical: site.origin + (path === "/" ? "/" : `/${language}`),
           alternates: config.locales.map((l) => ({
             locale: l,
@@ -1058,18 +1072,24 @@ export class Application {
         );
       }
     }
-    const [categories, tags] = await Promise.all([
+    const [categories, tags, collections] = await Promise.all([
       this.catalog.categories(ctx, language),
       this.catalog.tags(ctx, language),
+      parts[3] === "collection" ? this.catalog.collections(ctx, language) : [],
     ]);
-    // /<locale>/<catalog>/category/<id> and /tag/<id> are indexable term pages.
-    const termKind = parts.length === 5 ? (parts[3] as "category" | "tag") : null;
+    // /<locale>/<catalog>/category/<id>, /tag/<id> and /collection/<id> are indexable term pages.
+    const termKind =
+      parts.length === 5 ? (parts[3] as "category" | "tag" | "collection") : null;
     const term = termKind
-      ? (termKind === "tag" ? tags : categories).find((c) => c.id === parts[4])
+      ? { category: categories, tag: tags, collection: collections }[termKind].find(
+          (c) => c.id === parts[4],
+        )
       : undefined;
     if (termKind && !term) throw new NotFound();
     const categoryPage = termKind === "category" ? term : undefined;
     const tagPage = termKind === "tag" ? term : undefined;
+    const collectionPage =
+      termKind === "collection" ? collections.find((c) => c.id === term!.id) : undefined;
     const base = term
       ? `/${config.catalogPath}/${termKind}/${term.id}`
       : `/${config.catalogPath}`;
@@ -1077,6 +1097,7 @@ export class Application {
       ...options,
       category: categoryPage?.id ?? options.category,
       tag: tagPage?.id ?? options.tag,
+      collection: collectionPage?.id,
       locale: language,
     });
     const termLocales =
@@ -1098,6 +1119,7 @@ export class Application {
         tag: tagPage?.id ?? options.tag,
         ...(categoryPage ? { categoryPage } : {}),
         ...(tagPage ? { tagPage } : {}),
+        ...(collectionPage ? { collectionPage } : {}),
         canonical:
           site.origin +
           `/${language}${base}` +

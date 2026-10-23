@@ -122,6 +122,19 @@ export function applyResourceForm(data, form) {
   }
   return next;
 }
+// Merges an AI "enrich" output into one locale of the master data. Title and description
+// stay as they are; the rich fields the AI returned replace the existing ones.
+export function mergeEnrichment(data, locale, output) {
+  const current = data.translations?.[locale];
+  if (!current) throw new Error(`主档还没有 ${locale} 的名称和说明`);
+  const rich = {};
+  for (const key of ["tagline", "features", "useCases", "pros", "cons", "content", "faqs"])
+    if (output[key] !== undefined) rich[key] = output[key];
+  return {
+    ...data,
+    translations: { ...data.translations, [locale]: { ...current, ...rich } },
+  };
+}
 export function splitResourceExchange(bundle) {
   if (
     bundle.schemaVersion !== 1 ||
@@ -582,6 +595,7 @@ export async function renderContent(
       api(base + "/categories"),
       api(base + "/submissions?page=" + page),
       api(base + "/tags"),
+      api(base + "/collections"),
     ]);
   } catch (error) {
     if (load.current() && ready()) throw error;
@@ -590,13 +604,13 @@ export async function renderContent(
     load.finish();
   }
   if (!load.current() || !ready()) return;
-  const [publications, categories, submissions, tags] = loaded;
+  const [publications, categories, submissions, tags, collections] = loaded;
   let selected = null,
     selectionGeneration = 0,
     writeBusy = false,
     baselineText = "",
     operation = crypto.randomUUID();
-  root.innerHTML = `<a href="#site/${escape(site)}">← 站点配置</a><span class="eyebrow"> / CONTENT DESK</span><h1>本站内容 · ${escape(site)}</h1><section class="panel"><h2>发布记录</h2>${bulk ? `<div class="actions"><button class="secondary" id="bulk-select-drafts">选择有草稿</button><button id="bulk-publish">批量发布选中</button><span class="muted" id="bulk-status">选择有草稿的记录</span></div>` : ""}<div class="table-wrap"><table id="publication-list"><thead><tr>${bulk ? "<th>选择</th>" : ""}<th>资源 / 语言</th><th>线上状态</th><th>主档</th><th>操作</th></tr></thead><tbody>${publicationRows(publications, bulk)}</tbody></table></div></section><section class="panel"><h2>内容草稿</h2><div class="split"><div><label for="publication-resource">资源标识</label><input id="publication-resource"><label for="publication-locale">语言</label><select id="publication-locale"><option value="zh">中文</option><option value="en">English</option></select></div><div><label for="publication-candidate">完整候选 JSON</label><textarea id="publication-candidate"></textarea></div></div><div class="actions"><button id="stage-content">保存草稿</button><button id="publish-content">发布草稿</button><button id="preview-content" class="secondary">预览</button><button id="diff-content" class="secondary">载入并比较主档新版</button><button id="diagnose-content" class="secondary">检查可见性</button><button id="unpublish-content" class="secondary">下架</button><button id="new-content" class="secondary">分发新资源</button></div><p class="muted">overrides 只覆盖本站文案（可含 tagline、content，以及媒体库图片 image、logo）；categoryId 是主分类，extraCategoryIds、tagIds 填本站其他分类和标签的标识。比较新版优先保留已保存草稿，没有草稿时采用线上记录。请先保存本页编辑再比较。保存草稿不更改线上内容。</p><pre id="content-result"></pre></section><section class="panel"><h2>AI 辅助</h2><p class="muted">只生成候选文案，不会自动保存或发布。需要先在站点页“AI 设置”启用并配置供应商。</p><div class="split"><div><label for="ai-kind">操作</label><select id="ai-kind"><option value="generate">生成/改写标题与说明</option><option value="translate">翻译标题与说明</option><option value="seo">生成 SEO 标题与说明</option></select><label for="ai-brief">额外要求（可选）</label><input id="ai-brief" maxlength="500" placeholder="例如：更简洁，面向开发者"></div></div><div class="actions"><button id="ai-run">生成建议</button><button id="ai-apply" class="secondary" disabled>应用到候选 JSON</button></div><pre id="ai-result"></pre></section>${taxonomyPanel("category", "分类", categories)}${taxonomyPanel("tag", "标签", tags)}<section class="panel"><h2>投稿审核</h2>${submissions.map((s, i) => `<article class="resource"><strong>${escape(s.data.title)}</strong><p>${escape(s.data.url)}</p><p>${escape(s.data.description)}</p><p class="muted review-status">${escape(s.status)} · ${escape(s.note)}</p>${s.resource_id ? `<p class="project-facts review-resource">生成草稿资源：${escape(s.resource_id)}</p>` : ""}${s.status === "pending" ? `<label for="review-note-${i}">审核说明</label><input id="review-note-${i}" maxlength="500"><div class="actions"><button class="review" data-index="${i}" data-decision="accepted">接受为资源草稿</button><button class="review secondary" data-index="${i}" data-decision="rejected">拒绝</button></div>` : ""}</article>`).join("") || '<p class="muted">暂无投稿。</p>'}</section>`;
+  root.innerHTML = `<a href="#site/${escape(site)}">← 站点配置</a><span class="eyebrow"> / CONTENT DESK</span><h1>本站内容 · ${escape(site)}</h1><section class="panel"><h2>发布记录</h2>${bulk ? `<div class="actions"><button class="secondary" id="bulk-select-drafts">选择有草稿</button><button id="bulk-publish">批量发布选中</button><span class="muted" id="bulk-status">选择有草稿的记录</span></div>` : ""}<div class="table-wrap"><table id="publication-list"><thead><tr>${bulk ? "<th>选择</th>" : ""}<th>资源 / 语言</th><th>线上状态</th><th>主档</th><th>操作</th></tr></thead><tbody>${publicationRows(publications, bulk)}</tbody></table></div></section><section class="panel"><h2>内容草稿</h2><div class="split"><div><label for="publication-resource">资源标识</label><input id="publication-resource"><label for="publication-locale">语言</label><select id="publication-locale"><option value="zh">中文</option><option value="en">English</option></select></div><div><label for="publication-candidate">完整候选 JSON</label><textarea id="publication-candidate"></textarea></div></div><div class="actions"><button id="stage-content">保存草稿</button><button id="publish-content">发布草稿</button><button id="preview-content" class="secondary">预览</button><button id="diff-content" class="secondary">载入并比较主档新版</button><button id="diagnose-content" class="secondary">检查可见性</button><button id="unpublish-content" class="secondary">下架</button><button id="new-content" class="secondary">分发新资源</button></div><p class="muted">overrides 只覆盖本站文案（可含 tagline、content，以及媒体库图片 image、logo）；categoryId 是主分类，extraCategoryIds、tagIds 填本站其他分类和标签的标识。比较新版优先保留已保存草稿，没有草稿时采用线上记录。请先保存本页编辑再比较。保存草稿不更改线上内容。</p><pre id="content-result"></pre></section><section class="panel"><h2>AI 辅助</h2><p class="muted">只生成候选文案，不会自动保存或发布。需要先在站点页“AI 设置”启用并配置供应商。富字段补全的结果写入资源主档的新版本（仅站群管理员），之后用“载入并比较主档新版”采用。</p><div class="split"><div><label for="ai-kind">操作</label><select id="ai-kind"><option value="generate">生成/改写标题与说明</option><option value="translate">翻译标题与说明</option><option value="seo">生成 SEO 标题与说明</option><option value="enrich">补全富字段（tagline、功能、FAQ 等）</option></select><label for="ai-brief">额外要求（可选）</label><input id="ai-brief" maxlength="500" placeholder="例如：更简洁，面向开发者"></div></div><div class="actions"><button id="ai-run">生成建议</button><button id="ai-apply" class="secondary" disabled>应用到候选 JSON</button></div><pre id="ai-result"></pre></section>${taxonomyPanel("category", "分类", categories)}${taxonomyPanel("tag", "标签", tags)}<section class="panel"><h2>本站榜单</h2><p class="muted">榜单按顺序列出资源，例如热门、编辑精选。每种语言只显示该语言已发布的资源；保存即生效。</p><div class="actions" id="collection-choices">${categoryButtons(collections, "collection")}</div><div class="split"><div><label for="collection-id">标识</label><input id="collection-id"><label for="collection-labels">名称 JSON</label><input id="collection-labels" value='{"zh":"新榜单"}'><label for="collection-descriptions">说明 JSON（可选）</label><input id="collection-descriptions" value="{}"><label for="collection-rank">排序（较小的在前）</label><input id="collection-rank" type="number" value="0"><label><input type="checkbox" id="collection-active" checked>启用榜单</label></div><div><label for="collection-items">资源标识（每行一个，按顺序）</label><textarea id="collection-items"></textarea></div></div><div class="actions"><button id="save-collection">保存榜单</button><button id="new-collection" class="secondary">新增榜单</button></div></section><section class="panel"><h2>投稿审核</h2>${submissions.map((s, i) => `<article class="resource"><strong>${escape(s.data.title)}</strong><p>${escape(s.data.url)}</p><p>${escape(s.data.description)}</p><p class="muted review-status">${escape(s.status)} · ${escape(s.note)}</p>${s.resource_id ? `<p class="project-facts review-resource">生成草稿资源：${escape(s.resource_id)}</p>` : ""}${s.status === "pending" ? `<label for="review-note-${i}">审核说明</label><input id="review-note-${i}" maxlength="500"><div class="actions"><button class="review" data-index="${i}" data-decision="accepted">接受为资源草稿</button><button class="review secondary" data-index="${i}" data-decision="rejected">拒绝</button></div>` : ""}</article>`).join("") || '<p class="muted">暂无投稿。</p>'}</section>`;
   root
     .querySelector(".table-wrap")
     .insertAdjacentHTML(
@@ -949,11 +963,41 @@ export async function renderContent(
     );
   });
   let aiOutput = null,
+    aiKind = null,
+    aiTarget = null,
     aiBusy = false;
   const aiResult = root.querySelector("#ai-result"),
     aiApply = root.querySelector("#ai-apply");
-  aiApply.addEventListener("click", () => {
+  aiApply.addEventListener("click", async () => {
     if (!aiOutput) return;
+    if (aiKind === "enrich") {
+      // Rich fields live on the shared master: write a new master version (network
+      // admins only); sites then adopt it through the usual comparison and publish.
+      if (aiBusy) return;
+      aiBusy = true;
+      aiApply.disabled = true;
+      try {
+        const { id, locale } = aiTarget;
+        const rows = await api("/resources?q=" + encodeURIComponent(id));
+        const master = rows.find((row) => row.id === id);
+        if (!master) throw new Error("找不到资源主档 " + id);
+        await api("/resources", {
+          id,
+          expectedVersion: master.version,
+          data: mergeEnrichment(master.data, locale, aiOutput),
+          public: master.public,
+          internalNote: master.internal_note,
+        });
+        aiResult.textContent = `已写入主档 ${id} 的新版本（${locale}）。请用“载入并比较主档新版”检查后保存草稿并发布。`;
+        notice("富字段已写入主档新版本。");
+      } catch (error) {
+        aiApply.disabled = false;
+        notice("写入主档失败：" + error.message, true);
+      } finally {
+        aiBusy = false;
+      }
+      return;
+    }
     try {
       const candidate = JSON.parse(
         root.querySelector("#publication-candidate").value,
@@ -974,14 +1018,24 @@ export async function renderContent(
   });
   bind(root, "ai-run", notice, async () => {
     if (aiBusy) return;
+    const kind = root.querySelector("#ai-kind").value,
+      locale = root.querySelector("#publication-locale").value;
+    if (kind === "enrich" && !bulk)
+      throw new Error("富字段补全会写入资源主档，需要站群管理员操作");
+    if (kind === "enrich" && !selected)
+      throw new Error("请先在发布记录中选择一个资源");
     const candidate = JSON.parse(
       root.querySelector("#publication-candidate").value,
     );
+    // Enrichment starts from the master's own text for this locale.
+    const master = kind === "enrich" ? selected.data?.translations?.[locale] : null;
     const title =
+      master?.title ??
       candidate.overrides?.title ??
       selected?.title ??
       "";
     const description =
+      master?.description ??
       candidate.overrides?.description ??
       selected?.description ??
       "";
@@ -990,14 +1044,18 @@ export async function renderContent(
     aiBusy = true;
     aiApply.disabled = true;
     aiOutput = null;
+    aiKind = kind;
+    aiTarget = { id: selected?.id, locale };
+    aiApply.textContent = kind === "enrich" ? "写入主档新版本" : "应用到候选 JSON";
     aiResult.textContent = "已提交，等待 Worker…";
     try {
       const created = await api("/ai/jobs", {
         site,
-        kind: root.querySelector("#ai-kind").value,
-        locale: root.querySelector("#publication-locale").value,
+        kind,
+        locale,
         title: title || undefined,
         description: description || undefined,
+        ...(kind === "enrich" && selected?.data?.url ? { url: selected.data.url } : {}),
         brief: root.querySelector("#ai-brief").value.trim(),
       });
       for (let i = 0; i < 40; i++) {
@@ -1083,6 +1141,68 @@ export async function renderContent(
         current = saved;
         idNode.readOnly = true;
         notice(label + "已保存。");
+      }
+    });
+  }
+  // Collections: the same selection rules as categories, plus the ordered item list.
+  {
+    let current = null,
+      selection = 0;
+    const field = (name) => root.querySelector("#collection-" + name);
+    const choices = field("choices");
+    const populateCollection = (c) => {
+      selection++;
+      current = c;
+      field("id").value = c?.id ?? "";
+      field("id").readOnly = !!c;
+      field("labels").value = JSON.stringify(c?.labels ?? { zh: "新榜单" });
+      field("descriptions").value = JSON.stringify(c?.descriptions ?? {});
+      field("rank").value = c?.rank ?? 0;
+      field("active").checked = c?.active ?? true;
+      field("items").value = (c?.items ?? []).join("\n");
+    };
+    choices.addEventListener("click", (event) => {
+      const button = event.target.closest(".edit-collection");
+      if (button && choices.contains(button))
+        populateCollection(collections.find((c) => c.id === button.dataset.id));
+    });
+    bind(root, "new-collection", notice, async () => populateCollection(null));
+    bind(root, "save-collection", notice, async () => {
+      const started = selection;
+      const value = {
+        id: field("id").value,
+        labels: JSON.parse(field("labels").value),
+        descriptions: JSON.parse(field("descriptions").value || "{}"),
+        rank: Number(field("rank").value),
+        active: field("active").checked,
+        items: field("items")
+          .value.split(/\s+/)
+          .map((id) => id.trim())
+          .filter(Boolean),
+        expectedVersion: current?.version ?? 0,
+      };
+      let result;
+      try {
+        result = await api(base + "/collections", value);
+      } catch (error) {
+        if (alive() && started === selection && field("id").value === value.id) throw error;
+        return;
+      }
+      if (!alive()) return;
+      let saved = collections.find((c) => c.id === value.id);
+      const record = { ...value, version: result.version };
+      delete record.expectedVersion;
+      if (saved) Object.assign(saved, record);
+      else {
+        saved = record;
+        collections.push(saved);
+      }
+      collections.sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id));
+      choices.innerHTML = categoryButtons(collections, "collection");
+      if (started === selection && field("id").value === value.id) {
+        current = saved;
+        field("id").readOnly = true;
+        notice("榜单已保存。");
       }
     });
   }

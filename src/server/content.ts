@@ -485,6 +485,87 @@ export class Content {
       return value.expectedVersion + 1;
     });
   }
+  // Curated collections: a per-site list of resources in rank order. Saving replaces
+  // the whole membership under the collection's version, like a category save.
+  async collections(actor: Operator, site: string) {
+    await this.operators.require(actor, site);
+    return (
+      await this.pool.query(
+        `SELECT c.id,c.labels,c.descriptions,c.rank,c.active,c.version,
+           coalesce((SELECT jsonb_agg(i.resource_id ORDER BY i.rank) FROM collection_item i WHERE i.site_id=c.site_id AND i.collection_id=c.id),'[]') AS items
+         FROM collection c WHERE c.site_id=$1 ORDER BY c.rank,c.id`,
+        [site],
+      )
+    ).rows;
+  }
+  async saveCollection(actor: Operator, site: string, input: unknown) {
+    await this.operators.require(actor, site, true);
+    const value = z
+      .strictObject({
+        id: identifier,
+        labels: z
+          .strictObject({ zh: text.optional(), en: text.optional() })
+          .refine((v) => Object.keys(v).length > 0),
+        descriptions: z
+          .strictObject({
+            zh: z.string().trim().max(500).optional(),
+            en: z.string().trim().max(500).optional(),
+          })
+          .default({}),
+        rank: z.number().int().min(-100000).max(100000).default(0),
+        active: z.boolean().default(true),
+        items: z
+          .array(identifier)
+          .max(100)
+          .refine((v) => new Set(v).size === v.length, "Duplicate resource id"),
+        expectedVersion: z.number().int().nonnegative(),
+      })
+      .parse(input);
+    return transaction(this.pool, async (c) => {
+      await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
+        "collection:" + site + ":" + value.id,
+      ]);
+      await this.operators.require(actor, site, true, c);
+      const row = (
+        await c.query("SELECT version FROM collection WHERE site_id=$1 AND id=$2", [
+          site,
+          value.id,
+        ])
+      ).rows[0];
+      if ((row?.version ?? 0) !== value.expectedVersion)
+        throw new Conflict("Collection version changed");
+      if (
+        value.items.length &&
+        (
+          await c.query(
+            "SELECT count(*)::int AS n FROM resource WHERE id=ANY($1::text[])",
+            [value.items],
+          )
+        ).rows[0].n !== value.items.length
+      )
+        throw new HttpError(400, "榜单包含不存在的资源");
+      const version = value.expectedVersion + 1;
+      await c.query(
+        `INSERT INTO collection(site_id,id,labels,descriptions,rank,active,version) VALUES($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT(site_id,id) DO UPDATE SET labels=$3,descriptions=$4,rank=$5,active=$6,version=$7`,
+        [site, value.id, value.labels, value.descriptions, value.rank, value.active, version],
+      );
+      await c.query("DELETE FROM collection_item WHERE site_id=$1 AND collection_id=$2", [
+        site,
+        value.id,
+      ]);
+      await c.query(
+        `INSERT INTO collection_item(site_id,collection_id,resource_id,rank)
+         SELECT $1,$2,id,ord::int FROM unnest($3::text[]) WITH ORDINALITY AS t(id,ord)`,
+        [site, value.id, value.items],
+      );
+      await this.audit(c, actor, site, "collection.save", {
+        id: value.id,
+        items: value.items.length,
+      });
+      return version;
+    });
+  }
   categories(actor: Operator, site: string) {
     return this.taxonomy("category", actor, site);
   }
