@@ -46,6 +46,12 @@
 | `pnpm test:release` | 69/69 |
 | 全量 P0–P5 + Docker | 2026-10-20 通过，见 [本地验收记录](ACCEPTANCE-20261020.md) |
 
+## 2026-10-23 补充：dlv@1.1.3
+
+M12 引入 Tailwind 后，构建依赖链里多了 `dlv@1.1.3`（`tailwindcss` 的依赖）。它的 npm 页面和 README 都声明 MIT，作者 Jason Miller，但发布包和上游仓库对应提交 `e636db8` 里都没有 LICENSE 文件；README 中的许可证链接 `oss.ninja` 已不再提供许可证文本。
+
+维护者 QooIM 决定按 npm 上声明的 MIT 接受。归属文本使用 SPDX 的 MIT 原文（固定在 license-list-data 提交 `31ba1a5`），版权行取 npm 元数据中的作者信息，存于 `third-party/licenses/dlv-1.1.3.txt`，决定记录在 `review.json`。这里不声称发布包本身带有这份文本。
+
 ## 复现
 
 ```bash

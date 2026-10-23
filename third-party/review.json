@@ -86,6 +86,20 @@
       "file": "licenses/client-only-0.0.1.txt",
       "sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85",
       "scope": "Maintainer decision 2026-10-20: package declares MIT and was published by a React maintainer; distributed with the React/Meta MIT text as attribution. The artifact itself has no package-specific copyright line."
+    },
+    {
+      "name": "dlv",
+      "version": "1.1.3",
+      "license": "MIT",
+      "packageJsonSha256": "d0355a98f75d3547e341ff1cbade270c5d5e9b109dd2b03163178c58b8d525d2",
+      "registryUrl": "https://registry.npmjs.org/dlv/1.1.3",
+      "registryIntegrity": "sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==",
+      "repository": "https://github.com/developit/dlv",
+      "revision": "e636db817a96e4ca4710b407163fb992748b3b80",
+      "sourceUrl": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
+      "file": "licenses/dlv-1.1.3.txt",
+      "sha256": "d520216b1139d4e8304b462adfddcee3939d6dcffa1b8689f501acaaf0d1828f",
+      "scope": "Maintainer decision 2026-10-23: npm metadata and the README declare MIT (author Jason Miller); neither the 1.1.3 artifact nor the upstream repository at e636db8 contains a LICENSE file, and the README link (oss.ninja) no longer serves the text. Distributed with the SPDX MIT text and the npm author line as attribution. Not an exact-release LICENSE file. Reached via tailwindcss (build-time)."
     }
   ],
   "pending": [],
@@ -142,6 +156,12 @@
       "by": "project maintainer",
       "decision": "Accept both remaining MIT declarations for distribution and record the attribution basis explicitly; do not claim the exact artifacts contained the texts.",
       "evidence": "third-party/source-license-evidence.json and third-party/licenses/*.txt"
+    },
+    {
+      "date": "2026-10-23",
+      "by": "project maintainer (QooIM)",
+      "decision": "Accept dlv@1.1.3 under its declared MIT license (npm package page and README) and record SPDX MIT text with the npm author line as the attribution basis; do not claim the artifact contained the text.",
+      "evidence": "third-party/licenses/dlv-1.1.3.txt"
     }
   ]
 }
