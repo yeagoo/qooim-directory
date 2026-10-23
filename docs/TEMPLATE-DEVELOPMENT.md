@@ -59,3 +59,38 @@ P4 在 API v1 DTO 中增加可选 `project` 元数据；内置模板显示批准
 ## 部署源码获取
 
 P5 在模板服务端出口追加 `/source.tar.gz` 获取入口，构建时生成对应源码归档。保留该入口；自定义模板可以使用 SDK frame，也兼容 HTML 结束标签大写或省略的输出。原始离线夹具预览不经过部署出口。运行和许可边界见 [P5 运维](P5-OPERATIONS.md)。
+
+## M12：React 模板、首页与 toolso 模板
+
+M12 在 API v1 上做了只增不改的扩展，`basic` 和 `editorial` 不受影响。
+
+- **React 输出**：`render` 可以返回完整 HTML 字符串，也可以返回 React 元素。返回 React 元素时，服务端用 `react-dom/server` 的 `renderToStaticMarkup` 渲染一次，浏览器端没有 hydration。
+  - 在 Next 构建里，`react` 解析到的是 react-server 版本，其中没有 hooks 和 context；`react-dom/server` 也不能被打包进路由，所以由 Node 在运行时加载。
+  - 因此模板里不能使用 `useState`、`useContext` 等 hooks，也不能写异步组件。`pnpm check` 只允许从 `react` 导入类型和 `Fragment`、`Children`、`cloneElement`、`isValidElement`、`forwardRef`、`createElement`。
+- **首页**：模板提供 `renderHome(page: TemplateHomePage)` 后，`/` 和 `/<locale>` 会渲染首页，页面数据包括精选条目、分类和总数。没有提供 `renderHome` 的模板，`/` 仍是默认语言的目录页，`/<locale>` 返回 404。
+- **分类页**：`/<locale>/<catalogPath>/category/<id>` 渲染目录页，同时传入 `categoryPage`。这个地址会被索引，`?category=` 筛选结果页仍是 noindex。分类不存在时返回 404。
+- **详情页附加数据**：详情页额外传入 `categories`，以及最多 6 个同分类条目 `related`。
+- **新参数**：`accentColor`（`#RRGGBB`）和 `motion`（`smooth`、`crisp`、`playful`、`minimal`）。`accentColor` 由 `/assets/theme/<hex>.css` 转换成色板变量，模板不需要写内联样式。
+- **允许的包**：模板目录下只额外允许 `lucide-react`、`clsx`、`tailwind-merge`。
+
+### toolso 模板
+
+`src/templates/toolso/` 移植自旧项目 toolso-ai-open，来源和许可证见目录下的 `NOTICE.md`。
+
+| 部分 | 位置 |
+| --- | --- |
+| 样式 | `styles.css` 加 `tailwind.toolso.config.cjs`，由 `pnpm build:css` 编译为 `src/ui/generated/toolso.css` 并提交；`pnpm check` 会检查它是否最新 |
+| 组件 | `components/`；页面在 `pages/`，入口和页面外壳在 `document.tsx` |
+| Next 与 React 兼容层 | `shims/`。`next-intl`、`next/link`、`next/image`、`next/navigation`、`next-themes` 和 hooks 都改为静态版本 |
+| 渲染上下文 | `runtime.ts`，提供 locale、站点、文案和 `localePath()` |
+| 文案 | `i18n/messages.ts`（从 toolso 移植），以及 Qoo.IM 自己补充的 `i18n/qooim-*.ts` |
+| 浏览器端交互 | `src/ui/toolso.js`，加上在首次绘制前执行的 `toolso-init.js`。交互通过 `data-*` 属性约定，见 `i18n/qooim-client.ts` 开头的注释 |
+
+改动样式后，依次运行：
+
+```bash
+pnpm build:css
+pnpm check
+pnpm test:p12
+pnpm template:preview
+```
