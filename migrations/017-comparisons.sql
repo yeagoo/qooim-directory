@@ -8,6 +8,7 @@ CREATE TABLE comparison (
  PRIMARY KEY(site_id,locale,id), CHECK(resource_a<>resource_b)
 );
 CREATE INDEX comparison_resources ON comparison(site_id,locale,resource_a,resource_b);
+CREATE INDEX comparison_resource_b ON comparison(site_id,locale,resource_b);
 ALTER TABLE ai_job DROP CONSTRAINT ai_job_kind_check;
 ALTER TABLE ai_job ADD CONSTRAINT ai_job_kind_check CHECK(kind IN ('generate','translate','seo','enrich','compare'));
 ALTER TABLE ai_prompt DROP CONSTRAINT ai_prompt_kind_check;

@@ -11,9 +11,11 @@ import {
   templateCss,
   templateHasHome,
   templateManifest,
+  templateSupportsAlternatives,
+  templateSupportsComparisons,
 } from "./templates.js";
 import { themeCss } from "./theme.js";
-import { Catalog, NotFound, type SiteContext } from "../domain/catalog.js";
+import { Catalog, NotFound, type SiteContext, type SitemapItem } from "../domain/catalog.js";
 import { Conflict, InvalidReference, configSchema, type Config } from "../domain/config.js";
 import { transaction } from "../domain/transaction.js";
 import { AuthRegistry } from "./auth.js";
@@ -44,7 +46,6 @@ import { DEFAULT_RETENTION, type RetentionPolicy } from "./retention.js";
 import { Personal } from "./personal.js";
 import { AuditLog } from "./audit.js";
 import {
-  itemSitemapUrls,
   personalPage,
   rssXml,
   sitemapIndexXml,
@@ -954,12 +955,22 @@ export class Application {
       );
     const sitemapPart = path.match(/^\/sitemap-([1-9][0-9]{0,4})\.xml$/);
     if (path === "/sitemap.xml" || sitemapPart) {
-      const urls = await this.sitemapUrls(ctx, site.origin, config);
       const xml = (body: string) =>
         new Response(body, { headers: { "content-type": "application/xml; charset=utf-8" } });
-      // Small sites get one urlset; larger ones an index of numbered parts.
-      if (path === "/sitemap.xml" && urls.length <= SITEMAP_CHUNK) return xml(sitemapXml(urls));
-      const parts = Math.ceil(urls.length / SITEMAP_CHUNK);
+      const pages = await this.sitemapPageUrls(ctx, site.origin, config);
+      const itemCount = await this.catalog.sitemapItemCount(ctx);
+      const total = pages.length + itemCount;
+      // Small sites get one urlset; larger ones an index computed without reading entries.
+      if (path === "/sitemap.xml" && total <= SITEMAP_CHUNK) {
+        const items = await this.catalog.sitemapItems(ctx, itemCount, 0);
+        return xml(
+          sitemapXml([
+            ...pages,
+            ...items.map((item) => this.sitemapItemUrl(site.origin, config, item)),
+          ]),
+        );
+      }
+      const parts = Math.ceil(total / SITEMAP_CHUNK);
       if (path === "/sitemap.xml")
         return xml(
           sitemapIndexXml(
@@ -967,8 +978,23 @@ export class Application {
           ),
         );
       const index = Number(sitemapPart![1]);
-      if (urls.length <= SITEMAP_CHUNK || index > parts) throw new NotFound();
-      return xml(sitemapXml(urls.slice((index - 1) * SITEMAP_CHUNK, index * SITEMAP_CHUNK)));
+      if (total <= SITEMAP_CHUNK || index > parts) throw new NotFound();
+      const start = (index - 1) * SITEMAP_CHUNK;
+      const end = Math.min(start + SITEMAP_CHUNK, total);
+      const pageStart = Math.min(start, pages.length);
+      const pageEnd = Math.min(end, pages.length);
+      const itemStart = Math.max(0, start - pages.length);
+      const itemEnd = Math.max(0, end - pages.length);
+      const items =
+        itemEnd > itemStart
+          ? await this.catalog.sitemapItems(ctx, itemEnd - itemStart, itemStart)
+          : [];
+      return xml(
+        sitemapXml([
+          ...pages.slice(pageStart, pageEnd),
+          ...items.map((item) => this.sitemapItemUrl(site.origin, config, item)),
+        ]),
+      );
     }
     const feed = path.match(/^\/(zh|en)\/feed\.xml$/);
     if (feed) {
@@ -1077,7 +1103,7 @@ export class Application {
     if (parts.length === 4) {
       try {
         const item = await this.catalog.detail(ctx, language, parts[3]);
-        const [alternates, categories, related, comparisons] = await Promise.all([
+        const [alternates, categories, related] = await Promise.all([
           this.catalog.alternates(ctx, item.resource_id),
           this.catalog.categories(ctx, language),
           item.category_id
@@ -1087,8 +1113,13 @@ export class Application {
                 limit: 7,
               })
             : null,
-          this.catalog.comparisons(ctx, language, { resourceId: item.resource_id }),
         ]);
+        const comparisons = templateSupportsComparisons(config.template)
+          ? await this.catalog.comparisons(ctx, language, {
+              resourceId: item.resource_id,
+              limit: 50,
+            })
+          : [];
         return this.html(
           renderTemplate(config.template, {
             kind: "detail",
@@ -1101,11 +1132,9 @@ export class Application {
             related: (related?.items ?? [])
               .filter((r) => r.resource_id !== item.resource_id)
               .slice(0, 6),
-            comparisons: comparisons.map(({ items, content: _content, ...comparison }) => ({
-              ...comparison,
-              content: "",
-              other: items[0].resource_id === item.resource_id ? items[1] : items[0],
-            })),
+            comparisons: comparisons.flatMap(({ resource_a: _a, resource_b: _b, other, ...comparison }) =>
+              other ? [{ ...comparison, content: "", other }] : [],
+            ),
             canonical:
               site.origin + `/${language}/${config.catalogPath}/${item.slug}`,
             alternates: alternates.map((a) => ({
@@ -1143,14 +1172,15 @@ export class Application {
     }
     // /<locale>/<catalog>/compare/<a>-vs-<b>: a reviewed comparison of two visible entries.
     if (parts.length === 5 && parts[3] === "compare") {
-      const [found] = await this.catalog.comparisons(ctx, language, { id: parts[4] });
+      if (!templateSupportsComparisons(config.template)) throw new NotFound();
+      const found = await this.catalog.comparison(ctx, language, parts[4]!);
       if (!found) throw new NotFound();
       const { items, ...comparison } = found;
       // Other languages only where the same comparison is published and visible.
       const alternates = (
         await Promise.all(
           config.locales.map(async (l) =>
-            l === language || (await this.catalog.comparisons(ctx, l, { id: found.id })).length ? l : null,
+            l === language || (await this.catalog.comparisons(ctx, l, { id: found.id, limit: 1 })).length ? l : null,
           ),
         )
       ).filter((l): l is "zh" | "en" => !!l);
@@ -1175,12 +1205,37 @@ export class Application {
       );
     }
     // /<locale>/<catalog>/<slug>/alternatives: entries sharing categories or tags.
-    if (parts.length === 5 && parts[4] === "alternatives") {
+    if (
+      parts.length === 5 &&
+      parts[4] === "alternatives" &&
+      !["category", "tag", "collection", "compare"].includes(parts[3]!)
+    ) {
+      if (!templateSupportsAlternatives(config.template)) throw new NotFound();
       const item = await this.catalog.detail(ctx, language, parts[3]!);
-      const [items, categories] = await Promise.all([
+      const [items, categories, versions] = await Promise.all([
         this.catalog.alternatives(ctx, language, item.resource_id, 24),
         this.catalog.categories(ctx, language),
+        this.catalog.alternates(ctx, item.resource_id),
       ]);
+      const noindex = items.length < 3;
+      const alternates = noindex
+        ? []
+        : (
+            await Promise.all(
+              versions.map(async (version) => {
+                const enough =
+                  version.locale === language
+                    ? true
+                    : (await this.catalog.alternatives(ctx, version.locale, item.resource_id, 3)).length >= 3;
+                return enough
+                  ? {
+                      locale: version.locale,
+                      url: `${site.origin}/${version.locale}/${config.catalogPath}/${version.slug}/alternatives`,
+                    }
+                  : null;
+              }),
+            )
+          ).filter((value): value is { locale: string; url: string } => !!value);
       return this.html(
         renderTemplate(config.template, {
           kind: "directory",
@@ -1193,9 +1248,9 @@ export class Application {
           q: "",
           alternativesOf: item,
           canonical: site.origin + path,
-          alternates: [],
+          alternates,
           // A thin list is not worth indexing.
-          noindex: items.length < 3,
+          noindex,
         }),
       );
     }
@@ -1267,10 +1322,12 @@ export class Application {
       }),
     );
   }
-  // Home, catalog, term pages (category/tag/collection) per language, then every entry.
-  private async sitemapUrls(ctx: SiteContext, origin: string, config: Config) {
+  // Home, catalog, term pages (category/tag/collection) and comparisons per language.
+  // Entries are fetched separately, page by page, by the sitemap route.
+  private async sitemapPageUrls(ctx: SiteContext, origin: string, config: Config) {
     const pages: SitemapUrl[] = [];
     const hasHome = templateHasHome(config.template);
+    const hasComparisons = templateSupportsComparisons(config.template);
     for (const locale of config.locales) {
       if (locale === config.locales[0]) pages.push({ loc: origin + "/" });
       else if (hasHome) pages.push({ loc: `${origin}/${locale}` });
@@ -1287,13 +1344,21 @@ export class Application {
         ["collection", collections],
       ] as const)
         for (const term of terms) pages.push({ loc: `${catalog}/${kind}/${term.id}` });
-      for (const comparison of await this.catalog.comparisons(ctx, locale))
-        pages.push({ loc: `${catalog}/compare/${comparison.id}`, lastmod: comparison.updated_at });
+      if (hasComparisons)
+        for (const comparison of await this.catalog.comparisons(ctx, locale))
+          pages.push({ loc: `${catalog}/compare/${comparison.id}`, lastmod: comparison.updated_at });
     }
-    return [
-      ...pages,
-      ...itemSitemapUrls(origin, config.catalogPath, await this.catalog.entries(ctx)),
-    ];
+    return pages;
+  }
+  private sitemapItemUrl(origin: string, config: Config, item: SitemapItem): SitemapUrl {
+    return {
+      loc: `${origin}/${item.locale}/${config.catalogPath}/${item.slug}`,
+      lastmod: item.updated_at,
+      alternates: item.alternates.map((alternate) => ({
+        locale: alternate.locale,
+        href: `${origin}/${alternate.locale}/${config.catalogPath}/${alternate.slug}`,
+      })),
+    };
   }
 
 }

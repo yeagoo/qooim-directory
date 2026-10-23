@@ -185,7 +185,9 @@ function prompt(task: string, payload: AiJobRow["payload"], kind: AiKind = "gene
     description: payload.description ?? "",
     url: payload.url ?? "",
     brief: payload.brief,
-  });
+  })
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e");
   return [
     {
       role: "system" as const,

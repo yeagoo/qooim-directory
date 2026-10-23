@@ -96,22 +96,61 @@ test("P14 comparisons are stored per language under a stable pair id", async () 
   );
 });
 
-test("P14 comparison pages need publication and both entries visible", async () => {
-  const page = await get(`/zh/${path}/compare/figma-vs-penpot`);
-  assert.equal(page.status, 200);
-  const body = await page.text();
-  assert.match(body, new RegExp(`rel="canonical" href="${ORIGIN}/zh/${path}/compare/figma-vs-penpot"`));
-  // Not published in English: no English alternate, English page is 404.
-  assert.doesNotMatch(body, /hreflang="en"/);
+test("P14 a pair that maps to an existing comparison id is rejected", async () => {
+  for (const id of ["a", "b-vs-c", "a-vs-b", "c"])
+    await f.app.content.saveResource(f.admin, {
+      id,
+      expectedVersion: 0,
+      public: true,
+      data: {
+        url: `https://example.com/${id}`,
+        source: "manual",
+        translations: {
+          zh: { title: `${id} 标题`, description: `${id} 说明` },
+          en: { title: `${id} title`, description: `${id} description` },
+        },
+      },
+    });
+  assert.equal(
+    (await save({
+      locale: "zh",
+      resourceA: "a",
+      resourceB: "b-vs-c",
+      title: "first",
+      expectedVersion: 0,
+    })).id,
+    "a-vs-b-vs-c",
+  );
+  await assert.rejects(
+    save({
+      locale: "zh",
+      resourceA: "a-vs-b",
+      resourceB: "c",
+      title: "collision",
+      expectedVersion: 0,
+    }),
+    (error: { status?: number; message?: string }) =>
+      error.status === 409 && /对比标识与已有对比冲突/.test(error.message ?? ""),
+  );
+  const rows = (
+    await f.pool.query(
+      "SELECT resource_a,resource_b FROM comparison WHERE site_id='atlas' AND locale='zh' AND id='a-vs-b-vs-c'",
+    )
+  ).rows;
+  assert.deepEqual(rows, [{ resource_a: "a", resource_b: "b-vs-c" }]);
+});
+
+test("P14 the basic template does not expose comparison pages or sitemap entries", async () => {
   assert.equal((await get(`/en/${path}/compare/figma-vs-penpot`)).status, 404);
+  assert.equal((await get(`/zh/${path}/compare/figma-vs-penpot`)).status, 404);
   // Drafts are private.
   assert.equal((await get(`/zh/${path}/compare/figma-vs-sketch`)).status, 404);
   assert.equal((await get(`/zh/${path}/compare/penpot-vs-figma`)).status, 404);
-  // The detail page and the sitemap know about it.
+  // The detail data and the sitemap do not know about comparisons on this template.
   const detail = await (await f.app.respond(new Request(`${ORIGIN}/api/items/zh/figma`, { headers: { host: "atlas.p6.test" } }))).json();
   assert.equal(detail.slug, "figma");
   const sitemap = await (await get("/sitemap.xml")).text();
-  assert.ok(sitemap.includes(`<loc>${ORIGIN}/zh/${path}/compare/figma-vs-penpot</loc>`));
+  assert.equal(sitemap.includes("/compare/figma-vs-penpot"), false);
   // Unpublishing one entry hides the comparison everywhere.
   await f.pool.query("UPDATE publication SET status='draft' WHERE resource_id='penpot' AND locale='zh'");
   try {

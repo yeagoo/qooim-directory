@@ -57,6 +57,10 @@ export function renderTemplate(id: string, page: TemplatePage) {
   return html(template(id).render(model(page)));
 }
 export const templateHasHome = (id: string) => !!templates.get(id)?.renderHome;
+export const templateSupportsAlternatives = (id: string) =>
+  !!templates.get(id)?.supports?.alternatives;
+export const templateSupportsComparisons = (id: string) =>
+  !!templates.get(id)?.supports?.comparisons;
 export function renderHomeTemplate(id: string, page: TemplateHomePage) {
   const renderHome = template(id).renderHome;
   if (!renderHome) throw new Error("Template has no home page");

@@ -581,7 +581,7 @@ test("P4 disabling a module blocks queued and in-flight effects and all public p
   const ctx = await app.catalog.resolve(new URL(origins[0]).host);
   assert.equal((await app.catalog.browse(ctx, { locale: "en" })).total, 1);
   await assert.rejects(app.catalog.detail(ctx, "en", "project-one"));
-  assert.equal((await app.catalog.entries(ctx)).length, 1);
+  assert.equal(await app.catalog.sitemapItemCount(ctx), 1);
   assert.equal(
     (await app.catalog.detail(ctx, "en", "general-website")).project,
     null,

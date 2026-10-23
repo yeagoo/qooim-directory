@@ -9,6 +9,7 @@ import { Conflict } from "../domain/config.js";
 import { Operators, HttpError, type Operator } from "./operators.js";
 export const identifier = z.string().regex(/^[a-z][a-z0-9-]{0,63}$/);
 export const localeSchema = z.enum(["zh", "en"]);
+const reservedSlugs = new Set(["category", "tag", "collection", "compare"]);
 const text = z.string().trim().min(1).max(200);
 const description = z.string().trim().min(1).max(5000);
 const webUrl = z
@@ -74,7 +75,10 @@ export const resourceData = z
   );
 export const candidateSchema = z.strictObject({
   resourceVersion: z.number().int().positive(),
-  slug: identifier,
+  slug: identifier.refine(
+    (value) => !reservedSlugs.has(value),
+    "该标识是保留路径，请换一个 slug",
+  ),
   categoryId: identifier.nullable().default(null),
   // Categories besides the primary categoryId, and this site's tags.
   // Optional rather than defaulted, so drafts saved before M13a round-trip unchanged.
@@ -602,12 +606,13 @@ export class Content {
       ]);
       await this.operators.require(actor, site, true, c);
       const row = (
-        await c.query("SELECT version FROM comparison WHERE site_id=$1 AND locale=$2 AND id=$3", [
-          site,
-          value.locale,
-          id,
-        ])
+        await c.query(
+          "SELECT version,resource_a,resource_b FROM comparison WHERE site_id=$1 AND locale=$2 AND id=$3",
+          [site, value.locale, id],
+        )
       ).rows[0];
+      if (row && (row.resource_a !== a || row.resource_b !== b))
+        throw new HttpError(409, "对比标识与已有对比冲突");
       if ((row?.version ?? 0) !== value.expectedVersion)
         throw new Conflict("Comparison version changed");
       if (

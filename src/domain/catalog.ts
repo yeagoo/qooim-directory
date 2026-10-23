@@ -276,10 +276,40 @@ export class Catalog {
     ).rows as { locale: string; slug: string }[];
   }
   /**
-   * Published comparisons whose two entries are both visible in this locale. With
-   * `resourceId`, only those involving that entry; with `id`, that one comparison.
+   * Published comparisons whose two entries are both visible in this locale. This is
+   * the summary used by detail pages and the sitemap: no comparison body and no full
+   * entries. With `resourceId`, `other` is the slim entry that is not the requested one.
    */
-  async comparisons(ctx: SiteContext, locale: string, filter: { id?: string; resourceId?: string } = {}) {
+  async comparisons(
+    ctx: SiteContext,
+    locale: string,
+    filter: { id?: string; resourceId?: string; limit?: number } = {},
+  ) {
+    this.check(ctx);
+    const { rows } = await this.pool.query(
+      `SELECT c.id,c.title,${iso("c.published_at")} AS published_at,${iso("c.updated_at")} AS updated_at,
+         c.resource_a,c.resource_b,
+         CASE WHEN $4::text IS NULL THEN NULL ELSE (
+           SELECT jsonb_build_object(
+             'resource_id',o.resource_id,'slug',o.slug,'title',o.title,'description',o.description,
+             'url',o.url,'locale',o.locale,'seo_title',o.seo_title,'seo_description',o.seo_description)
+           FROM public_listing o
+           WHERE o.site_id=c.site_id AND o.locale=c.locale
+             AND o.resource_id=CASE WHEN c.resource_a=$4 THEN c.resource_b ELSE c.resource_a END
+         ) END AS other
+       FROM comparison c
+       WHERE c.site_id=$1 AND c.locale=$2 AND c.status='published'
+         AND ($3::text IS NULL OR c.id=$3)
+         AND ($4::text IS NULL OR c.resource_a=$4 OR c.resource_b=$4)
+         AND EXISTS(SELECT 1 FROM public_listing a WHERE a.site_id=c.site_id AND a.locale=c.locale AND a.resource_id=c.resource_a)
+         AND EXISTS(SELECT 1 FROM public_listing b WHERE b.site_id=c.site_id AND b.locale=c.locale AND b.resource_id=c.resource_b)
+       ORDER BY c.id LIMIT $5::int`,
+      [ctx.siteId, locale, filter.id ?? null, filter.resourceId ?? null, filter.limit ?? null],
+    );
+    return rows as ComparisonSummary[];
+  }
+  /** One published comparison with its body and both visible entries, for its own page. */
+  async comparison(ctx: SiteContext, locale: string, id: string) {
     this.check(ctx);
     const { rows } = await this.pool.query(
       `SELECT c.id,c.title,c.content,${iso("c.published_at")} AS published_at,${iso("c.updated_at")} AS updated_at,
@@ -288,32 +318,60 @@ export class Catalog {
            (SELECT to_jsonb(x) FROM (SELECT ${columns("b", "b.details-ARRAY['content','faqs']")} FROM public_listing b WHERE b.site_id=c.site_id AND b.locale=c.locale AND b.resource_id=c.resource_b) x)
          ) AS items
        FROM comparison c
-       WHERE c.site_id=$1 AND c.locale=$2 AND c.status='published'
-         AND ($3::text IS NULL OR c.id=$3)
-         AND ($4::text IS NULL OR $4 IN (c.resource_a,c.resource_b))
+       WHERE c.site_id=$1 AND c.locale=$2 AND c.status='published' AND c.id=$3
          AND EXISTS(SELECT 1 FROM public_listing a WHERE a.site_id=c.site_id AND a.locale=c.locale AND a.resource_id=c.resource_a)
-         AND EXISTS(SELECT 1 FROM public_listing b WHERE b.site_id=c.site_id AND b.locale=c.locale AND b.resource_id=c.resource_b)
-       ORDER BY c.id LIMIT 1000`,
-      [ctx.siteId, locale, filter.id ?? null, filter.resourceId ?? null],
+         AND EXISTS(SELECT 1 FROM public_listing b WHERE b.site_id=c.site_id AND b.locale=c.locale AND b.resource_id=c.resource_b)`,
+      [ctx.siteId, locale, id],
     );
-    return rows as {
-      id: string;
-      title: string;
-      content: string;
-      published_at: string | null;
-      updated_at: string | null;
-      items: [PublicItem, PublicItem];
-    }[];
+    return rows[0] as
+      | {
+          id: string;
+          title: string;
+          content: string;
+          published_at: string | null;
+          updated_at: string | null;
+          items: [PublicItem, PublicItem];
+        }
+      | undefined;
   }
-  /** Every visible entry for the sitemap, with its latest publish time. */
-  async entries(ctx: SiteContext) {
+  /** Number of entry URLs in the sitemap, without reading any rows. */
+  async sitemapItemCount(ctx: SiteContext) {
     this.check(ctx);
     return (
       await this.pool.query(
-        `SELECT resource_id,locale,slug,${iso("updated_at")} AS updated_at FROM public_listing WHERE site_id=$1 ORDER BY resource_id,locale`,
+        "SELECT count(*)::int AS n FROM public_listing WHERE site_id=$1",
         [ctx.siteId],
       )
-    ).rows as { resource_id: string; locale: string; slug: string; updated_at: string | null }[];
+    ).rows[0].n as number;
+  }
+  /** One sitemap page of visible entries plus the hreflang alternates of those resources. */
+  async sitemapItems(ctx: SiteContext, limit: number, offset: number) {
+    this.check(ctx);
+    if (limit <= 0) return [];
+    const { rows } = await this.pool.query(
+      `SELECT resource_id,locale,slug,${iso("updated_at")} AS updated_at
+       FROM public_listing WHERE site_id=$1 ORDER BY resource_id,locale LIMIT $2 OFFSET $3`,
+      [ctx.siteId, limit, offset],
+    );
+    if (!rows.length) return [];
+    const resources = [...new Set(rows.map((row) => row.resource_id as string))];
+    const alternates = (
+      await this.pool.query(
+        `SELECT resource_id,locale,slug FROM public_listing
+         WHERE site_id=$1 AND resource_id=ANY($2::text[]) ORDER BY resource_id,locale`,
+        [ctx.siteId, resources],
+      )
+    ).rows as { resource_id: string; locale: string; slug: string }[];
+    const groups = new Map<string, { locale: string; slug: string }[]>();
+    for (const alternate of alternates) {
+      const group = groups.get(alternate.resource_id) ?? [];
+      group.push({ locale: alternate.locale, slug: alternate.slug });
+      groups.set(alternate.resource_id, group);
+    }
+    return rows.map((row) => ({
+      ...row,
+      alternates: groups.get(row.resource_id as string) ?? [],
+    })) as SitemapItem[];
   }
   /** Newest first by first publication, for feeds. */
   async latest(ctx: SiteContext, locale: string, limit = 50) {
@@ -327,28 +385,55 @@ export class Catalog {
     ).rows as PublicItem[];
   }
   /**
-   * Alternatives to an entry: other visible entries sharing its categories (2 points
-   * each) or tags (1 point each), best overlap first.
+   * Alternatives to an entry: other visible entries sharing its primary category (2
+   * points each) or tags (1 point each), best overlap first. The candidate set is
+   * bounded before scoring so a broad category cannot make the request exhaustive.
    */
   async alternatives(ctx: SiteContext, locale: string, resourceId: string, limit = 24) {
     this.check(ctx);
     return (
       await this.pool.query(
-        `WITH me AS (SELECT category_ids,tag_ids FROM public_listing WHERE site_id=$1 AND locale=$2 AND resource_id=$3),
+        `WITH me AS (SELECT category_id,category_ids,tag_ids FROM public_listing WHERE site_id=$1 AND locale=$2 AND resource_id=$3),
+         candidates AS (
+           SELECT p.* FROM public_listing p,me
+           WHERE p.site_id=$1 AND p.locale=$2 AND p.resource_id<>$3
+             AND ((me.category_id IS NOT NULL AND p.category_ids @> ARRAY[me.category_id])
+               OR p.tag_ids && me.tag_ids)
+           ORDER BY p.rank,p.slug LIMIT 1000
+         ),
          scored AS (
            SELECT p.*,
              2*cardinality(ARRAY(SELECT unnest(p.category_ids) INTERSECT SELECT unnest(me.category_ids)))
              +cardinality(ARRAY(SELECT unnest(p.tag_ids) INTERSECT SELECT unnest(me.tag_ids))) AS overlap
-           FROM public_listing p,me
-           WHERE p.site_id=$1 AND p.locale=$2 AND p.resource_id<>$3
-             AND (p.category_ids && me.category_ids OR p.tag_ids && me.tag_ids)
-           ORDER BY overlap DESC,p.rank,p.slug LIMIT $4)
-         SELECT ${columns("scored", "scored.details-ARRAY['content','faqs','features','useCases','pros','cons']")} FROM scored ORDER BY scored.overlap DESC,scored.rank,scored.slug`,
+           FROM candidates p,me
+         )
+         SELECT ${columns("scored", "scored.details-ARRAY['content','faqs','features','useCases','pros','cons']")} FROM scored ORDER BY scored.overlap DESC,scored.rank,scored.slug LIMIT $4`,
         [ctx.siteId, locale, resourceId, limit],
       )
     ).rows as PublicItem[];
   }
 }
+
+export type SitemapItem = {
+  resource_id: string;
+  locale: string;
+  slug: string;
+  updated_at: string | null;
+  alternates: { locale: string; slug: string }[];
+};
+
+export type ComparisonSummary = {
+  id: string;
+  title: string;
+  published_at: string | null;
+  updated_at: string | null;
+  resource_a: string;
+  resource_b: string;
+  other: Pick<
+    import("../public/sdk.js").PublicResource,
+    "resource_id" | "slug" | "title" | "description" | "url" | "locale" | "seo_title" | "seo_description"
+  > | null;
+};
 
 export type PublicItem = {
   project?: import("../public/sdk.js").PublicProject | null;

@@ -1316,8 +1316,15 @@ export async function renderContent(
     });
     bind(root, "draft-comparison", notice, async () => {
       if (drafting) return;
-      const locale = field("locale").value,
+      const started = selection,
+        locale = field("locale").value,
         ids = [field("a").value.trim(), field("b").value.trim()];
+      const unchanged = () =>
+        alive() &&
+        started === selection &&
+        field("locale").value === locale &&
+        field("a").value.trim() === ids[0] &&
+        field("b").value.trim() === ids[1];
       const records = ids.map((id) => publications.find((p) => p.id === id && p.locale === locale) ?? publications.find((p) => p.id === id));
       if (records.some((r) => !r)) throw new Error("两个资源都需要先出现在本站发布记录中");
       const titles = records.map((r) => r.data?.translations?.[locale]?.title ?? r.id);
@@ -1340,6 +1347,7 @@ export async function renderContent(
           );
           if (job.status === "failed") throw new Error(job.error || "AI 起草失败");
           if (job.status === "done") {
+            if (!unchanged()) return;
             field("title").value = job.output.title;
             field("content").value = job.output.content;
             notice("AI 草稿已填入，请核对后保存。");

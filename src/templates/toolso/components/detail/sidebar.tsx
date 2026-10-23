@@ -1,5 +1,5 @@
-// Ported from toolso-ai-open src/features/tools/components/detail/sidebar.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: takes page data; the quick-info card shows every category of the entry (falling back to the primary one), the domain, pricing, the publish and update dates and the tags; favorite/share are the static hook buttons; cordis plugin panels, the upperstory compare block and the J/K hint dropped; links via localePath, the visit link is a plain external link (target=_blank, rel=noopener noreferrer).
-import { ArrowUpRight } from "lucide-react";
+// Ported from toolso-ai-open src/features/tools/components/detail/sidebar.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: takes page data; the quick-info card shows every category of the entry (falling back to the primary one), the domain, pricing, the publish and update dates and the tags; favorite/share are the static hook buttons; a link to the entry's alternatives page follows the visit actions so it does not depend on a related-items block; cordis plugin panels, the upperstory compare block and the J/K hint dropped; links via localePath, the visit link is a plain external link (target=_blank, rel=noopener noreferrer).
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import type { PublicCategory, PublicResource, PublicTerm } from "../../../../public/sdk.js";
 import Link from "../../shims/next-link.js";
 import { useLocale, useTranslations } from "../../shims/next-intl.js";
@@ -152,6 +152,14 @@ export function DetailSidebar({
           }}
         />
       </div>
+
+      <Link
+        href={localePath(`/tools/${tool.slug}/alternatives`)}
+        className="group inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {td("alternatives")}
+        <ArrowRight className="h-4 w-4 transition-transform duration-300 ease-expo group-hover:translate-x-0.5" />
+      </Link>
 
       {/* 3. TOC(与章节条共用同一份章节清单) */}
       <SectionToc label={td("contents")} sections={sections} />

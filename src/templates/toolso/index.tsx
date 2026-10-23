@@ -8,6 +8,7 @@ import { MissingPage } from "./pages/missing.js";
 export default defineTemplate({
   id: "toolso",
   apiVersion: 1,
+  supports: { alternatives: true, comparisons: true },
   render: (page) =>
     page.kind === "detail" ? (
       <DetailPage page={page} />

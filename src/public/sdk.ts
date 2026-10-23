@@ -140,6 +140,16 @@ export type TemplateDefinition = {
   render: (page: TemplatePage) => TemplateOutput;
   /** Optional front page. Without it, "/" keeps rendering the default-locale directory. */
   renderHome?: (page: TemplateHomePage) => TemplateOutput;
+  /**
+   * Optional routes the template renders. Missing or false means the route is not
+   * served for this template; comparison data is omitted from detail pages too.
+   */
+  supports?: {
+    /** /<locale>/<catalog>/<slug>/alternatives */
+    alternatives?: boolean;
+    /** /<locale>/<catalog>/compare/<a>-vs-<b> and its sitemap URLs */
+    comparisons?: boolean;
+  };
 };
 export const defineTemplate = (definition: TemplateDefinition) =>
   Object.freeze(definition);

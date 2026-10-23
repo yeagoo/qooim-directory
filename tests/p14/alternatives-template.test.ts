@@ -78,10 +78,34 @@ test("P14 thin alternatives pages are noindex; unknown entries are 404", async (
 test("P14 detail links to alternatives; pages advertise the RSS feed", async () => {
   const detail = await html("/zh/tools/target");
   assert.match(detail, /href="\/zh\/tools\/target\/alternatives"/);
+  // The entry has tags but no primary category, so it has no related block.
+  const lonely = await html("/zh/tools/lonely");
+  assert.match(lonely, /href="\/zh\/tools\/lonely\/alternatives"/);
   assert.match(detail, /<link type="application\/rss\+xml" rel="alternate" title="Atlas 工具" href="\/zh\/feed\.xml"/);
   for (const path of ["/zh/tools/target/alternatives", "/zh/tools/lonely/alternatives"]) {
     const body = await html(path);
     assert.doesNotMatch(body, /\sstyle="/, path);
     assert.doesNotMatch(body, /<script(?![^>]*\ssrc=)(?![^>]*application\/ld\+json)[^>]*>/, path);
   }
+});
+
+test("P14 alternatives advertise only indexable language versions", async () => {
+  const publishEnglish = async (id: string, candidate: Record<string, unknown>) => {
+    await f.app.content.stage(f.admin, "atlas", id, "en", {
+      candidate: { resourceVersion: 1, slug: id, ...candidate },
+      expected: { published: 0, draft: 0 },
+    });
+    await f.app.content.publish(f.admin, "atlas", id, "en", {
+      expected: { published: 0, draft: 1 },
+      operationId: randomUUID(),
+    });
+  };
+  for (const id of ["e1", "e2", "e3"]) {
+    await publish(id, id, { categoryId: "design" });
+    await publishEnglish(id, { categoryId: "design" });
+  }
+  await publishEnglish("target", { categoryId: "design", tagIds: ["t1"] });
+  const body = await html("/zh/tools/target/alternatives");
+  assert.match(body, /hrefLang="en"/);
+  assert.ok(body.includes('href="https://atlas.p6.test/en/tools/target/alternatives"'));
 });

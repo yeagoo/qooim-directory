@@ -1,4 +1,10 @@
 import { escape, document } from "./pages.js";
+// XML 1.0 forbids most C0 controls, U+FFFE/U+FFFF and lone surrogates. Strip them
+// before entity-escaping so a control character can never make the document invalid.
+const invalidXml = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+function escapeXml(value: unknown) {
+  return escape(String(value ?? "").replace(invalidXml, ""));
+}
 type Site = { name: string; tagline?: string; locales: ("zh" | "en")[] };
 type Item = {
   resource_id: string;
@@ -133,10 +139,10 @@ export function sitemapXml(urls: SitemapUrl[]) {
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">${urls
     .map(
       (url) =>
-        `<url><loc>${escape(url.loc)}</loc>${url.lastmod ? `<lastmod>${escape(url.lastmod)}</lastmod>` : ""}${(url.alternates ?? [])
+        `<url><loc>${escapeXml(url.loc)}</loc>${url.lastmod ? `<lastmod>${escapeXml(url.lastmod)}</lastmod>` : ""}${(url.alternates ?? [])
           .map(
             (a) =>
-              `<xhtml:link rel="alternate" hreflang="${escape(a.locale)}" href="${escape(a.href)}"/>`,
+              `<xhtml:link rel="alternate" hreflang="${escapeXml(a.locale)}" href="${escapeXml(a.href)}"/>`,
           )
           .join("")}</url>`,
     )
@@ -144,7 +150,7 @@ export function sitemapXml(urls: SitemapUrl[]) {
 }
 export function sitemapIndexXml(locations: string[]) {
   return `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${locations
-    .map((loc) => `<sitemap><loc>${escape(loc)}</loc></sitemap>`)
+    .map((loc) => `<sitemap><loc>${escapeXml(loc)}</loc></sitemap>`)
     .join("")}</sitemapindex>`;
 }
 /** RSS 2.0 feed of the newest entries in one language. */
@@ -156,10 +162,10 @@ export function rssXml(feed: {
   language: string;
   items: { title: string; link: string; description: string; published: string | null }[];
 }) {
-  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>${escape(feed.title)}</title><link>${escape(feed.link)}</link><atom:link href="${escape(feed.self)}" rel="self" type="application/rss+xml"/><description>${escape(feed.description)}</description><language>${escape(feed.language)}</language>${feed.items
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>${escapeXml(feed.title)}</title><link>${escapeXml(feed.link)}</link><atom:link href="${escapeXml(feed.self)}" rel="self" type="application/rss+xml"/><description>${escapeXml(feed.description)}</description><language>${escapeXml(feed.language)}</language>${feed.items
     .map(
       (item) =>
-        `<item><title>${escape(item.title)}</title><link>${escape(item.link)}</link><guid isPermaLink="true">${escape(item.link)}</guid><description>${escape(item.description)}</description>${item.published ? `<pubDate>${new Date(item.published).toUTCString()}</pubDate>` : ""}</item>`,
+        `<item><title>${escapeXml(item.title)}</title><link>${escapeXml(item.link)}</link><guid isPermaLink="true">${escapeXml(item.link)}</guid><description>${escapeXml(item.description)}</description>${item.published ? `<pubDate>${escapeXml(new Date(item.published).toUTCString())}</pubDate>` : ""}</item>`,
     )
     .join("")}</channel></rss>`;
 }

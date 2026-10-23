@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { before, after, test } from "node:test";
 import assert from "node:assert/strict";
 import { configSchema } from "../../src/domain/config.js";
+import { candidateSchema } from "../../src/server/content.js";
+import { rssXml, sitemapIndexXml, sitemapXml } from "../../src/ui/directory.js";
 import { setup, type Fixture } from "../p6/helpers.js";
 
 let f: Fixture;
@@ -120,13 +122,55 @@ test("P14 alternatives rank shared categories above shared tags and exclude the 
     items.map((i) => i.slug),
     ["penpot", "sketch", "vscode"],
   );
-  const body = await text(`/zh/${path}/figma/alternatives`);
-  assert.doesNotMatch(body, /noindex/);
-  assert.match(body, new RegExp(`rel="canonical" href="${ORIGIN}/zh/${path}/figma/alternatives"`));
-  // Fewer than three alternatives: noindex.
-  assert.match(await text(`/en/${path}/vscode/alternatives`), /noindex/);
+  // The basic template does not render alternatives pages.
+  await text(`/zh/${path}/figma/alternatives`, 404);
+  await text(`/en/${path}/vscode/alternatives`, 404);
   await text(`/zh/${path}/missing/alternatives`, 404);
   await text(`/zh/${path}/figma/other`, 404);
+});
+
+test("P14 reserved entry slugs are rejected and term routes win over alternatives", async () => {
+  assert.throws(
+    () => candidateSchema.parse({ resourceVersion: 1, slug: "category" }),
+    /保留路径/,
+  );
+  // Simulate an old draft row that predates the reserve list: the term route still wins.
+  await publish("legacy", "design", []);
+  await f.pool.query(
+    "UPDATE publication SET slug='category' WHERE site_id='atlas' AND resource_id='legacy' AND locale='zh'",
+  );
+  assert.equal((await get(`/zh/${path}/category`)).status, 200);
+  assert.equal((await get(`/zh/${path}/category/alternatives`)).status, 404);
+});
+
+test("P14 sitemap and RSS strip characters XML 1.0 forbids", () => {
+  const rss = rssXml({
+    title: "Feed\u0001 title",
+    link: "https://example.test/feed",
+    self: "https://example.test/feed.xml",
+    description: "tag\u000Bline",
+    language: "zh",
+    items: [
+      {
+        title: "A\u0002B\uFFFE",
+        link: "https://example.test/a\u0003",
+        description: "line\u0004",
+        published: null,
+      },
+    ],
+  });
+  assert.doesNotMatch(rss, /[\u0001-\u0004\u000B\uFFFE]/);
+  assert.match(rss, /<title>Feed title<\/title>/);
+  assert.match(rss, /<description>tagline<\/description>/);
+  const sitemap = sitemapXml([
+    {
+      loc: "https://example.test/a\u0005",
+      alternates: [{ locale: "zh", href: "https://example.test/zh/a\u0006" }],
+    },
+  ]);
+  const index = sitemapIndexXml(["https://example.test/sitemap-1.xml\u0007"]);
+  assert.doesNotMatch(sitemap, /[\u0005\u0006]/);
+  assert.doesNotMatch(index, /\u0007/);
 });
 
 // Last: it leaves 45k unpublished rows behind.
