@@ -1,7 +1,8 @@
 /*
  * Ported from toolso-ai-open src/app/globals.css (Apache-2.0, Copyright 2025 CoolChange.AI).
  * Changes: no prism.css; Geist loaded from local /assets/fonts (was next/font);
- * the grain layer uses a self-drawn SVG instead of noise.webp. See NOTICE.md.
+ * the grain layer uses a self-drawn SVG instead of noise.webp; .site-reveal hides only under
+ * html.js. See NOTICE.md.
  */
 @font-face {
   font-family: "Geist";
@@ -542,7 +543,9 @@ html[data-motion="minimal"] {
   }
 }
 
-.site-reveal {
+/* Qoo.IM: hidden only once toolso-init.js has marked <html class="js">, so content stays
+   visible without JavaScript (toolso always hid it until hydration). */
+html.js .site-reveal {
   opacity: 0;
   transform: translateY(var(--reveal-y, 24px));
 }

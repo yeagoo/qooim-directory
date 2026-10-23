@@ -1,5 +1,6 @@
 // Runs before first paint (loaded synchronously in <head>): apply the saved or system color
 // scheme so dark mode does not flash. Mirrors next-themes with attribute="class".
+document.documentElement.classList.add("js");
 try {
   const saved = localStorage.getItem("theme");
   const dark =
