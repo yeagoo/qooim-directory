@@ -13,8 +13,8 @@ import {
   templateManifest,
 } from "./templates.js";
 import { themeCss } from "./theme.js";
-import { Catalog, NotFound } from "../domain/catalog.js";
-import { Conflict, InvalidReference, configSchema } from "../domain/config.js";
+import { Catalog, NotFound, type SiteContext } from "../domain/catalog.js";
+import { Conflict, InvalidReference, configSchema, type Config } from "../domain/config.js";
 import { transaction } from "../domain/transaction.js";
 import { AuthRegistry } from "./auth.js";
 import { Sites } from "./sites.js";
@@ -44,9 +44,15 @@ import { DEFAULT_RETENTION, type RetentionPolicy } from "./retention.js";
 import { Personal } from "./personal.js";
 import { AuditLog } from "./audit.js";
 import {
+  itemSitemapUrls,
   personalPage,
+  rssXml,
+  sitemapIndexXml,
   sitemapXml,
+  type SitemapUrl,
 } from "../ui/directory.js";
+// A sitemap file holds at most 50,000 URLs; stay well below it.
+const SITEMAP_CHUNK = 45000;
 const version = z.strictObject({
   revision: z.number().int().nonnegative(),
   draftVersion: z.number().int().nonnegative(),
@@ -182,7 +188,10 @@ export class Application {
       path === "/sitemap.xml" ||
       path === "/robots.txt" ||
       /^\/[a-z]{2}\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(path) ||
-      /^\/(?:zh|en)(?:\/[a-z0-9-]+\/(?:category|tag|collection)\/[a-z0-9-]+)?$/.test(path);
+      /^\/(?:zh|en)(?:\/[a-z0-9-]+\/(?:category|tag|collection)\/[a-z0-9-]+)?$/.test(path) ||
+      /^\/(?:zh|en)\/[a-z0-9-]+\/[a-z0-9-]+\/alternatives$/.test(path) ||
+      /^\/sitemap-[0-9]+\.xml$/.test(path) ||
+      /^\/(?:zh|en)\/feed\.xml$/.test(path);
     const cacheable =
       request.method === "GET" &&
       response.status === 200 &&
@@ -942,13 +951,43 @@ export class Application {
           },
         },
       );
-    if (path === "/sitemap.xml") {
-      const entries = await this.catalog.entries(ctx);
-      if (entries.length > 50000)
-        throw new HttpError(503, "Sitemap requires sharding");
+    const sitemapPart = path.match(/^\/sitemap-([1-9][0-9]{0,4})\.xml$/);
+    if (path === "/sitemap.xml" || sitemapPart) {
+      const urls = await this.sitemapUrls(ctx, site.origin, config);
+      const xml = (body: string) =>
+        new Response(body, { headers: { "content-type": "application/xml; charset=utf-8" } });
+      // Small sites get one urlset; larger ones an index of numbered parts.
+      if (path === "/sitemap.xml" && urls.length <= SITEMAP_CHUNK) return xml(sitemapXml(urls));
+      const parts = Math.ceil(urls.length / SITEMAP_CHUNK);
+      if (path === "/sitemap.xml")
+        return xml(
+          sitemapIndexXml(
+            Array.from({ length: parts }, (_, i) => `${site.origin}/sitemap-${i + 1}.xml`),
+          ),
+        );
+      const index = Number(sitemapPart![1]);
+      if (urls.length <= SITEMAP_CHUNK || index > parts) throw new NotFound();
+      return xml(sitemapXml(urls.slice((index - 1) * SITEMAP_CHUNK, index * SITEMAP_CHUNK)));
+    }
+    const feed = path.match(/^\/(zh|en)\/feed\.xml$/);
+    if (feed) {
+      if (!config.locales.includes(feed[1] as "zh" | "en")) throw new NotFound();
+      const items = await this.catalog.latest(ctx, feed[1], 50);
       return new Response(
-        sitemapXml(site.origin, config.catalogPath, entries),
-        { headers: { "content-type": "application/xml; charset=utf-8" } },
+        rssXml({
+          title: config.name,
+          link: `${site.origin}/${feed[1]}/${config.catalogPath}`,
+          self: `${site.origin}${path}`,
+          description: config.tagline || config.name,
+          language: feed[1] === "zh" ? "zh-CN" : "en",
+          items: items.map((item) => ({
+            title: item.title,
+            link: `${site.origin}/${item.locale}/${config.catalogPath}/${item.slug}`,
+            description: item.details?.tagline || item.description,
+            published: item.published_at,
+          })),
+        }),
+        { headers: { "content-type": "application/rss+xml; charset=utf-8" } },
       );
     }
     if (path === "/me")
@@ -965,7 +1004,9 @@ export class Application {
         !localeRoot &&
         (parts[2] !== config.catalogPath ||
           (parts.length > 4 &&
-            !(parts.length === 5 && ["category", "tag", "collection"].includes(parts[3]!)))))
+            !(parts.length === 5 &&
+              (["category", "tag", "collection"].includes(parts[3]!) ||
+                parts[4] === "alternatives")))))
     )
       throw new NotFound();
     if (localeRoot && !templateHasHome(config.template)) throw new NotFound();
@@ -1093,6 +1134,31 @@ export class Application {
         );
       }
     }
+    // /<locale>/<catalog>/<slug>/alternatives: entries sharing categories or tags.
+    if (parts.length === 5 && parts[4] === "alternatives") {
+      const item = await this.catalog.detail(ctx, language, parts[3]!);
+      const [items, categories] = await Promise.all([
+        this.catalog.alternatives(ctx, language, item.resource_id, 24),
+        this.catalog.categories(ctx, language),
+      ]);
+      return this.html(
+        renderTemplate(config.template, {
+          kind: "directory",
+          site: config,
+          origin: site.origin,
+          catalogPath: config.catalogPath,
+          locale: language,
+          result: { total: items.length, items, page: 1, limit: 24 },
+          categories,
+          q: "",
+          alternativesOf: item,
+          canonical: site.origin + path,
+          alternates: [],
+          // A thin list is not worth indexing.
+          noindex: items.length < 3,
+        }),
+      );
+    }
     const [categories, tags, collections] = await Promise.all([
       this.catalog.categories(ctx, language),
       this.catalog.tags(ctx, language),
@@ -1161,4 +1227,31 @@ export class Application {
       }),
     );
   }
+  // Home, catalog, term pages (category/tag/collection) per language, then every entry.
+  private async sitemapUrls(ctx: SiteContext, origin: string, config: Config) {
+    const pages: SitemapUrl[] = [];
+    const hasHome = templateHasHome(config.template);
+    for (const locale of config.locales) {
+      if (locale === config.locales[0]) pages.push({ loc: origin + "/" });
+      else if (hasHome) pages.push({ loc: `${origin}/${locale}` });
+      const catalog = `${origin}/${locale}/${config.catalogPath}`;
+      pages.push({ loc: catalog });
+      const [categories, tags, collections] = await Promise.all([
+        this.catalog.categories(ctx, locale),
+        this.catalog.tags(ctx, locale),
+        this.catalog.collections(ctx, locale),
+      ]);
+      for (const [kind, terms] of [
+        ["category", categories],
+        ["tag", tags],
+        ["collection", collections],
+      ] as const)
+        for (const term of terms) pages.push({ loc: `${catalog}/${kind}/${term.id}` });
+    }
+    return [
+      ...pages,
+      ...itemSitemapUrls(origin, config.catalogPath, await this.catalog.entries(ctx)),
+    ];
+  }
+
 }

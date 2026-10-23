@@ -139,7 +139,7 @@ function ToolDetail({ page }: { page: Page }) {
       </div>
 
       {related.length > 0 && (
-        <DetailRelated related={related} primaryCategory={primaryCategory} id={sectionElementId("related")} />
+        <DetailRelated related={related} primaryCategory={primaryCategory} id={sectionElementId("related")} slug={tool.slug} />
       )}
 
       <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8">

@@ -104,27 +104,62 @@ export function missingPage(
     '<meta name="robots" content="noindex,follow">',
   );
 }
-export function sitemapXml(
+export type SitemapUrl = {
+  loc: string;
+  lastmod?: string | null;
+  alternates?: { locale: string; href: string }[];
+};
+/** Detail URLs grouped with their language versions (hreflang). */
+export function itemSitemapUrls(
   origin: string,
   path: string,
-  entries: { resource_id: string; locale: string; slug: string }[],
-) {
+  entries: { resource_id: string; locale: string; slug: string; updated_at?: string | null }[],
+): SitemapUrl[] {
   const groups = new Map<string, typeof entries>();
   for (const entry of entries) {
     const group = groups.get(entry.resource_id) ?? [];
     group.push(entry);
     groups.set(entry.resource_id, group);
   }
-  return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">${entries
+  return entries.map((entry) => ({
+    loc: origin + `/${entry.locale}/${path}/${entry.slug}`,
+    lastmod: entry.updated_at,
+    alternates: groups
+      .get(entry.resource_id)!
+      .map((a) => ({ locale: a.locale, href: origin + `/${a.locale}/${path}/${a.slug}` })),
+  }));
+}
+export function sitemapXml(urls: SitemapUrl[]) {
+  return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">${urls
     .map(
-      (entry) =>
-        `<url><loc>${escape(origin + `/${entry.locale}/${path}/${entry.slug}`)}</loc>${groups
-          .get(entry.resource_id)!
+      (url) =>
+        `<url><loc>${escape(url.loc)}</loc>${url.lastmod ? `<lastmod>${escape(url.lastmod)}</lastmod>` : ""}${(url.alternates ?? [])
           .map(
             (a) =>
-              `<xhtml:link rel="alternate" hreflang="${a.locale}" href="${escape(origin + `/${a.locale}/${path}/${a.slug}`)}"/>`,
+              `<xhtml:link rel="alternate" hreflang="${escape(a.locale)}" href="${escape(a.href)}"/>`,
           )
           .join("")}</url>`,
     )
     .join("")}</urlset>`;
+}
+export function sitemapIndexXml(locations: string[]) {
+  return `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${locations
+    .map((loc) => `<sitemap><loc>${escape(loc)}</loc></sitemap>`)
+    .join("")}</sitemapindex>`;
+}
+/** RSS 2.0 feed of the newest entries in one language. */
+export function rssXml(feed: {
+  title: string;
+  link: string;
+  self: string;
+  description: string;
+  language: string;
+  items: { title: string; link: string; description: string; published: string | null }[];
+}) {
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>${escape(feed.title)}</title><link>${escape(feed.link)}</link><atom:link href="${escape(feed.self)}" rel="self" type="application/rss+xml"/><description>${escape(feed.description)}</description><language>${escape(feed.language)}</language>${feed.items
+    .map(
+      (item) =>
+        `<item><title>${escape(item.title)}</title><link>${escape(item.link)}</link><guid isPermaLink="true">${escape(item.link)}</guid><description>${escape(item.description)}</description>${item.published ? `<pubDate>${new Date(item.published).toUTCString()}</pubDate>` : ""}</item>`,
+    )
+    .join("")}</channel></rss>`;
 }

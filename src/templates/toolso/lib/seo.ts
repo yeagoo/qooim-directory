@@ -91,6 +91,26 @@ export function homeSeo(page: TemplateHomePage): Seo {
 }
 
 export function directorySeo(page: Directory): Seo {
+  if (page.alternativesOf) {
+    const tool = page.alternativesOf;
+    const title = message(page, "tools.detail.altPageTitle", { tool: tool.title });
+    return {
+      title: titled(page, title),
+      description: message(page, "tools.detail.altPageSubtitle", { tool: tool.title, count: page.result.items.length }),
+      jsonLd: [
+        buildBreadcrumbList([
+          homeCrumb(page),
+          catalogCrumb(page),
+          { name: tool.title, url: itemUrl(page, tool) },
+          { name: message(page, "tools.detail.alternatives"), url: page.canonical },
+        ]),
+        buildItemList(
+          title,
+          page.result.items.map((item) => ({ name: item.title, url: itemUrl(page, item) })),
+        ),
+      ],
+    };
+  }
   const category: PublicCategory | undefined = page.categoryPage;
   const tag: PublicCategory | undefined = page.tagPage;
   const pageSuffix = page.result.page > 1 ? ` · ${message(page, "tools.category.page", { page: page.result.page })}` : "";

@@ -99,6 +99,8 @@ export type TemplatePage = {
       tagPage?: PublicCategory;
       /** M13b. The collection of a collection page; its entries keep the curated order. */
       collectionPage?: PublicCollection;
+      /** M14. Set on /<slug>/alternatives: the entry whose alternatives are listed (best match first). */
+      alternativesOf?: PublicResource;
     }
   | { kind: "detail"; item: PublicResource; categories?: PublicCategory[]; related?: PublicResource[] }
   | { kind: "missing" }

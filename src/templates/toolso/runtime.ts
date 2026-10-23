@@ -61,8 +61,8 @@ export function localePath(path: string, locale: Locale = context().locale) {
     return (locale === site.defaultLocale ? "/" : `/${locale}`) + suffix;
   const catalog = `/${locale}/${page.catalogPath}`;
   if (pathname === "/tools" || pathname === `/${page.catalogPath}`) return catalog + suffix;
-  const tool = pathname.match(/^\/tools\/([a-z0-9-]+)$/);
-  if (tool) return `${catalog}/${tool[1]}${suffix}`;
+  const tool = pathname.match(/^\/tools\/([a-z0-9-]+)(\/alternatives)?$/);
+  if (tool) return `${catalog}/${tool[1]}${tool[2] ?? ""}${suffix}`;
   if (pathname === "/category") return catalog + suffix;
   const category = pathname.match(/^\/category\/([a-z0-9-]+)$/);
   if (category) return `${catalog}/category/${category[1]}${suffix}`;

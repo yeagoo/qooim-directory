@@ -28,6 +28,7 @@ export function Document({ page, seo, children }: { page: AnyPage; seo: Seo; chi
         <title>{seo.title}</title>
         <meta name="description" content={seo.description} />
         <link rel="canonical" href={page.canonical} />
+        <link type="application/rss+xml" rel="alternate" title={page.site.name} href={`/${page.locale}/feed.xml`} />
         <meta property="og:type" content={seo.type ?? "website"} />
         <meta property="og:site_name" content={site.brandName} />
         <meta property="og:title" content={seo.title} />

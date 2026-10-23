@@ -275,14 +275,48 @@ export class Catalog {
       )
     ).rows as { locale: string; slug: string }[];
   }
+  /** Every visible entry for the sitemap, with its latest publish time. */
   async entries(ctx: SiteContext) {
     this.check(ctx);
     return (
       await this.pool.query(
-        "SELECT resource_id,locale,slug FROM public_listing WHERE site_id=$1 ORDER BY resource_id,locale LIMIT 50001",
+        `SELECT resource_id,locale,slug,${iso("updated_at")} AS updated_at FROM public_listing WHERE site_id=$1 ORDER BY resource_id,locale`,
         [ctx.siteId],
       )
-    ).rows as { resource_id: string; locale: string; slug: string }[];
+    ).rows as { resource_id: string; locale: string; slug: string; updated_at: string | null }[];
+  }
+  /** Newest first by first publication, for feeds. */
+  async latest(ctx: SiteContext, locale: string, limit = 50) {
+    this.check(ctx);
+    return (
+      await this.pool.query(
+        `SELECT ${columns("p", "p.details-ARRAY['content','faqs','features','useCases','pros','cons']")} FROM public_listing p
+         WHERE p.site_id=$1 AND p.locale=$2 ORDER BY p.published_at DESC NULLS LAST,p.slug LIMIT $3`,
+        [ctx.siteId, locale, limit],
+      )
+    ).rows as PublicItem[];
+  }
+  /**
+   * Alternatives to an entry: other visible entries sharing its categories (2 points
+   * each) or tags (1 point each), best overlap first.
+   */
+  async alternatives(ctx: SiteContext, locale: string, resourceId: string, limit = 24) {
+    this.check(ctx);
+    return (
+      await this.pool.query(
+        `WITH me AS (SELECT category_ids,tag_ids FROM public_listing WHERE site_id=$1 AND locale=$2 AND resource_id=$3),
+         scored AS (
+           SELECT p.*,
+             2*cardinality(ARRAY(SELECT unnest(p.category_ids) INTERSECT SELECT unnest(me.category_ids)))
+             +cardinality(ARRAY(SELECT unnest(p.tag_ids) INTERSECT SELECT unnest(me.tag_ids))) AS overlap
+           FROM public_listing p,me
+           WHERE p.site_id=$1 AND p.locale=$2 AND p.resource_id<>$3
+             AND (p.category_ids && me.category_ids OR p.tag_ids && me.tag_ids)
+           ORDER BY overlap DESC,p.rank,p.slug LIMIT $4)
+         SELECT ${columns("scored", "scored.details-ARRAY['content','faqs','features','useCases','pros','cons']")} FROM scored ORDER BY scored.overlap DESC,scored.rank,scored.slug`,
+        [ctx.siteId, locale, resourceId, limit],
+      )
+    ).rows as PublicItem[];
   }
 }
 
