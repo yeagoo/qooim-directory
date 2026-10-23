@@ -1,20 +1,20 @@
 {
   "format": 1,
   "scope": "node-base",
-  "collectedAt": "2026-10-23T07:15:11.734Z",
+  "collectedAt": "2026-10-23T22:52:05.344Z",
   "collectorSha256": "3dddccb155f34bad6cdc203737fab04d6ce8cfffc152fddc581d59ef7b3bbb37",
   "image": {
-    "reference": "navigation-network:m6-m11-candidate",
-    "id": "sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585",
+    "reference": "navigation-network:m15-candidate",
+    "id": "sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33",
     "repoDigests": [
-      "navigation-network@sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585"
+      "navigation-network@sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33"
     ],
     "architecture": "arm64",
     "os": "linux"
   },
   "basis": {
     "inventory": ".local/license-evidence/app-inventory.json",
-    "inventorySha256": "c1776dddc85a0b2cf2298873dba54c4d5d8117968c3f2ddaadeb9e8cd895b2bb",
+    "inventorySha256": "1160fa9b7d84f7ab3e3d18242c5933d3a6cce553b87b93a8a03d8728c9b77acc",
     "collector": "scripts/distribution.mjs inventoryImage (format 2)"
   },
   "observations": {
