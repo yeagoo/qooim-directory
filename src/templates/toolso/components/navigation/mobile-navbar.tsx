@@ -1,4 +1,4 @@
-// Ported from toolso-ai-open src/features/navigation/components/mobile-navbar.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: the <dialog> + showModal() is a full-screen panel rendered `hidden` and opened/closed by [data-toggle="mobile-nav"] buttons (src/ui/toolso.js; Escape closes); it sits outside the backdrop-blurred bar so `fixed` stays relative to the viewport; the categories group is a [data-toggle] collapse; the account block renders both session states inside [data-session] (signed-in `hidden`, [data-email], [data-sign-out]) with dashboard + profile collapsed into one /me link; scrolled background via group-data-[scrolled]/nav; nexablocks/cordis labels and the inverse appearance dropped.
+// Ported from toolso-ai-open src/features/navigation/components/mobile-navbar.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: the menu is a native full-screen <dialog> opened with showModal() by the [data-toggle="mobile-nav"] buttons (src/ui/toolso.js; Escape, close button and body scroll lock/focus return are handled there); it sits outside the backdrop-blurred bar so `fixed` stays relative to the viewport; display utilities stay on the inner element so the UA closed-dialog rule keeps the panel hidden; the categories group is a [data-toggle] collapse; the account block renders both session states inside [data-session] (signed-in `hidden`, [data-email], [data-sign-out]) with dashboard + profile collapsed into one /me link; scrolled background via group-data-[scrolled]/nav; nexablocks/cordis labels and the inverse appearance dropped.
 import { Menu, X } from "lucide-react";
 
 import { Button } from "../button.js";
@@ -50,15 +50,13 @@ export const MobileNavbar = ({
           <Menu className="h-5 w-5" aria-hidden />
         </button>
       </div>
-      <div
+      <dialog
         id={PANEL}
         hidden
-        role="dialog"
-        aria-modal="true"
         aria-label={tA11y("menu")}
-        className="fixed inset-0 z-50 m-0 h-[100dvh] w-screen overflow-y-auto border-0 bg-background p-0 pt-4 text-xl text-muted-foreground"
+        className="fixed inset-0 z-50 m-0 h-[100dvh] max-h-none w-screen max-w-none overflow-y-auto border-0 bg-background p-0 text-xl text-muted-foreground"
       >
-        <div className="flex min-h-full flex-col">
+        <div className="flex min-h-full flex-col pt-4">
           <div className="flex items-center justify-between w-full px-5 pb-4 shrink-0 border-b border-border">
             <Logo />
             <div className="flex items-center gap-2">
@@ -176,7 +174,7 @@ export const MobileNavbar = ({
             </div>
           </div>
         </div>
-      </div>
+      </dialog>
     </>
   );
 };

@@ -300,6 +300,124 @@ test("P12 mobile: a toggle inside an open panel keeps the panel open; Escape unw
   }
 });
 
+test("P12 mobile menu is a modal dialog: focus inside, Escape out, body scroll locked", async () => {
+  const s = await open("/");
+  try {
+    await s.page.setViewportSize({ width: 390, height: 844 });
+    const opener = s.page.locator('[data-toggle="mobile-nav"]:visible').first();
+    const dialog = s.page.locator("#mobile-nav");
+    assert.equal(await dialog.evaluate((el) => el.tagName), "DIALOG");
+    const state = () =>
+      dialog.evaluate((el) => ({
+        open: (el as HTMLDialogElement).open,
+        modal: el.matches(":modal"),
+        locked: document.body.style.overflow === "hidden",
+      }));
+    await opener.click();
+    assert.deepEqual(await state(), { open: true, modal: true, locked: true });
+    assert.equal(
+      await s.page.evaluate(() => !!document.activeElement?.closest("#mobile-nav")),
+      true,
+    );
+    await s.page.keyboard.press("Escape");
+    await s.page.waitForFunction(
+      (el) =>
+        !(document.querySelector("#mobile-nav") as HTMLDialogElement | null)?.open &&
+        el === document.activeElement &&
+        document.body.style.overflow === "",
+      await opener.elementHandle(),
+      { timeout: 2000 },
+    );
+    assert.deepEqual(await state(), { open: false, modal: false, locked: false });
+  } finally {
+    await s.close();
+  }
+});
+
+test("P12 category drawer focuses inside, and Escape/close return focus to the opener", async () => {
+  const s = await open("/zh/tools");
+  try {
+    await s.page.setViewportSize({ width: 1440, height: 900 });
+    const opener = s.page.locator('[data-toggle^="category-drawer-"]:visible').first();
+    const id = await opener.getAttribute("data-toggle");
+    assert.ok(id);
+    const panel = s.page.locator(`[id="${id}"]`);
+    // The drawer wrapper is a zero-width fixed box (its card is absolutely positioned), so
+    // check the `hidden` attribute rather than Playwright visibility.
+    const shown = () => panel.evaluate((el) => !(el as HTMLElement).hidden);
+    const focusInPanel = () =>
+      s.page.evaluate((pid) => !!document.getElementById(pid)?.contains(document.activeElement), id);
+
+    await opener.click();
+    assert.equal(await shown(), true);
+    assert.equal(await focusInPanel(), true);
+    await s.page.keyboard.press("Escape");
+    assert.equal(await shown(), false);
+    assert.equal(await opener.evaluate((el) => el === document.activeElement), true);
+
+    await opener.click();
+    await panel.locator(`[data-toggle="${id}"]`).click();
+    assert.equal(await shown(), false);
+    assert.equal(await opener.evaluate((el) => el === document.activeElement), true);
+  } finally {
+    await s.close();
+  }
+});
+
+test("P12 role=menu panels follow the menu-button keyboard pattern", async () => {
+  const s = await open("/");
+  try {
+    await s.page.setViewportSize({ width: 1440, height: 900 });
+    const button = s.page.locator('[data-toggle="language-menu"]:visible').first();
+    const menu = s.page.locator("#language-menu");
+    const activeIndex = () =>
+      s.page.evaluate(() => {
+        const items = [
+          ...(document.querySelector("#language-menu")?.querySelectorAll('[role="menuitem"]') ?? []),
+        ].filter((el) => !el.closest("[hidden]"));
+        return items.indexOf(document.activeElement as Element);
+      });
+
+    await button.click();
+    assert.equal(await menu.isVisible(), true);
+    assert.equal(await activeIndex(), 0);
+    await s.page.keyboard.press("Escape");
+    assert.equal(await menu.isVisible(), false);
+    assert.equal(await button.evaluate((el) => el === document.activeElement), true);
+
+    await button.focus();
+    await s.page.keyboard.press("ArrowDown");
+    assert.equal(await menu.isVisible(), true);
+    assert.equal(await activeIndex(), 0);
+    await s.page.keyboard.press("ArrowDown");
+    assert.equal(await activeIndex(), 1);
+    await s.page.keyboard.press("ArrowUp");
+    assert.equal(await activeIndex(), 0);
+    await s.page.keyboard.press("ArrowUp");
+    assert.equal(await activeIndex(), 1);
+    await s.page.keyboard.press("Home");
+    assert.equal(await activeIndex(), 0);
+    await s.page.keyboard.press("End");
+    assert.equal(await activeIndex(), 1);
+    await s.page.keyboard.press("Tab");
+    assert.equal(await menu.isVisible(), false);
+
+    await button.focus();
+    await s.page.keyboard.press("Space");
+    assert.equal(await menu.isVisible(), true);
+    assert.equal(await activeIndex(), 0);
+    await s.page.keyboard.press("Escape");
+    assert.equal(await menu.isVisible(), false);
+    assert.equal(await button.evaluate((el) => el === document.activeElement), true);
+
+    await s.page.keyboard.press("Enter");
+    assert.equal(await menu.isVisible(), true);
+    assert.equal(await activeIndex(), 0);
+  } finally {
+    await s.close();
+  }
+});
+
 test("P12 navbar scroll state, card spotlight and reveal-on-scroll", async () => {
   const s = await open("/");
   try {

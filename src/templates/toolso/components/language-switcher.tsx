@@ -1,4 +1,4 @@
-// Ported from toolso-ai-open src/components/language-switcher.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: no client state — the button is a [data-toggle] trigger for a `hidden` menu (src/ui/toolso.js opens/closes it, incl. Escape and outside click); items are links to the page's own alternates instead of router.push; not rendered when the page has fewer than two language versions; inverse treatment dropped; localeNames limited to zh/en.
+// Ported from toolso-ai-open src/components/language-switcher.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: no client state — the button is a [data-toggle] trigger for a `hidden` role="menu" (src/ui/toolso.js opens/closes it, including the WAI-ARIA menu-button keyboard pattern, Escape and outside click); items are links to the page's own alternates instead of router.push; not rendered when the page has fewer than two language versions; inverse treatment dropped; localeNames limited to zh/en.
 import { ChevronDown, Globe, Check } from "lucide-react";
 import { useLocale, useTranslations } from "../shims/next-intl.js";
 import { context } from "../runtime.js";
@@ -28,7 +28,7 @@ export function LanguageSwitcher({ id = "language-menu", className }: { id?: str
           "border border-border bg-popover text-popover-foreground hover:bg-hover focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
         )}
         aria-expanded="false"
-        aria-haspopup="true"
+        aria-haspopup="menu"
         aria-label={t("selectLanguage", { name: localeNames[locale] })}
       >
         <Globe className="w-4 h-4" />

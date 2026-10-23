@@ -152,6 +152,38 @@ test("P12 category page shows only its items with a heading and breadcrumb", asy
   assert.match(await html("/en/tools/category/design"), />Design<\/h1>/);
 });
 
+test("P12 category hreflang only includes locales with public items; page>1 has no alternates", async () => {
+  const design = await html("/zh/tools/category/design");
+  assert.match(
+    design,
+    /hrefLang="zh" href="https:\/\/atlas\.p6\.test\/zh\/tools\/category\/design"/,
+  );
+  assert.match(
+    design,
+    /hrefLang="en" href="https:\/\/atlas\.p6\.test\/en\/tools\/category\/design"/,
+  );
+
+  const dev = await html("/zh/tools/category/dev");
+  assert.match(
+    dev,
+    /hrefLang="zh" href="https:\/\/atlas\.p6\.test\/zh\/tools\/category\/dev"/,
+  );
+  assert.doesNotMatch(dev, /hrefLang="en"/);
+  assert.doesNotMatch(
+    dev,
+    /href="https:\/\/atlas\.p6\.test\/en\/tools\/category\/dev"/,
+  );
+
+  const categoryPage2 = await html("/zh/tools/category/dev?page=2");
+  assert.doesNotMatch(categoryPage2, /<link rel="alternate"/);
+  assert.match(
+    categoryPage2,
+    /<link rel="canonical" href="https:\/\/atlas\.p6\.test\/zh\/tools\/category\/dev\?page=2"/,
+  );
+  const catalogPage2 = await html("/zh/tools?page=2");
+  assert.doesNotMatch(catalogPage2, /<link rel="alternate"/);
+});
+
 test("P12 detail page: title, description, visit link, favorite, share, breadcrumb, related", async () => {
   const body = await html("/zh/tools/figma");
   assert.match(body, /<h1[^>]*>Figma<\/h1>/);

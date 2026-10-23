@@ -15,6 +15,16 @@ const attr = (el, name, fallback) => el?.getAttribute(name) || fallback;
 const reducedMotion = () =>
   typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+// Modal overlays (mobile nav, lightbox) share the body scroll lock, so closing one never
+// unlocks the page while another is still open.
+const scrollLocks = new Set();
+function setScrollLock(key, locked) {
+  if (locked) scrollLocks.add(key);
+  else scrollLocks.delete(key);
+  if (scrollLocks.size) doc.body.style.setProperty("overflow", "hidden");
+  else doc.body.style.removeProperty("overflow");
+}
+
 // ── #message notices (the status line /assets/directory.js also writes to) ──────────────
 let noticeTimer = 0;
 function notice(text) {
@@ -111,15 +121,34 @@ function setupTheme() {
 // Ported from toolso-ai-open src/features/navigation/components/{categories-menu,mobile-navbar,
 // user-menu}.tsx and src/components/language-switcher.tsx (Apache-2.0, Copyright 2025 CoolChange.AI).
 // Changes: one generic handler: `[data-toggle=id]` + aria-controls/aria-expanded toggles the
-// `hidden` attribute of #id (a <dialog> target opens modally, like toolso's mobile menu).
+// `hidden` attribute of #id (a <dialog> target opens modally, like toolso's mobile menu, and
+// locks body scroll). Role="menu" panels get the WAI-ARIA menu-button keyboard pattern:
+// focus the first item on open, ArrowUp/ArrowDown/Home/End move (wrapping), and Tab closes.
+// Menuitems use tabindex="-1" (roving), and items inside a hidden sub-section are skipped.
 // Closes on Escape (focus back to the button), outside click, a link click inside the panel,
-// and when another toggle opens (unless the new toggle sits inside the open panel).
+// and when another toggle opens (unless the new toggle sits inside the open panel). Closing via
+// a [data-toggle] button inside the panel also returns focus to the opener.
 function setupToggles() {
   const buttons = all("[data-toggle]");
   if (!buttons.length) return;
   const open = []; // stack of { panel, button }
   const panelOf = (button) => doc.getElementById(button.dataset.toggle || "");
   const isOpen = (panel) => (panel instanceof HTMLDialogElement ? panel.open : !panel.hidden);
+  const visible = (el) => !el.closest("[hidden]");
+  const menuItems = (panel) => all('[role="menuitem"]', panel).filter(visible);
+  const focusable = (panel) =>
+    all(
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+      panel,
+    ).filter(visible);
+  const focusInside = (panel) => {
+    if (panel.getAttribute("role") === "menu") {
+      menuItems(panel)[0]?.focus({ preventScroll: true });
+      return;
+    }
+    const dialog = panel instanceof HTMLDialogElement ? panel : panel.querySelector('[role="dialog"]');
+    if (dialog) focusable(dialog)[0]?.focus({ preventScroll: true });
+  };
   const syncButtons = (panel) => {
     for (const button of buttons)
       if (button.dataset.toggle === panel.id) button.setAttribute("aria-expanded", String(isOpen(panel)));
@@ -131,7 +160,9 @@ function setupToggles() {
     for (const nested of open.filter((other) => panel.contains(other.button))) close(nested.panel, false);
     if (panel instanceof HTMLDialogElement) {
       if (panel.open) panel.close();
-    } else panel.hidden = true;
+      setScrollLock(`toggle:${panel.id}`, false);
+    }
+    panel.hidden = true;
     syncButtons(panel);
     if (focusButton && entry?.button?.isConnected) entry.button.focus();
   };
@@ -142,9 +173,11 @@ function setupToggles() {
     if (panel instanceof HTMLDialogElement && !panel.open) {
       if (typeof panel.showModal === "function") panel.showModal();
       else panel.setAttribute("open", "");
+      setScrollLock(`toggle:${panel.id}`, true);
     }
     open.push({ panel, button });
     syncButtons(panel);
+    focusInside(panel);
   };
   for (const button of buttons) {
     const panel = panelOf(button);
@@ -153,15 +186,41 @@ function setupToggles() {
     button.setAttribute("aria-expanded", String(isOpen(panel)));
     button.addEventListener("click", (event) => {
       event.preventDefault();
-      if (isOpen(panel)) close(panel, false);
+      if (isOpen(panel)) close(panel, panel.contains(button));
       else show(panel, button);
     });
+    if (panel.getAttribute("role") === "menu") {
+      button.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowDown" || isOpen(panel)) return;
+        event.preventDefault();
+        show(panel, button);
+      });
+    }
     if (panel instanceof HTMLDialogElement && !panel.dataset.toggleBound) {
       panel.dataset.toggleBound = "";
       // Native Escape on a modal dialog fires "cancel": route it through close() for focus/state.
       panel.addEventListener("cancel", (event) => {
         event.preventDefault();
         close(panel, true);
+      });
+    }
+    if (panel.getAttribute("role") === "menu" && !panel.dataset.menuBound) {
+      panel.dataset.menuBound = "";
+      for (const item of all('[role="menuitem"]', panel)) item.setAttribute("tabindex", "-1");
+      panel.addEventListener("keydown", (event) => {
+        if (!isOpen(panel)) return;
+        const items = menuItems(panel);
+        if (!items.length) return;
+        const index = items.indexOf(doc.activeElement);
+        const move = (next) => {
+          event.preventDefault();
+          items[(next + items.length) % items.length]?.focus({ preventScroll: true });
+        };
+        if (event.key === "ArrowDown") move(index < 0 ? 0 : index + 1);
+        else if (event.key === "ArrowUp") move(index < 0 ? items.length - 1 : index - 1);
+        else if (event.key === "Home") move(0);
+        else if (event.key === "End") move(items.length - 1);
+        else if (event.key === "Tab") close(panel, true);
       });
     }
   }
@@ -435,7 +494,8 @@ function setupShare() {
 // ── Cover lightbox ───────────────────────────────────────────────────────────────────────
 // Ported from toolso-ai-open src/features/tools/components/cover-lightbox.tsx (Apache-2.0,
 // Copyright 2025 CoolChange.AI). Changes: a native <dialog> opened with showModal() supplies the
-// focus trap, Escape and focus return; backdrop clicks and [data-lightbox-close] close it.
+// focus trap, Escape and focus return; backdrop clicks and [data-lightbox-close] close it. The
+// body scroll lock is shared with modal [data-toggle] panels.
 function setupLightbox() {
   for (const trigger of all("[data-lightbox-open]")) {
     const dialog = doc.getElementById(trigger.getAttribute("data-lightbox-open") || "");
@@ -445,14 +505,15 @@ function setupLightbox() {
       if (dialog.open) return;
       dialog.hidden = false;
       dialog.showModal();
-      doc.body.style.setProperty("overflow", "hidden");
+      setScrollLock(`lightbox:${dialog.id}`, true);
       // toolso moved focus to the close button (skip an aria-hidden backdrop close target).
       dialog.querySelector('[data-lightbox-close]:not([aria-hidden="true"]):not([tabindex="-1"])')?.focus();
     });
     if (dialog.dataset.lightboxBound !== undefined) continue;
     dialog.dataset.lightboxBound = "";
     dialog.addEventListener("close", () => {
-      doc.body.style.removeProperty("overflow");
+      if (dialog.open) return; // reopened before the queued close event ran
+      setScrollLock(`lightbox:${dialog.id}`, false);
       if (trigger.isConnected) trigger.focus();
     });
     dialog.addEventListener("click", (event) => {

@@ -9,7 +9,7 @@ pnpm check                 通过（含 Tailwind 产物是否最新的检查）
 pnpm build                 通过
 P0 48/48   P1 88/88   P2 137/137   P3 39/39   P4 30/30   P5 11/11
 P6 29/29   P7 18/18   P8 16/16     P9 20/20   P10 12/12  P11 16/16
-P12 30/30（render 6、home 3、catalog 8、browser 13）
+P12 35/35（render 6、home 4、catalog 9、browser 16）
 pnpm test:release          68/69：失败的是镜像门禁（预期，原因见下）
 pnpm release:check         通过（源码许可，含 dlv@1.1.3 的维护者决定）
 pnpm release:check:image   失败：Image review input changed: pnpm-lock.yaml（预期）
@@ -18,6 +18,17 @@ pnpm release:check:image   失败：Image review input changed: pnpm-lock.yaml�
 另外做了两项实际运行检查：
 - 用 Next 生产构建跑真实服务，确认 React 模板能渲染，旧模板不受影响。
 - 用本分支构建的镜像（`navigation-network:m12-preview`）启动本地 HTTPS 演示，atlas 站切到 toolso 模板。首页、列表页、分类页、详情页和 404 页都正常，浏览器控制台没有错误。
+
+## Codex 审查
+
+用 Codex CLI（0.163.0，只读模式）审查了本分支相对 `main` 的改动，共 4 条，逐条核实后都属实，已修复：
+
+1. 移动端菜单原来是 `div role="dialog"`，没有真正的模态效果。现在改为原生 `<dialog>` + `showModal()`，打开时锁定页面滚动，关闭后焦点回到打开它的按钮；分类抽屉打开时焦点移入，关闭时交还。
+2. 默认语言的 `/<locale>` 首页，canonical 和 hreflang/x-default 指向不一致。现在 308 跳转到 `/`，保留查询参数。
+3. 分类页的 hreflang 会指向该语言下不存在的分类（404），分页页面的 hreflang 指回第 1 页。现在只列出有条目的语言；第 2 页起不输出 alternates。
+4. 4 个 `role="menu"` 菜单没有键盘操作。现在按 WAI-ARIA 菜单按钮模式支持方向键、Home/End、Tab 关闭和焦点移入。
+
+XSS、CSP、路径穿越、缓存和路由方面没有发现问题。修复后重新跑了上面的全量回归。
 
 ## 内容
 

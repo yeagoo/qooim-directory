@@ -155,6 +155,15 @@ export class Catalog {
       )
     ).rows as { id: string; label: string; count: number }[];
   }
+  async categoryLocales(ctx: SiteContext, category: string) {
+    this.check(ctx);
+    return (
+      await this.pool.query(
+        "SELECT DISTINCT locale FROM public_listing WHERE site_id=$1 AND category_id=$2 ORDER BY locale",
+        [ctx.siteId, category],
+      )
+    ).rows.map((row) => row.locale as "zh" | "en");
+  }
   async alternates(ctx: SiteContext, resource: string) {
     this.check(ctx);
     return (

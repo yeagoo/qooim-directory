@@ -962,6 +962,13 @@ export class Application {
     )
       throw new NotFound();
     if (localeRoot && !templateHasHome(config.template)) throw new NotFound();
+    // The default locale's home is "/", matching alternates/x-default, localePath() and
+    // lib/seo.ts. Keep query strings (the redirect is still a canonical URL).
+    if (localeRoot && language === config.locales[0])
+      return new Response(null, {
+        status: 308,
+        headers: { location: "/" + url.search },
+      });
     if ((path === "/" || localeRoot) && templateHasHome(config.template)) {
       const [featured, categories] = await Promise.all([
         this.catalog.browse(ctx, { locale: language, limit: 12 }),
@@ -1059,6 +1066,10 @@ export class Application {
       category: categoryPage?.id ?? options.category,
       locale: language,
     });
+    const categoryLocales =
+      categoryPage && result.page === 1
+        ? new Set(await this.catalog.categoryLocales(ctx, categoryPage.id))
+        : null;
     return this.html(
       renderTemplate(config.template, {
         kind: "directory",
@@ -1075,10 +1086,15 @@ export class Application {
           site.origin +
           `/${language}${base}` +
           (result.page > 1 ? "?page=" + result.page : ""),
-        alternates: config.locales.map((l) => ({
-          locale: l,
-          url: site.origin + `/${l}${base}`,
-        })),
+        alternates:
+          result.page > 1
+            ? []
+            : config.locales
+                .filter((l) => !categoryLocales || categoryLocales.has(l))
+                .map((l) => ({
+                  locale: l,
+                  url: site.origin + `/${l}${base}`,
+                })),
         noindex: !!options.q || (!categoryPage && !!options.category),
       }),
     );

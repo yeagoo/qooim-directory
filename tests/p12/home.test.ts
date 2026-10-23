@@ -79,3 +79,19 @@ test("P12 toolso English home uses English strings and /en links", async () => {
   assert.match(body, /<a href="\/en"[^>]*aria-label="Atlas 工具"/);
   assert.doesNotMatch(body, /全部产品|精选工具|登录/);
 });
+
+test("P12 default-locale home redirects to / and keeps the query string", async () => {
+  const plain = await get(f, "/zh");
+  assert.equal(plain.status, 308);
+  assert.equal(plain.headers.get("location"), "/");
+  const query = await get(f, "/zh?from=nav");
+  assert.equal(query.status, 308);
+  assert.equal(query.headers.get("location"), "/?from=nav");
+  // Non-default locales keep rendering with their own canonical.
+  const en = await get(f, "/en");
+  assert.equal(en.status, 200);
+  assert.match(
+    await en.text(),
+    /<link rel="canonical" href="https:\/\/atlas\.p6\.test\/en"/,
+  );
+});
