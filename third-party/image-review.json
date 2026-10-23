@@ -11,8 +11,8 @@
   "scopes": [
     {
       "id": "node-base",
-      "status": "pending",
-      "detail": "2026-10-23: evidence regenerated for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585. Observations are identical to the evidence QooIM confirmed for v0.2.0-rc.1; only image identity, collectedAt and basis changed. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-23: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585 (linux/arm64). Distribution content is identical to v0.2.0-rc.1; only image identity, collectedAt and basis changed. The rc.1 decision and its reservations carry forward unchanged: accepted with reservation (decision card option B). Reviewed the 88 Debian copyright files and Node LICENSE. Residual: per-component notices for Node bundled OpenSSL/V8/ICU and Debian source-offer mechanics are not individually confirmed.",
       "evidence": [
         {
           "file": "third-party/image-evidence/node-base.json",
@@ -30,12 +30,14 @@
             "sha256": "6b01f0fcdedcec04f956322abc83de5e8ef39020a777ca7c848d94d09f9a3809"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-23"
     },
     {
       "id": "global-pnpm",
-      "status": "pending",
-      "detail": "2026-10-23: evidence regenerated for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585. Observations are identical to the evidence QooIM confirmed for v0.2.0-rc.1; only image identity, collectedAt and basis changed. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-23: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585 (linux/arm64). Distribution content is identical to v0.2.0-rc.1; only image identity, collectedAt and basis changed. The rc.1 decision and its reservations carry forward unchanged: accepted (decision card option A) with explicit attribution decision. Reviewed 82 bundled packages; 12 missing notices were supplemented from exact tarballs, imurmurhash uses the upstream master LICENSE, and @npmcli/agent/eastasianwidth/err-code use the recorded derived-attribution candidates, not artifact texts. pnpm.cjs bundled scope and placing supplements in the image remain follow-ups.",
       "evidence": [
         {
           "file": "third-party/image-evidence/global-pnpm.json",
@@ -53,12 +55,14 @@
             "sha256": "d1d0a520d9a3284bdd7498591af7629a6d699de1ec93381b76e1f6ec2cf6f4c1"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-23"
     },
     {
       "id": "next-swc",
-      "status": "pending",
-      "detail": "2026-10-23: evidence regenerated for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585. Observations are identical to the evidence QooIM confirmed for v0.2.0-rc.1; only image identity, collectedAt and basis changed. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-23: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585 (linux/arm64). Distribution content is identical to v0.2.0-rc.1; only image identity, collectedAt and basis changed. The rc.1 decision and its reservations carry forward unchanged: accepted with explicit reservation (decision card option B). Reviewed the Next 16.4.2 and @next/swc-linux-arm64-gnu/musl package-level MIT declarations and the two native binary digests. The release artifact has no packages/next-swc/Cargo.lock and no build-level crate graph, so per-crate Rust licenses/notices were not obtained and static-linking obligations were not independently verified. This sign-off accepts that residual risk; it must not be read as verified per-crate clearance.",
       "evidence": [
         {
           "file": "third-party/image-evidence/next-swc.json",
@@ -76,12 +80,14 @@
             "sha256": "4836a0030c700616af7fa173a40bd0f1ce59082ef3fd4abe145bdaf7b2ed6948"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-23"
     },
     {
       "id": "esbuild",
-      "status": "pending",
-      "detail": "2026-10-23: evidence regenerated for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585. Observations are identical to the evidence QooIM confirmed for v0.2.0-rc.1; only image identity, collectedAt and basis changed. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-23: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585 (linux/arm64). Distribution content is identical to v0.2.0-rc.1; only image identity, collectedAt and basis changed. The rc.1 decision and its reservations carry forward unchanged: accepted with reservation (decision card option B). Reviewed esbuild MIT, golang.org/x/sys BSD-3-Clause and Go 1.26.5 LICENSE. Residual: Go runtime notice delivery and a frozen-image binary hash recheck before release.",
       "evidence": [
         {
           "file": "third-party/image-evidence/esbuild.json",
@@ -99,12 +105,14 @@
             "sha256": "ebd5e459c9c46f7fd8c5d0e26ae571ac8a1e714ff799a0768972e048b4255724"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-23"
     },
     {
       "id": "postgres-image",
-      "status": "pending",
-      "detail": "2026-10-23: evidence regenerated for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585. Observations are identical to the evidence QooIM confirmed for v0.2.0-rc.1; only image identity, collectedAt and basis changed. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-23: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585 (linux/arm64). Distribution content is identical to v0.2.0-rc.1; only image identity, collectedAt and basis changed. The rc.1 decision and its reservations carry forward unchanged: accepted with reservation (decision card option B) as a separate database image/aggregate distribution. Reviewed 53 apk packages (46 APKINDEX matches), the undeclared .postgresql-rundeps meta package, 8 GPL-2.0-only base packages, and upstream licenses for OpenSSL/OpenLDAP/nghttp2/zlib/tzdata. Residual: Alpine copyright/APKBUILD notices, undeclared-package explanation, and the recorded GPL/AGPL separate-work position.",
       "evidence": [
         {
           "file": "third-party/image-evidence/postgres-image.json",
@@ -122,12 +130,14 @@
             "sha256": "a7857d495b4744fdf6e638bb3ba9c604cf198b4c9f0ad014bad08941a47f7970"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-23"
     },
     {
       "id": "demo-proxy-image",
-      "status": "pending",
-      "detail": "2026-10-23: evidence regenerated for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585. Observations are identical to the evidence QooIM confirmed for v0.2.0-rc.1; only image identity, collectedAt and basis changed. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-23: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md for the M6–M11 candidate image sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585 (linux/arm64). Distribution content is identical to v0.2.0-rc.1; only image identity, collectedAt and basis changed. The rc.1 decision and its reservations carry forward unchanged: accepted with reservation (decision card option B). Reviewed Caddy 2.11.7 Apache-2.0, Go 1.26.8 LICENSE, and 32 apk packages (29 APKINDEX matches). Residual: Caddy Go module dependency notices and Alpine copyright/APKBUILD notices.",
       "evidence": [
         {
           "file": "third-party/image-evidence/demo-proxy-image.json",
@@ -145,14 +155,21 @@
             "sha256": "e2eff81acad9d7ee92d53c269e4aa70970213895893288eba23958fb4042f2b5"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-23"
     }
   ],
   "targetPlatform": "linux/arm64",
   "confirmation": {
-    "status": "pending",
-    "candidateImage": "sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585",
+    "status": "complete",
+    "reviewer": "QooIM",
+    "confirmedAt": "2026-10-23",
+    "targetTag": null,
+    "applicationImage": "sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585",
     "basis": "docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md",
+    "scope": "Six regenerated inventory/identity evidence sets for the M6–M11 candidate; comparison with rc.1 and rc.1 reservations accepted; limitations accepted. Target tag (v0.2.0-rc.2 or v0.2.0) not yet decided.",
+    "legalAdvice": false,
     "previous": {
       "reviewer": "QooIM",
       "confirmedAt": "2026-10-21",

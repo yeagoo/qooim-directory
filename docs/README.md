@@ -37,7 +37,7 @@
 | 文档 | 用途 |
 | --- | --- |
 | [发行前检查清单](RELEASE-CHECKLIST.md) | 预检、全量回归、Docker、OAuth、门禁 |
-| [镜像 evidence 复核包（M6–M11 候选）](IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md) | 新候选镜像的六组 evidence、与 rc.1 的比对，待 QooIM 确认 |
+| [镜像 evidence 复核包（M6–M11 候选）](IMAGE-EVIDENCE-REVIEW-PACKET-20261023.md) | 新候选镜像的六组 evidence、与 rc.1 的比对，QooIM 已于 2026-10-23 确认 |
 | [本地验收记录](ACCEPTANCE-20261020.md) | P0–P5、发行与 Docker 实际结果 |
 | [M1 验收记录](ACCEPTANCE-M1-20261021.md) | 独立账号收口、pg_trgm 搜索、测试与 Docker |
 | [M6 验收记录](ACCEPTANCE-M6-20261022.md) | 配额与保留期：P0–P6 回归、10 万候选清理、保留项 |

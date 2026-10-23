@@ -2,7 +2,7 @@
 
 复核对象：分支 `evidence-refresh-m6-m10`（基于 `main` 的 M6–M11 提交 `7f54beb`，加上 `62a1eb2`）  
 应用镜像：`sha256:c73accb20b67ca3313c775eda5c613af8bb870f169f83ea0cb5a973e84d0d585`（`navigation-network:m6-m11-candidate`，linux/arm64）  
-审查人：QooIM（**待确认**）  
+审查人：QooIM（**已确认**，2026-10-23）  
 日期：2026-10-23
 
 ## 本轮变化
@@ -48,7 +48,7 @@
 | `postgres-image` | `809409c8e1c45bc90fe2b347637b594ac263500c77e695f1851186345a26cbb3` |
 | `demo-proxy-image` | `8a311240ef4ce8480a9a46c92bafb077b21bb909090957f67d6d3c456447452f` |
 
-`third-party/image-review.json` 里六个 scope 都已设为 `pending`，并原样保留了 rc.1 的审查结论（`previousReview`，包括各 scope 的保留意见）。在 QooIM 确认之前，`pnpm release:check:image` 会报六项“review pending”而阻断发布，`pnpm test:release` 里镜像门禁那一项也会失败。这是预期的状态。
+`third-party/image-review.json` 里六个 scope 都已设为 `pending`，并原样保留了 rc.1 的审查结论（`previousReview`，包括各 scope 的保留意见）。在 QooIM 确认之前，`pnpm release:check:image` 会报六项“review pending”而阻断发布，`pnpm test:release` 里镜像门禁那一项也会失败。这是预期的状态。（这是签署前的说明；QooIM 已于 2026-10-23 确认，六个 scope 现为 `complete`，见文末“签署”。）
 
 ## 请 QooIM 确认
 
@@ -66,8 +66,10 @@
 
 ## 签署
 
-- [ ] QooIM 确认六组 evidence 与候选镜像 `sha256:c73accb2…` 一致
-- [ ] 接受比对结论，沿用 rc.1 的保留意见
-- [ ] 接受 evidence 的 limitations，作为内部候选记录
+- [x] QooIM 确认六组 evidence 与候选镜像 `sha256:c73accb2…` 一致
+- [x] 接受比对结论，沿用 rc.1 的保留意见
+- [x] 接受 evidence 的 limitations，作为内部候选记录
 
-审查人：________  日期：________
+审查人：QooIM  日期：2026-10-23
+
+确认方式：QooIM 在开发会话中明确确认“QooIM 确认，同意签署”，由开发方按此确认更新 `third-party/image-review.json`（六个 scope 设为 `complete`，审查人 QooIM，日期 2026-10-23）。目标版本号尚未决定。
