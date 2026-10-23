@@ -12,6 +12,7 @@ import { extra } from "../i18n/extra.js";
 import {
   buildBreadcrumbList,
   buildFaqPage,
+  buildComparisonArticle,
   buildItemList,
   buildOrganization,
   buildSoftwareApplication,
@@ -91,6 +92,32 @@ export function homeSeo(page: TemplateHomePage): Seo {
 }
 
 export function directorySeo(page: Directory): Seo {
+  if (page.comparison) {
+    const comparison = page.comparison;
+    const names = page.result.items.map((item) => item.title).join(" vs ");
+    // First plain paragraph of the Markdown body, else "A vs B".
+    const paragraph = comparison.content
+      .split(/\n\s*\n/)
+      .map((block) => block.trim())
+      .find((block) => block && !/^(#|\||[-*+] |\d+\. |>|```)/.test(block));
+    const description = paragraph
+      ? paragraph.replace(/[*_`[\]]|\(([^)]*)\)/g, "").replace(/\s+/g, " ").slice(0, 160)
+      : names;
+    return {
+      title: titled(page, comparison.title),
+      description,
+      type: "article",
+      jsonLd: [
+        buildComparisonArticle({
+          headline: comparison.title,
+          description,
+          url: page.canonical,
+          about: page.result.items.map((item) => ({ name: item.title, url: item.url || undefined })),
+        }),
+        buildBreadcrumbList([homeCrumb(page), catalogCrumb(page), { name: comparison.title, url: page.canonical }]),
+      ],
+    };
+  }
   if (page.alternativesOf) {
     const tool = page.alternativesOf;
     const title = message(page, "tools.detail.altPageTitle", { tool: tool.title });

@@ -190,6 +190,7 @@ export class Application {
       /^\/[a-z]{2}\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(path) ||
       /^\/(?:zh|en)(?:\/[a-z0-9-]+\/(?:category|tag|collection)\/[a-z0-9-]+)?$/.test(path) ||
       /^\/(?:zh|en)\/[a-z0-9-]+\/[a-z0-9-]+\/alternatives$/.test(path) ||
+      /^\/(?:zh|en)\/[a-z0-9-]+\/compare\/[a-z0-9-]+$/.test(path) ||
       /^\/sitemap-[0-9]+\.xml$/.test(path) ||
       /^\/(?:zh|en)\/feed\.xml$/.test(path);
     const cacheable =
@@ -1005,7 +1006,7 @@ export class Application {
         (parts[2] !== config.catalogPath ||
           (parts.length > 4 &&
             !(parts.length === 5 &&
-              (["category", "tag", "collection"].includes(parts[3]!) ||
+              (["category", "tag", "collection", "compare"].includes(parts[3]!) ||
                 parts[4] === "alternatives")))))
     )
       throw new NotFound();
@@ -1076,7 +1077,7 @@ export class Application {
     if (parts.length === 4) {
       try {
         const item = await this.catalog.detail(ctx, language, parts[3]);
-        const [alternates, categories, related] = await Promise.all([
+        const [alternates, categories, related, comparisons] = await Promise.all([
           this.catalog.alternates(ctx, item.resource_id),
           this.catalog.categories(ctx, language),
           item.category_id
@@ -1086,6 +1087,7 @@ export class Application {
                 limit: 7,
               })
             : null,
+          this.catalog.comparisons(ctx, language, { resourceId: item.resource_id }),
         ]);
         return this.html(
           renderTemplate(config.template, {
@@ -1099,6 +1101,11 @@ export class Application {
             related: (related?.items ?? [])
               .filter((r) => r.resource_id !== item.resource_id)
               .slice(0, 6),
+            comparisons: comparisons.map(({ items, content: _content, ...comparison }) => ({
+              ...comparison,
+              content: "",
+              other: items[0].resource_id === item.resource_id ? items[1] : items[0],
+            })),
             canonical:
               site.origin + `/${language}/${config.catalogPath}/${item.slug}`,
             alternates: alternates.map((a) => ({
@@ -1133,6 +1140,39 @@ export class Application {
           },
         );
       }
+    }
+    // /<locale>/<catalog>/compare/<a>-vs-<b>: a reviewed comparison of two visible entries.
+    if (parts.length === 5 && parts[3] === "compare") {
+      const [found] = await this.catalog.comparisons(ctx, language, { id: parts[4] });
+      if (!found) throw new NotFound();
+      const { items, ...comparison } = found;
+      // Other languages only where the same comparison is published and visible.
+      const alternates = (
+        await Promise.all(
+          config.locales.map(async (l) =>
+            l === language || (await this.catalog.comparisons(ctx, l, { id: found.id })).length ? l : null,
+          ),
+        )
+      ).filter((l): l is "zh" | "en" => !!l);
+      return this.html(
+        renderTemplate(config.template, {
+          kind: "directory",
+          site: config,
+          origin: site.origin,
+          catalogPath: config.catalogPath,
+          locale: language,
+          result: { total: 2, items, page: 1, limit: 2 },
+          categories: await this.catalog.categories(ctx, language),
+          q: "",
+          comparison,
+          canonical: site.origin + path,
+          alternates: alternates.map((l) => ({
+            locale: l,
+            url: `${site.origin}/${l}/${config.catalogPath}/compare/${found.id}`,
+          })),
+          noindex: false,
+        }),
+      );
     }
     // /<locale>/<catalog>/<slug>/alternatives: entries sharing categories or tags.
     if (parts.length === 5 && parts[4] === "alternatives") {
@@ -1247,6 +1287,8 @@ export class Application {
         ["collection", collections],
       ] as const)
         for (const term of terms) pages.push({ loc: `${catalog}/${kind}/${term.id}` });
+      for (const comparison of await this.catalog.comparisons(ctx, locale))
+        pages.push({ loc: `${catalog}/compare/${comparison.id}`, lastmod: comparison.updated_at });
     }
     return [
       ...pages,

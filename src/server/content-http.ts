@@ -99,7 +99,7 @@ export async function contentHttp(
   if (resource && get)
     return json(await content.resourceHistory(actor, resource[1]));
   const match = path.match(
-    /^\/content\/([a-z][a-z0-9-]{0,47})\/(publications|categories|tags|collections|submissions)$/,
+    /^\/content\/([a-z][a-z0-9-]{0,47})\/(publications|categories|tags|collections|comparisons|submissions)$/,
   );
   if (match) {
     const [, site, kind] = match;
@@ -122,6 +122,12 @@ export async function contentHttp(
         get
           ? await content.collections(actor, site)
           : { version: await content.saveCollection(actor, site, await body()) },
+      );
+    if (kind === "comparisons")
+      return json(
+        get
+          ? await content.comparisons(actor, site)
+          : await content.saveComparison(actor, site, await body()),
       );
     if (kind === "submissions" && get)
       return json(await content.submissions(actor, site, page));

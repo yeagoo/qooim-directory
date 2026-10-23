@@ -114,3 +114,10 @@ pnpm template:preview
 - **榜单页**：`/<locale>/<catalogPath>/collection/<id>` 渲染目录页，同时传入 `collectionPage`（`PublicCollection`：`id`、`label`、`description`、`count`）。条目按榜单里的顺序排列；有关键词时按相关度排序。榜单页会被索引，hreflang 只列出该榜单有条目的语言。榜单不存在、已停用或在该语言下没有名称或可见条目时，返回 404。
 - **首页**：`TemplateHomePage.collections` 提供最多 4 个可见榜单，每个附带前 8 个条目。
 - **公开 API**：`/api/collections?locale=` 返回榜单及条目数；`/api/search` 支持 `collection=` 参数。
+
+## M14：程序化 SEO
+
+- **替代品页**：`/<locale>/<catalogPath>/<slug>/alternatives` 渲染目录页，同时传入 `alternativesOf`（被比较的条目）。`result.items` 是共享分类或标签的其他条目，按重合度排序：每个共享分类计 2 分，每个共享标签计 1 分，最多 24 条。少于 3 条时页面设为 noindex，也不输出 hreflang。
+- **对比页**：`/<locale>/<catalogPath>/compare/<a>-vs-<b>` 渲染目录页，同时传入 `comparison`（`PublicComparison`：标题、Markdown 正文、时间）。`result.items` 是这两个条目，正文和 FAQ 已去掉。只有在该语言已发布、且两个条目都可见时，页面才会返回。详情页通过 `comparisons` 拿到包含该条目的对比。
+- **sitemap**：`/sitemap.xml` 包含每种语言的首页、目录、分类、标签、榜单和对比页，以及全部条目（带 `lastmod`）。超过 45,000 个地址时改为 sitemap index，指向 `/sitemap-<n>.xml`。
+- **RSS**：`/<locale>/feed.xml` 列出该语言最新发布的 50 条。

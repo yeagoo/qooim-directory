@@ -66,6 +66,14 @@ export type PublicDetails = {
   pricing?: PublicPricing;
 };
 export type PublicTerm = { id: string; label: string };
+/** M14b. A reviewed comparison of two entries; `content` is untrusted Markdown. */
+export type PublicComparison = {
+  id: string;
+  title: string;
+  content: string;
+  published_at: string | null;
+  updated_at: string | null;
+};
 export type PublicCategory = { id: string; label: string; count: number };
 /** M13b. A curated list (hot, editor's picks, ...); `count` is its visible entries in this locale. */
 export type PublicCollection = PublicCategory & { description: string };
@@ -101,8 +109,17 @@ export type TemplatePage = {
       collectionPage?: PublicCollection;
       /** M14. Set on /<slug>/alternatives: the entry whose alternatives are listed (best match first). */
       alternativesOf?: PublicResource;
+      /** M14b. Set on /compare/<a>-vs-<b>: the reviewed comparison; result.items are the two entries. */
+      comparison?: PublicComparison;
     }
-  | { kind: "detail"; item: PublicResource; categories?: PublicCategory[]; related?: PublicResource[] }
+  | {
+      kind: "detail";
+      item: PublicResource;
+      categories?: PublicCategory[];
+      related?: PublicResource[];
+      /** M14b. Published comparisons that include this entry. */
+      comparisons?: (PublicComparison & { other: PublicResource })[];
+    }
   | { kind: "missing" }
 );
 type PageBase = Omit<Extract<TemplatePage, { kind: "missing" }>, "kind">;

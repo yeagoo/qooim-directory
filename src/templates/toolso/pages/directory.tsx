@@ -1,4 +1,4 @@
-// Ported from toolso-ai-open src/features/tools/components/tools-list-view.tsx (used by app/[locale]/(marketing)/tools/page.tsx and tools/page/[page]/page.tsx) and app/[locale]/(marketing)/category/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; one component renders the catalog (with ?q=/?category=/?tag=/?page=N), and another a category's, tag's or collection's own page (page.categoryPage / page.tagPage / page.collectionPage; toolso had no tag pages, they reuse the category layout with a "#" heading and sibling tags; a collection page follows toolso's hot page: flame icon, the collection description, cards numbered by curated rank, no siblings), and the alternatives page of an entry (page.alternativesOf; ported from app/[locale]/(marketing)/tools/[slug]/alternatives/page.tsx: back link, title, subtitle, numbered cards; similarity badges, AI blurbs, FAQ and the accent-colour hero gradient dropped — alternatives are ordered by shared categories and tags, and the CSP forbids inline styles); head data (title, canonical, JSON-LD, robots) comes from lib/seo.ts; cordis/upperstory/nexablocks filters, rel=prev/next <link>s and the category description dropped (no data); catalog subtitle is the site tagline.
+// Ported from toolso-ai-open src/features/tools/components/tools-list-view.tsx (used by app/[locale]/(marketing)/tools/page.tsx and tools/page/[page]/page.tsx) and app/[locale]/(marketing)/category/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; one component renders the catalog (with ?q=/?category=/?tag=/?page=N), and another a category's, tag's or collection's own page (page.categoryPage / page.tagPage / page.collectionPage; toolso had no tag pages, they reuse the category layout with a "#" heading and sibling tags; a collection page follows toolso's hot page: flame icon, the collection description, cards numbered by curated rank, no siblings), the comparison page of two entries (page.comparison; components/compare/compare-view.tsx), and the alternatives page of an entry (page.alternativesOf; ported from app/[locale]/(marketing)/tools/[slug]/alternatives/page.tsx: back link, title, subtitle, numbered cards; similarity badges, AI blurbs, FAQ and the accent-colour hero gradient dropped — alternatives are ordered by shared categories and tags, and the CSP forbids inline styles); head data (title, canonical, JSON-LD, robots) comes from lib/seo.ts; cordis/upperstory/nexablocks filters, rel=prev/next <link>s and the category description dropped (no data); catalog subtitle is the site tagline.
 import type { TemplatePage } from "../../../public/sdk.js";
 import { Document } from "../document.js";
 import { directorySeo } from "../lib/seo.js";
@@ -14,6 +14,7 @@ import { PageHeader, chipClass, pageShellClass } from "../components/catalog/pag
 import { Pagination, pageHref } from "../components/catalog/pagination.js";
 import { ToolCard } from "../components/catalog/tool-card.js";
 import { ToolsList } from "../components/catalog/tools-list.js";
+import { CompareView } from "../components/compare/compare-view.js";
 
 type Page = Extract<TemplatePage, { kind: "directory" }>;
 export function DirectoryPage({ page }: { page: Page }) {
@@ -21,7 +22,9 @@ export function DirectoryPage({ page }: { page: Page }) {
     <Document page={page} seo={directorySeo(page)}>
       <SiteChrome>
         <main>
-          {page.alternativesOf ? (
+          {page.comparison ? (
+            <CompareView comparison={page.comparison} tools={page.result.items} />
+          ) : page.alternativesOf ? (
             <AlternativesView page={page} />
           ) : page.categoryPage || page.tagPage || page.collectionPage ? (
             <TermView page={page} />

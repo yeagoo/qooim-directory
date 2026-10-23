@@ -162,7 +162,7 @@ const request = (index: number, path: string) =>
 test("P2 upgrade preserves legacy publications, notes and original migration checksums", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "16",
+    "17",
   );
   const context = await app.catalog.resolve("legacy.test");
   assert.equal((await app.catalog.list(context, "zh"))[0].title, "Old content");

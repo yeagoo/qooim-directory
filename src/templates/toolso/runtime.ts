@@ -52,7 +52,7 @@ export function context() {
   return current;
 }
 
-/** URL for a toolso-style path ("/", "/tools", "/tools/slug", "/category/x", "/tag/x", "/collection/x") on this site. */
+/** URL for a toolso-style path ("/", "/tools", "/tools/slug", "/category/x", "/tag/x", "/collection/x", "/compare/x") on this site. */
 export function localePath(path: string, locale: Locale = context().locale) {
   const { page, site } = context();
   const [pathname = "/", query] = path.split("?");
@@ -70,6 +70,8 @@ export function localePath(path: string, locale: Locale = context().locale) {
   if (tag) return `${catalog}/tag/${tag[1]}${suffix}`;
   const collection = pathname.match(/^\/collection\/([a-z0-9-]+)$/);
   if (collection) return `${catalog}/collection/${collection[1]}${suffix}`;
+  const compare = pathname.match(/^\/compare\/([a-z0-9-]+)$/);
+  if (compare) return `${catalog}/compare/${compare[1]}${suffix}`;
   // Account features live on fixed Qoo.IM pages.
   if (["/submit", "/dashboard", "/profile", "/favorites"].includes(pathname)) return "/me";
   if (pathname === "/login" || pathname === "/signup") return "/login";

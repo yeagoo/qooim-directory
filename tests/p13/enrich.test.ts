@@ -128,7 +128,7 @@ test("P13 output that does not fit the kind fails as invalid_output", async () =
 
 test("P13 enrich has prompt versions like the other kinds", async () => {
   const prompts = await f.app.ai.prompts(f.admin);
-  assert.deepEqual(Object.keys(prompts.kinds).sort(), ["enrich", "generate", "seo", "translate"]);
+  assert.deepEqual(Object.keys(prompts.kinds).sort(), ["compare", "enrich", "generate", "seo", "translate"]);
   const v2 = await f.app.ai.createPrompt(f.admin, { kind: "enrich", instructions: "Custom enrich" });
   assert.equal(v2.version, 2);
   await f.app.ai.saveConfig(f.admin, { site: "atlas", promptVersions: { enrich: 2 } });

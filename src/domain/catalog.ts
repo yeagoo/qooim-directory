@@ -275,6 +275,36 @@ export class Catalog {
       )
     ).rows as { locale: string; slug: string }[];
   }
+  /**
+   * Published comparisons whose two entries are both visible in this locale. With
+   * `resourceId`, only those involving that entry; with `id`, that one comparison.
+   */
+  async comparisons(ctx: SiteContext, locale: string, filter: { id?: string; resourceId?: string } = {}) {
+    this.check(ctx);
+    const { rows } = await this.pool.query(
+      `SELECT c.id,c.title,c.content,${iso("c.published_at")} AS published_at,${iso("c.updated_at")} AS updated_at,
+         jsonb_build_array(
+           (SELECT to_jsonb(x) FROM (SELECT ${columns("a", "a.details-ARRAY['content','faqs']")} FROM public_listing a WHERE a.site_id=c.site_id AND a.locale=c.locale AND a.resource_id=c.resource_a) x),
+           (SELECT to_jsonb(x) FROM (SELECT ${columns("b", "b.details-ARRAY['content','faqs']")} FROM public_listing b WHERE b.site_id=c.site_id AND b.locale=c.locale AND b.resource_id=c.resource_b) x)
+         ) AS items
+       FROM comparison c
+       WHERE c.site_id=$1 AND c.locale=$2 AND c.status='published'
+         AND ($3::text IS NULL OR c.id=$3)
+         AND ($4::text IS NULL OR $4 IN (c.resource_a,c.resource_b))
+         AND EXISTS(SELECT 1 FROM public_listing a WHERE a.site_id=c.site_id AND a.locale=c.locale AND a.resource_id=c.resource_a)
+         AND EXISTS(SELECT 1 FROM public_listing b WHERE b.site_id=c.site_id AND b.locale=c.locale AND b.resource_id=c.resource_b)
+       ORDER BY c.id LIMIT 1000`,
+      [ctx.siteId, locale, filter.id ?? null, filter.resourceId ?? null],
+    );
+    return rows as {
+      id: string;
+      title: string;
+      content: string;
+      published_at: string | null;
+      updated_at: string | null;
+      items: [PublicItem, PublicItem];
+    }[];
+  }
   /** Every visible entry for the sitemap, with its latest publish time. */
   async entries(ctx: SiteContext) {
     this.check(ctx);

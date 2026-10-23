@@ -1,4 +1,4 @@
-// Ported from toolso-ai-open src/app/[locale]/(marketing)/tools/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; head data (title, OG, JSON-LD) comes from lib/seo.ts; the long-form sections come from the listing's rich fields (overview = Markdown content, key features, use cases, pros/cons, FAQ) instead of parsed content, and how-to/tips/audience/platforms/pricing prose and alternatives are dropped (no data); cordis plugin blocks, view counter and adjacent-tool links dropped; a GitHub repository section follows the pros/cons when the resource has a project; the contents list covers every rendered section; the category sidebar uses the page's categories.
+// Ported from toolso-ai-open src/app/[locale]/(marketing)/tools/[slug]/page.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: synchronous, fed by Qoo.IM page data; head data (title, OG, JSON-LD) comes from lib/seo.ts; the long-form sections come from the listing's rich fields (overview = Markdown content, key features, use cases, pros/cons, FAQ) instead of parsed content, and how-to/tips/audience/platforms/pricing prose and alternatives are dropped (no data); cordis plugin blocks, view counter and adjacent-tool links dropped; a GitHub repository section follows the pros/cons when the resource has a project; a Qoo.IM comparisons section (published A-vs-B pages with this entry) follows the FAQ; the contents list covers every rendered section; the category sidebar uses the page's categories.
 import type { TemplatePage } from "../../../public/sdk.js";
 import { Document } from "../document.js";
 import { detailSeo } from "../lib/seo.js";
@@ -13,6 +13,7 @@ import { DetailBreadcrumb } from "../components/detail/breadcrumb.js";
 import { DetailFaq } from "../components/detail/faq.js";
 import { DetailProseSection } from "../components/detail/prose-section.js";
 import { DetailProsCons } from "../components/detail/pros-cons.js";
+import { DetailComparisons } from "../components/detail/comparisons.js";
 import { DetailGithub } from "../components/detail/github.js";
 import { DetailHero } from "../components/detail/hero.js";
 import { DetailRelated } from "../components/detail/related.js";
@@ -39,6 +40,7 @@ function ToolDetail({ page }: { page: Page }) {
   const td = useTranslations("tools.detail");
   const tq = useTranslations("qooim.catalog.github");
   const tm = useTranslations("qooim.catalog.detail");
+  const tc = useTranslations("qooim.catalog.compare");
   const tool = page.item;
   const details = tool.details ?? {};
   const features = details.features ?? [];
@@ -48,6 +50,7 @@ function ToolDetail({ page }: { page: Page }) {
   const faqs = details.faqs ?? [];
   const categories = page.categories ?? [];
   const related = page.related ?? [];
+  const comparisons = page.comparisons ?? [];
   const primaryCategory = tool.category_id ? categories.find((c) => c.id === tool.category_id) : undefined;
 
   // 实际会渲染的章节清单:目录、章节条、章节序号都以它为准。
@@ -58,6 +61,7 @@ function ToolDetail({ page }: { page: Page }) {
   if (pros.length > 0 || cons.length > 0) nav.push({ slug: "pros-cons", title: tm("prosCons") });
   if (tool.project) nav.push({ slug: "github", title: tq("title") });
   if (faqs.length > 0) nav.push({ slug: "faq", title: td("faq") });
+  if (comparisons.length > 0) nav.push({ slug: "comparisons", title: tc("title") });
   if (related.length > 0) nav.push({ slug: "related", title: td("relatedTools") });
   const secNo = (navSlug: string) => {
     const i = nav.findIndex((n) => n.slug === navSlug);
@@ -125,6 +129,8 @@ function ToolDetail({ page }: { page: Page }) {
                 {tool.project && <DetailGithub slug="github" index={secNo("github")} project={tool.project} />}
 
                 {faqs.length > 0 && <DetailFaq index={secNo("faq")} title={td("faq")} faq={faqs} />}
+
+                {comparisons.length > 0 && <DetailComparisons index={secNo("comparisons")} comparisons={comparisons} />}
 
                 <DetailSimilarCta />
               </div>{/* /正文 sections */}

@@ -567,6 +567,72 @@ export class Content {
       return version;
     });
   }
+  // "A vs B" pages: written (or AI-drafted) by editors, public only once published and
+  // while both entries are visible in that language.
+  async comparisons(actor: Operator, site: string) {
+    await this.operators.require(actor, site);
+    return (
+      await this.pool.query(
+        "SELECT id,locale,resource_a,resource_b,title,content,status,version,published_at,updated_at FROM comparison WHERE site_id=$1 ORDER BY locale,id",
+        [site],
+      )
+    ).rows;
+  }
+  async saveComparison(actor: Operator, site: string, input: unknown) {
+    await this.operators.require(actor, site, true);
+    const value = z
+      .strictObject({
+        locale: localeSchema,
+        resourceA: identifier,
+        resourceB: identifier,
+        title: text,
+        content: z.string().trim().max(50000).default(""),
+        published: z.boolean().default(false),
+        expectedVersion: z.number().int().nonnegative(),
+      })
+      .refine((v) => v.resourceA !== v.resourceB, "Pick two different resources")
+      .parse(input);
+    // The pair is stored in a stable order so "a-vs-b" and "b-vs-a" are one page.
+    const [a, b] = [value.resourceA, value.resourceB].sort();
+    const id = `${a}-vs-${b}`;
+    if (id.length > 64 + 4 + 64) throw new HttpError(400, "资源标识过长");
+    return transaction(this.pool, async (c) => {
+      await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
+        "comparison:" + site + ":" + value.locale + ":" + id,
+      ]);
+      await this.operators.require(actor, site, true, c);
+      const row = (
+        await c.query("SELECT version FROM comparison WHERE site_id=$1 AND locale=$2 AND id=$3", [
+          site,
+          value.locale,
+          id,
+        ])
+      ).rows[0];
+      if ((row?.version ?? 0) !== value.expectedVersion)
+        throw new Conflict("Comparison version changed");
+      if (
+        (await c.query("SELECT count(*)::int AS n FROM resource WHERE id=ANY($1::text[])", [[a, b]])).rows[0]
+          .n !== 2
+      )
+        throw new HttpError(400, "对比包含不存在的资源");
+      if (value.published && !value.content)
+        throw new HttpError(400, "发布前请填写对比正文");
+      const version = value.expectedVersion + 1;
+      await c.query(
+        `INSERT INTO comparison(site_id,locale,id,resource_a,resource_b,title,content,status,version,published_at,updated_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,CASE WHEN $8='published' THEN now() END,now())
+         ON CONFLICT(site_id,locale,id) DO UPDATE SET title=$6,content=$7,status=$8,version=$9,
+           published_at=CASE WHEN $8='published' THEN coalesce(comparison.published_at,now()) ELSE comparison.published_at END,updated_at=now()`,
+        [site, value.locale, id, a, b, value.title, value.content, value.published ? "published" : "draft", version],
+      );
+      await this.audit(c, actor, site, "comparison.save", {
+        id,
+        locale: value.locale,
+        published: value.published,
+      });
+      return { id, version };
+    });
+  }
   categories(actor: Operator, site: string) {
     return this.taxonomy("category", actor, site);
   }

@@ -3,6 +3,7 @@
 // object through SafeJsonLd); callers pass absolute URLs built from the page DTO instead of the
 // toolso site registry; fields Qoo.IM has no data for (offers/pricing, applicationCategory,
 // operatingSystem, logo, sameAs) are left out instead of being guessed. See NOTICE.md.
+// The Article builder comes from app/[locale]/(marketing)/compare/[slug]/page.tsx (inline jsonLd object there).
 /**
  * Schema.org JSON-LD builders. Return plain objects only; <SafeJsonLd> escapes them.
  * Optional fields are `undefined` so JSON.stringify drops them (never write `null`).
@@ -84,6 +85,24 @@ export function buildItemList(name: string, items: ItemListEntry[]) {
       url: it.url,
       name: it.name,
     })),
+  };
+}
+
+/* ============ Article (compare/[slug]/page.tsx) ============ */
+
+export function buildComparisonArticle(input: {
+  headline: string;
+  description: string;
+  url: string;
+  about: { name: string; url?: string }[];
+}) {
+  return {
+    "@context": SCHEMA,
+    "@type": "Article",
+    headline: input.headline,
+    description: input.description,
+    url: input.url,
+    about: input.about.map((a) => ({ "@type": "SoftwareApplication", name: a.name, url: a.url })),
   };
 }
 
