@@ -17,6 +17,7 @@ COPY --from=build --chown=node:node /app /app
 RUN rm -rf /app/p0 && mkdir -p /app/data/media && chown node:node /app/data/media
 USER node
 EXPOSE 3000
-HEALTHCHECK --interval=10s --timeout=5s --start-period=20s CMD node -e 'fetch("http://127.0.0.1:3000/health",{headers:{host:new URL(process.env.ADMIN_ORIGIN).host}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'
+# node:http rather than fetch(): fetch drops the Host header, which /health routing needs.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s CMD node -e 'require("node:http").get({host:"127.0.0.1",port:3000,path:"/health",headers:{host:new URL(process.env.ADMIN_ORIGIN).host},timeout:4000},r=>process.exit(r.statusCode===200?0:1)).on("error",()=>process.exit(1)).on("timeout",()=>process.exit(1))'
 ENTRYPOINT ["sh","scripts/start-container.sh"]
 CMD ["web"]
