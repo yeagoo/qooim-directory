@@ -11,6 +11,7 @@ import {
 } from "./content-admin.js";
 const workspace = document.querySelector("#workspace"),
   message = document.querySelector("#message");
+const CONFIG_FILE_LIMIT = 1024 * 1024;
 const escape = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -601,7 +602,8 @@ async function edit(id, scope, local) {
         }
         filePending = true;
         notice("正在读取并校验配置文件…");
-        if (file.size > 262144) throw new Error("配置文件不能超过 256 KiB");
+        if (file.size > CONFIG_FILE_LIMIT)
+          throw new Error("配置文件不能超过 1 MiB");
         const snapshot = JSON.parse(await file.text());
         if (!currentFile(generation)) return;
         await api("/sites/" + id + "/compare", { snapshot });

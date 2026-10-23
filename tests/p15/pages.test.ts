@@ -2,7 +2,14 @@
 import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
-import { configSchema, type Config } from "../../src/domain/config.js";
+import {
+  configSchema,
+  pageKeys,
+  type Config,
+} from "../../src/domain/config.js";
+import { staticPage } from "../../src/ui/pages.js";
+import { staticSeo } from "../../src/templates/toolso/lib/seo.js";
+import type { TemplateStaticPage } from "../../src/public/sdk.js";
 import { setup, type Fixture } from "../p6/helpers.js";
 import { seedToolso } from "../p12/helpers.js";
 
@@ -188,4 +195,65 @@ test("P15 a published config from before pages existed still serves public route
     await f.pool.query("UPDATE site SET config=$1 WHERE id='notes'", [row.config]);
     f.app.catalog.invalidate("notes");
   }
+});
+
+test("P15 a maximum-size static pages snapshot saves through the admin HTTP API", async () => {
+  const snapshot = await (await f.api("/sites/notes/export")).json();
+  const state = (await (await f.api("/sites/notes")).json()).state;
+  const content = "界".repeat(20000);
+  snapshot.config = configSchema.parse({
+    ...snapshot.config,
+    pages: Object.fromEntries(
+      pageKeys.map((key) => [
+        key,
+        {
+          zh: { title: `关于 ${key}`, content },
+          en: { title: `About ${key}`, content },
+        },
+      ]),
+    ),
+  });
+  const payload = {
+    snapshot,
+    expected: { revision: state.revision, draftVersion: state.draft_version },
+  };
+  const size = Buffer.byteLength(JSON.stringify(payload));
+  assert.ok(size > 256 * 1024);
+  assert.ok(size < 1024 * 1024);
+  const response = await f.api("/sites/notes/save", {
+    method: "POST",
+    body: payload,
+  });
+  assert.equal(response.status, 200, await response.clone().text());
+});
+
+test("P15 static page descriptions truncate by code point at the emoji boundary", () => {
+  const content = "a".repeat(159) + "😀" + "b";
+  const description = "a".repeat(159) + "😀";
+  const pageHtml = staticPage(
+    "Notes",
+    { title: "Boundary", content, locale: "zh" },
+    `${NOTES_ORIGIN}/zh/about`,
+    [],
+  );
+  const meta = /<meta name="description" content="([^"]*)"/.exec(pageHtml)?.[1];
+  assert.equal(meta, description);
+  assert.doesNotMatch(meta ?? "", /\uFFFD/);
+
+  const page: TemplateStaticPage = {
+    kind: "page",
+    key: "about",
+    title: "Boundary",
+    content,
+    site: { name: "Notes", locales: ["zh"], navigation: [] },
+    origin: NOTES_ORIGIN,
+    catalogPath: "tools",
+    locale: "zh",
+    canonical: `${NOTES_ORIGIN}/zh/about`,
+    alternates: [],
+    noindex: false,
+  };
+  const seo = staticSeo(page);
+  assert.equal(seo.description, description);
+  assert.doesNotMatch(seo.description, /\uFFFD/);
 });

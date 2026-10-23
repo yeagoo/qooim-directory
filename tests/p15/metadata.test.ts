@@ -1,8 +1,13 @@
 // M15 submission metadata autofill: bounded HTML parsing, endpoint auth/errors and the DB quota.
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
+import { request as httpsRequest } from "node:https";
+import type { IncomingMessage } from "node:http";
 import { parseMetadata, type PageMetadata } from "../../src/server/metadata.js";
-import { UnsafePublicTarget } from "../../src/server/outbound.js";
+import { runMaintenance } from "../../src/server/maintenance.js";
+import { requestText, UnsafePublicTarget } from "../../src/server/outbound.js";
 import { setup, type Fixture, password } from "../p6/helpers.js";
 
 const ORIGIN = "https://atlas.p6.test";
@@ -56,6 +61,27 @@ const fixed = (metadata: PageMetadata) => async () => ({
   text: `<html><head><title>${metadata.title}</title><meta name="description" content="${metadata.description}"></head></html>`,
   etag: null,
 });
+
+type FakeResponse = PassThrough & {
+  statusCode: number;
+  headers: Record<string, string>;
+};
+type FakeRequest = EventEmitter & {
+  destroy: (error?: Error) => void;
+  end: () => void;
+};
+const fakeRequest = (
+  onEnd: (request: FakeRequest, callback: (response: IncomingMessage) => void) => void,
+) =>
+  ((_options: unknown, callback: (response: IncomingMessage) => void) => {
+    const request = new EventEmitter() as FakeRequest;
+    request.destroy = () => {};
+    request.end = () => onEnd(request, callback);
+    return request;
+  }) as unknown as typeof httpsRequest;
+const publicLookup = (async () => [
+  { address: "93.184.216.34", family: 4 },
+]) as unknown as typeof import("node:dns/promises").lookup;
 
 test("P15 metadata parser decodes entities and prefers Open Graph fields", () => {
   const body = `<html><head>
@@ -235,4 +261,140 @@ test("P15 admin metadata endpoint reuses the service without the visitor quota",
     await f.pool.query("SELECT count(*)::int AS n FROM metadata_fetch")
   ).rows[0].n;
   assert.equal(count, before);
+});
+
+test("P15 outbound requestText enforces a total deadline for drip responses", async () => {
+  let interval: ReturnType<typeof setInterval> | undefined;
+  let stopped = false;
+  const request = fakeRequest((req, callback) => {
+    const response = new PassThrough() as FakeResponse;
+    response.statusCode = 200;
+    response.headers = {};
+    req.destroy = () => {
+      stopped = true;
+      if (interval) clearInterval(interval);
+      response.destroy();
+    };
+    callback(response as unknown as IncomingMessage);
+    interval = setInterval(() => {
+      if (!stopped) response.write(".");
+    }, 10);
+  });
+  const started = Date.now();
+  try {
+    await assert.rejects(
+      requestText(new URL("https://example.com/"), {}, 80, 1024, {
+        lookup: publicLookup,
+        request,
+      }),
+      /请求超时/,
+    );
+    assert.ok(Date.now() - started < 1000);
+  } finally {
+    if (interval) clearInterval(interval);
+  }
+});
+
+test("P15 outbound requestText counts bytes incrementally up to the limit", async () => {
+  const request = fakeRequest((req, callback) => {
+    const response = new PassThrough() as FakeResponse;
+    response.statusCode = 200;
+    response.headers = {};
+    req.destroy = () => response.destroy();
+    callback(response as unknown as IncomingMessage);
+    response.write(Buffer.from("12345"));
+    response.write(Buffer.from("678901"));
+  });
+  await assert.rejects(
+    requestText(new URL("https://example.com/"), {}, 1000, 10, {
+      lookup: publicLookup,
+      request,
+    }),
+    /响应超过大小限制/,
+  );
+});
+
+test("P15 metadata fetches cap in-flight requests per site", async () => {
+  const cookie = await signup("metadata-concurrency@example.test");
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started = 0;
+  f.app.metadata.fetcher = async () => {
+    started++;
+    await gate;
+    return {
+      notModified: false,
+      text: "<head><title>Concurrent</title></head>",
+      etag: null,
+    };
+  };
+  const pending = Array.from({ length: 5 }, (_, index) =>
+    post(
+      "/api/me/submissions/metadata",
+      { url: `https://example.com/concurrent-${index}` },
+      cookie,
+    ),
+  );
+  for (let attempt = 0; started < 4 && attempt < 200; attempt++)
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(started, 4);
+  const rejected = await post(
+    "/api/me/submissions/metadata",
+    { url: "https://example.com/concurrent-limit" },
+    cookie,
+  );
+  assert.equal(rejected.status, 429);
+  assert.match((await rejected.json()).error, /正在获取的网址信息过多/);
+  release();
+  const responses = await Promise.all(pending);
+  assert.equal(responses.filter((response) => response.status === 200).length, 4);
+  assert.equal(responses.filter((response) => response.status === 429).length, 1);
+});
+
+test("P15 admin metadata endpoint rate-limits each operator per hour", async () => {
+  await f.pool.query("DELETE FROM auth_limit");
+  f.app.metadata.fetcher = fixed({ title: "Admin quota", description: "Per operator" });
+  for (let i = 0; i < 120; i++) {
+    const response = await f.api("/content/atlas/metadata", {
+      method: "POST",
+      body: { url: `https://example.com/operator-${i}` },
+    });
+    assert.equal(response.status, 200, `admin request ${i + 1}`);
+  }
+  const limited = await f.api("/content/atlas/metadata", {
+    method: "POST",
+    body: { url: "https://example.com/operator-limited" },
+  });
+  assert.equal(limited.status, 429);
+  assert.match((await limited.json()).error, /120/);
+});
+
+test("P15 maintenance globally prunes metadata_fetch rows older than two hours", async () => {
+  const email = "metadata-retention@example.test";
+  await signup(email);
+  const userId = (
+    await f.pool.query(
+      "SELECT id FROM identity_user WHERE email=$1 AND space_id='atlas'",
+      [email],
+    )
+  ).rows[0].id;
+  await f.pool.query(
+    `INSERT INTO metadata_fetch(site_id,user_id,created_at) VALUES
+     ('atlas',$1,clock_timestamp()-interval '3 hours'),
+     ('atlas',$1,clock_timestamp()-interval '2 hours 1 minute'),
+     ('atlas',$1,clock_timestamp()-interval '2 hours 30 minutes'),
+     ('atlas',$1,clock_timestamp()-interval '90 minutes')`,
+    [userId],
+  );
+  const result = await runMaintenance(f.pool, { force: true });
+  assert.equal(result?.metadata.deleted, 3);
+  const remaining = (
+    await f.pool.query(
+      "SELECT count(*)::int AS n FROM metadata_fetch WHERE site_id='atlas' AND user_id=$1",
+      [userId],
+    )
+  ).rows[0].n;
+  assert.equal(remaining, 1);
 });

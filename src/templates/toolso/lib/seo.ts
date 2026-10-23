@@ -107,7 +107,11 @@ export function directorySeo(page: Directory): Seo {
       .map((block) => block.trim())
       .find((block) => block && !/^(#|\||[-*+] |\d+\. |>|```)/.test(block));
     const description = paragraph
-      ? paragraph.replace(/[*_`[\]]|\(([^)]*)\)/g, "").replace(/\s+/g, " ").slice(0, 160)
+      ? Array.from(
+          paragraph.replace(/[*_`[\]]|\(([^)]*)\)/g, "").replace(/\s+/g, " "),
+        )
+          .slice(0, 160)
+          .join("")
       : names;
     return {
       title: titled(page, comparison.title),
@@ -233,13 +237,17 @@ export function missingSeo(page: Missing): Seo {
 }
 
 export function staticSeo(page: TemplateStaticPage): Seo {
-  const description = page.content
+  const paragraph = page.content
     .split(/\n\s*\n/)
     .map((block) => block.trim())
-    .find((block) => block && !/^(#|\||[-*+] |\d+\. |>|```)/.test(block))
-    ?.replace(/[*_`[\]]|\(([^)]*)\)/g, "")
-    .replace(/\s+/g, " ")
-    .slice(0, 160);
+    .find((block) => block && !/^(#|\||[-*+] |\d+\. |>|```)/.test(block));
+  const description = paragraph
+    ? Array.from(
+        paragraph.replace(/[*_`[\]]|\(([^)]*)\)/g, "").replace(/\s+/g, " "),
+      )
+        .slice(0, 160)
+        .join("")
+    : undefined;
   return {
     title: titled(page, page.title),
     description: description || page.title,

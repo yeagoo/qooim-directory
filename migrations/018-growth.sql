@@ -6,3 +6,4 @@ CREATE TABLE metadata_fetch (
  FOREIGN KEY(site_id,user_id) REFERENCES identity_member(site_id,user_id) ON DELETE CASCADE
 );
 CREATE INDEX metadata_fetch_rate ON metadata_fetch(site_id,user_id,created_at);
+CREATE INDEX metadata_fetch_created ON metadata_fetch(created_at);

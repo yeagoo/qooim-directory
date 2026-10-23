@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { request as httpsRequest } from "node:https";
+import type { ClientRequest } from "node:http";
 import { isIP } from "node:net";
 /** The target itself is not a public HTTPS origin (or resolved to a private one). */
 export class UnsafePublicTarget extends Error {}
@@ -51,23 +52,41 @@ export function publicUrl(value: string) {
     throw new UnsafePublicTarget("地址不是公开网络");
   return url;
 }
-async function requestText(
+export async function requestText(
   url: URL,
   headers: Record<string, string>,
   timeoutMs: number,
   maxBytes: number,
+  dependencies: {
+    lookup?: typeof lookup;
+    request?: typeof httpsRequest;
+  } = {},
 ) {
   const host = url.hostname.replace(/^\[|\]$/g, ""),
-    addresses = await lookup(host, { all: true, verbatim: true });
+    addresses = await (dependencies.lookup ?? lookup)(host, {
+      all: true,
+      verbatim: true,
+    });
   if (!addresses.length || addresses.some((item) => privateAddress(item.address)))
     throw new UnsafePublicTarget("地址解析到私网");
   const selected = addresses[0];
+  const request = dependencies.request ?? httpsRequest;
   return new Promise<{
     status: number;
     text: string;
     headers: Headers;
   }>((resolve, reject) => {
-    const req = httpsRequest(
+    let req: ClientRequest;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let settled = false;
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      reject(error);
+      req?.destroy();
+    };
+    req = request(
       {
         hostname: host,
         port: url.port || 443,
@@ -80,25 +99,39 @@ async function requestText(
         timeout: timeoutMs,
       },
       (res) => {
-        let text = "";
-        res.setEncoding("utf8");
-        res.on("data", (chunk: string) => {
-          text += chunk;
-          if (Buffer.byteLength(text) > maxBytes)
-            req.destroy(new Error("响应超过大小限制"));
+        let bytes = 0;
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => {
+          if (settled) return;
+          bytes += chunk.length;
+          if (bytes > maxBytes) {
+            fail(new Error("响应超过大小限制"));
+            return;
+          }
+          chunks.push(chunk);
         });
         res.on("end", () => {
+          if (settled) return;
+          settled = true;
+          if (timer) clearTimeout(timer);
           const resultHeaders = new Headers();
           for (const [name, value] of Object.entries(res.headers)) {
             if (typeof value === "string") resultHeaders.set(name, value);
             else if (Array.isArray(value)) resultHeaders.set(name, value.join(", "));
           }
-          resolve({ status: res.statusCode ?? 0, text, headers: resultHeaders });
+          resolve({
+            status: res.statusCode ?? 0,
+            text: Buffer.concat(chunks).toString("utf8"),
+            headers: resultHeaders,
+          });
         });
+        res.on("error", (error: Error) => fail(error));
       },
     );
-    req.on("timeout", () => req.destroy(new Error("连接超时")));
-    req.on("error", reject);
+    timer = setTimeout(() => fail(new Error("请求超时")), timeoutMs);
+    timer.unref?.();
+    req.on("timeout", () => fail(new Error("连接超时")));
+    req.on("error", (error: Error) => fail(error));
     req.end();
   });
 }

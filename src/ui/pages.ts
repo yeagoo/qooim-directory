@@ -30,11 +30,11 @@ export function staticPage(
   canonical: string,
   alternates: { locale: string; url: string }[],
 ) {
-  const description = page.content
-    .replace(/[*_`[\]()>#|]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 160);
+  const description = Array.from(
+    page.content.replace(/[*_`[\]()>#|]/g, "").replace(/\s+/g, " ").trim(),
+  )
+    .slice(0, 160)
+    .join("");
   const paragraphs = page.content
     .split(/\r?\n\s*\r?\n/)
     .map((paragraph) => paragraph.trim())

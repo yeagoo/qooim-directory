@@ -3,6 +3,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { setup, type Fixture } from "../p6/helpers.js";
 import { XSS, get, seedToolso } from "../p12/helpers.js";
+import { badgeSvg } from "../../src/server/badge.js";
 
 const ORIGIN = "https://atlas.p6.test";
 let f: Fixture;
@@ -27,7 +28,8 @@ test("P15 badge serves an escaped, cacheable SVG for a visible entry", async () 
   assert.doesNotMatch(body, /<style/);
   assert.doesNotMatch(body, /<img/);
   assert.equal(body.includes(XSS), false);
-  assert.match(body, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
+  // The title is escaped (and truncated to the badge width).
+  assert.match(body, /&lt;img src=x onerror=&quot;/);
   assert.match(body, /收录于 Atlas 工具/);
 });
 
@@ -74,4 +76,21 @@ test("P15 toolso detail shows the badge preview, nav section and copyable embed"
   assert.match(body, /data-copy="[^"]*atlas\.p6\.test\/badge\/zh\/figma\.svg/);
   assert.match(body, /atlas\.p6\.test\/zh\/tools\/figma/);
   assert.match(body, />徽章</);
+});
+
+test("P15 badge truncates long ASCII and CJK titles to the display width budget", () => {
+  const wide = /[\u1100-\u115f\u2e80-\u303e\u3040-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua000-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe10-\ufe19\ufe30-\ufe6f\uff00-\uff60\uffe0-\uffe6]|[\u{1f000}-\u{1faff}]/u;
+  const width = (value: string) =>
+    Array.from(value).reduce((total, character) => total + (wide.test(character) ? 2 : 1), 0);
+  const titleOf = (svg: string) => /<text x="20"[^>]*>(.*?)<\/text>/.exec(svg)?.[1] ?? "";
+  const render = (title: string) =>
+    badgeSvg({ locale: "zh", siteName: "站点", title, theme: "light" });
+
+  const ascii = titleOf(render("A".repeat(80)));
+  assert.equal(ascii, "A".repeat(22));
+  assert.equal(width(ascii), 22);
+
+  const cjk = titleOf(render("界".repeat(80)));
+  assert.equal(cjk, "界".repeat(11));
+  assert.equal(width(cjk), 22);
 });

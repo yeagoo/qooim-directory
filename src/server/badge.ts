@@ -7,8 +7,22 @@ const escapeXml = (value: string) =>
         character
       ]!,
   );
-const shorten = (value: string, max: number) =>
-  Array.from(value.replace(/\s+/g, " ").trim()).slice(0, max).join("");
+const wide = /[\u1100-\u115f\u2e80-\u303e\u3040-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua000-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe10-\ufe19\ufe30-\ufe6f\uff00-\uff60\uffe0-\uffe6]|[\u{1f000}-\u{1faff}]/u;
+const widthOf = (value: string) =>
+  Array.from(value).reduce((total, character) => total + (wide.test(character) ? 2 : 1), 0);
+const shorten = (value: string, maxWidth: number) => {
+  let width = 0;
+  let output = "";
+  for (const character of Array.from(value.replace(/\s+/g, " ").trim())) {
+    const next = width + widthOf(character);
+    if (next > maxWidth) break;
+    output += character;
+    width = next;
+  }
+  return output;
+};
+const LABEL_WIDTH = 28;
+const TITLE_WIDTH = 22;
 
 export function badgeSvg(input: {
   locale: "zh" | "en";
@@ -21,9 +35,9 @@ export function badgeSvg(input: {
   const dark = input.theme === "dark";
   const label = shorten(
     input.locale === "zh" ? `收录于 ${input.siteName}` : `Featured on ${input.siteName}`,
-    38,
+    LABEL_WIDTH,
   );
-  const title = shorten(input.title, 40);
+  const title = shorten(input.title, TITLE_WIDTH);
   const colors = dark
     ? { background: "#18181b", border: "#3f3f46", text: "#f4f4f5", muted: "#a1a1aa" }
     : { background: "#ffffff", border: "#d4d4d8", text: "#18181b", muted: "#52525b" };

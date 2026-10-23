@@ -6,6 +6,7 @@ import { fetchPublicText, publicUrl, UnsafePublicTarget } from "./outbound.js";
 
 export type PageMetadata = { title: string; description: string };
 export type TextFetcher = typeof fetchPublicText;
+const SITE_CONCURRENCY = 4;
 
 const entities: Record<string, string> = {
   amp: "&",
@@ -77,7 +78,16 @@ export function parseMetadata(html: string): PageMetadata {
   };
 }
 
+export async function pruneMetadataFetches(pool: Pool) {
+  const result = await pool.query(
+    "DELETE FROM metadata_fetch WHERE created_at<clock_timestamp()-interval '2 hours'",
+  );
+  return { deleted: result.rowCount ?? 0 };
+}
+
 export class MetadataService {
+  private readonly active = new Map<string, number>();
+
   constructor(
     private readonly pool: Pool,
     public fetcher: TextFetcher = fetchPublicText,
@@ -109,9 +119,22 @@ export class MetadataService {
     });
   }
 
+  private acquire(siteId: string) {
+    const active = this.active.get(siteId) ?? 0;
+    if (active >= SITE_CONCURRENCY)
+      throw new HttpError(429, "该站点正在获取的网址信息过多，请稍后再试");
+    this.active.set(siteId, active + 1);
+  }
+
+  private release(siteId: string) {
+    const active = (this.active.get(siteId) ?? 1) - 1;
+    if (active > 0) this.active.set(siteId, active);
+    else this.active.delete(siteId);
+  }
+
   async fetch(
     input: unknown,
-    quota?: { siteId: string; userId: string },
+    context?: { siteId: string; userId?: string },
   ): Promise<PageMetadata> {
     const url = webUrl.parse(input);
     try {
@@ -119,21 +142,26 @@ export class MetadataService {
     } catch {
       throw new HttpError(400, "请输入公开的 HTTPS 网站地址");
     }
-    if (quota) await this.reserve(quota.siteId, quota.userId);
-    let text: string;
+    if (context) this.acquire(context.siteId);
     try {
-      ({ text } = await this.fetcher(url, {
-        maxBytes: 1024 * 1024,
-        timeoutMs: 8000,
-        // fetchPublicText counts completed redirects from zero and stops at two.
-        redirects: 0,
-        headers: { accept: "text/html" },
-      }));
-    } catch (error) {
-      if (error instanceof UnsafePublicTarget)
-        throw new HttpError(400, "请输入公开的 HTTPS 网站地址");
-      throw new HttpError(502, "无法获取该网站的信息，请手动填写");
+      if (context?.userId) await this.reserve(context.siteId, context.userId);
+      let text: string;
+      try {
+        ({ text } = await this.fetcher(url, {
+          maxBytes: 1024 * 1024,
+          timeoutMs: 8000,
+          // fetchPublicText counts completed redirects from zero and stops at two.
+          redirects: 0,
+          headers: { accept: "text/html" },
+        }));
+      } catch (error) {
+        if (error instanceof UnsafePublicTarget)
+          throw new HttpError(400, "请输入公开的 HTTPS 网站地址");
+        throw new HttpError(502, "无法获取该网站的信息，请手动填写");
+      }
+      return parseMetadata(text);
+    } finally {
+      if (context) this.release(context.siteId);
     }
-    return parseMetadata(text);
   }
 }

@@ -66,6 +66,9 @@ import {
 } from "../ui/directory.js";
 // A sitemap file holds at most 50,000 URLs; stay well below it.
 const SITEMAP_CHUNK = 45000;
+const BODY_LIMIT = 256 * 1024;
+const CONFIG_BODY_LIMIT = 1024 * 1024;
+const ADMIN_METADATA_HOURLY_LIMIT = 120;
 const version = z.strictObject({
   revision: z.number().int().nonnegative(),
   draftVersion: z.number().int().nonnegative(),
@@ -261,7 +264,7 @@ export class Application {
     );
     return response;
   }
-  private async body(request: Request) {
+  private async body(request: Request, limit = BODY_LIMIT) {
     if (!request.headers.get("content-type")?.startsWith("application/json"))
       throw new HttpError(415, "请提交 JSON");
     const reader = request.body?.getReader();
@@ -272,9 +275,9 @@ export class Application {
       const part = await reader.read();
       if (part.done) break;
       size += part.value.length;
-      if (size > 262144) {
+      if (size > limit) {
         await reader.cancel();
-        throw new HttpError(413, "请求超过 256 KiB");
+        throw new HttpError(413, `请求超过 ${limit / 1024} KiB`);
       }
       chunks.push(part.value);
     }
@@ -479,9 +482,25 @@ export class Application {
         /^\/content\/([a-z][a-z0-9-]{0,47})\/metadata$/,
       );
       if (metadataAdmin && request.method === "POST") {
-        await this.content.operators.require(operator, metadataAdmin[1], true);
+        const siteId = metadataAdmin[1];
+        await this.content.operators.require(operator, siteId, true);
+        try {
+          await this.auth.limiter.consume(
+            "metadata-admin:" + siteId,
+            operator.id,
+            ADMIN_METADATA_HOURLY_LIMIT,
+            3600,
+          );
+        } catch (error) {
+          if (error instanceof HttpError && error.status === 429)
+            throw new HttpError(
+              429,
+              `每小时最多自动获取 ${ADMIN_METADATA_HOURLY_LIMIT} 次，请稍后再试`,
+            );
+          throw error;
+        }
         const value = z.strictObject({ url: webUrl }).parse(await this.body(request));
-        return this.json(await this.metadata.fetch(value.url));
+        return this.json(await this.metadata.fetch(value.url, { siteId }));
       }
       if (action === "/me" && request.method === "GET")
         return this.json(operator);
@@ -618,7 +637,12 @@ export class Application {
         }
         if (request.method !== "POST")
           throw new HttpError(405, "Method not allowed");
-        const input = await this.body(request);
+        const input = await this.body(
+          request,
+          operation === "compare" || operation === "save"
+            ? CONFIG_BODY_LIMIT
+            : BODY_LIMIT,
+        );
         if (operation === "compare") {
           const b = z.strictObject({ snapshot: z.unknown() }).parse(input);
           return this.json(await this.sites.preview(operator, id, b.snapshot));

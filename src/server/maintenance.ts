@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 import { pruneAiJobs } from "./ai.js";
 import { pruneCollectors } from "./collectors.js";
 import { Media } from "./media.js";
+import { pruneMetadataFetches } from "./metadata.js";
 import { DEFAULT_RETENTION, type RetentionPolicy } from "./retention.js";
 
 export type MaintenanceResult = Record<string, Record<string, number>>;
@@ -36,6 +37,7 @@ export async function runMaintenance(
   };
   await step("ai", () => pruneAiJobs(pool, policy));
   await step("collectors", () => pruneCollectors(pool, policy));
+  await step("metadata", () => pruneMetadataFetches(pool));
   if (options.mediaRoot)
     await step("media", () =>
       new Media(pool, options.mediaRoot!).cleanupOrphans(policy),
