@@ -14,13 +14,15 @@ ALTER TABLE publication ADD COLUMN logo jsonb;
 ALTER TABLE publication ADD COLUMN first_published_at timestamptz;
 ALTER TABLE publication ADD COLUMN published_at timestamptz;
 UPDATE publication SET category_ids=ARRAY[category_id] WHERE category_id IS NOT NULL;
--- Existing entries take their publish times from the audit log; entries without one use the migration time.
+-- Every row that was ever published takes its times from the audit log, even if it is
+-- currently unpublished. Published rows without an audit trail use the migration time.
 UPDATE publication p SET first_published_at=coalesce(a.first_at,now()),published_at=coalesce(a.last_at,now())
  FROM (SELECT p2.site_id,p2.resource_id,p2.locale,min(e.created_at) AS first_at,max(e.created_at) AS last_at
        FROM publication p2 LEFT JOIN audit_event e ON e.action='publication.publish' AND e.site_id=p2.site_id
         AND e.detail->>'resource'=p2.resource_id AND e.detail->>'locale'=p2.locale
        GROUP BY p2.site_id,p2.resource_id,p2.locale) a
- WHERE a.site_id=p.site_id AND a.resource_id=p.resource_id AND a.locale=p.locale AND p.status='published';
+ WHERE a.site_id=p.site_id AND a.resource_id=p.resource_id AND a.locale=p.locale
+  AND (p.status='published' OR a.first_at IS NOT NULL);
 CREATE INDEX publication_categories ON publication USING gin(category_ids);
 CREATE INDEX publication_tags ON publication USING gin(tag_ids);
 DROP VIEW public_listing;

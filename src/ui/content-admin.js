@@ -110,14 +110,14 @@ function download(name, data) {
 }
 // Applies the resource form (URL, titles, descriptions) to the master JSON. Only those
 // fields have form inputs; every other field, including the rich translation fields
-// (tagline, features, FAQ, content, ...), is kept from the JSON. A language with no
-// title, description or other fields is dropped, as before.
+// (tagline, features, FAQ, content, ...), is kept from the JSON. Clearing both title and
+// description drops the language entirely, rich fields included.
 export function applyResourceForm(data, form) {
   const next = { ...data, url: form.url, translations: {} };
   for (const lang of ["zh", "en"]) {
     const { title, description } = form[lang];
     const { title: _t, description: _d, ...rest } = data.translations?.[lang] ?? {};
-    if (title || description || Object.keys(rest).length)
+    if (title || description)
       next.translations[lang] = { title, description, ...rest };
   }
   return next;

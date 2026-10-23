@@ -1,4 +1,4 @@
-// Ported from toolso-ai-open src/features/tools/components/detail/shared.tsx and src/components/markdown-link.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: the query-derived types and the code-highlight renderers dropped; DetailMarkdown skips raw HTML and drops images (the CSP only allows same-origin images); MarkdownLink sends every absolute http(s) link to a new tab with rel="noopener noreferrer nofollow ugc" (no site-network allowlist) and renders other links as plain anchors.
+// Ported from toolso-ai-open src/features/tools/components/detail/shared.tsx and src/components/markdown-link.tsx (Apache-2.0, Copyright 2025 CoolChange.AI). Changes: the query-derived types and the code-highlight renderers dropped; DetailMarkdown skips raw HTML and drops images (the CSP only allows same-origin images); MarkdownLink normalises backslashes and sends every external link (absolute http(s) or protocol-relative) to a new tab with rel="noopener noreferrer nofollow ugc" (no site-network allowlist) and renders other links as plain anchors.
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -12,10 +12,14 @@ export const PROSE =
 
 type AnchorProps = ComponentPropsWithoutRef<"a"> & { node?: unknown };
 
-/** Markdown `<a>`: absolute http(s) links open in a new tab and carry no endorsement. */
+/** Markdown `<a>`: external links open in a new tab and carry no endorsement. */
 export function MarkdownLink({ href, children, node: _node, ...rest }: AnchorProps) {
+  // Browsers read a backslash as "/", so `/\evil.example` must count as external. Only the
+  // classification is normalised (react-markdown has already percent-encoded backslashes);
+  // the href itself is kept, so URLs that contain an encoded backslash are not altered.
   const url = typeof href === "string" ? href : "";
-  if (/^https?:\/\//i.test(url))
+  const normalised = url.replace(/%5c/gi, "/").replace(/\\/g, "/");
+  if (/^(?:https?:\/\/|\/\/)/i.test(normalised))
     return (
       <a href={url} target="_blank" rel="noopener noreferrer nofollow ugc" {...rest}>
         {children}

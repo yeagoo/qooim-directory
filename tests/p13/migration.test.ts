@@ -24,20 +24,23 @@ before(async () => {
     { name: "Atlas", template: "basic", locales: ["zh"], navigation: [], catalogPath: "tools", tagline: "" },
   ]);
   await pool.query(
-    "INSERT INTO resource(id,internal_note,public,version,data) VALUES('a','',true,1,'{}'),('b','',true,1,'{}'),('c','',true,1,'{}')",
+    "INSERT INTO resource(id,internal_note,public,version,data) VALUES('a','',true,1,'{}'),('b','',true,1,'{}'),('c','',true,1,'{}'),('d','',true,1,'{}')",
   );
   await pool.query("INSERT INTO category(site_id,id,labels) VALUES('atlas','design','{\"zh\":\"设计\"}')");
   await pool.query(
     `INSERT INTO publication(site_id,resource_id,locale,slug,title,status,category_id,version) VALUES
      ('atlas','a','zh','a','A','published','design',2),
      ('atlas','b','zh','b','B','published',NULL,1),
-     ('atlas','c','zh','c','C','draft',NULL,1)`,
+     ('atlas','c','zh','c','C','draft',NULL,1),
+     ('atlas','d','zh','d','D','draft',NULL,2)`,
   );
   await pool.query(
     `INSERT INTO audit_event(site_id,action,detail,created_at) VALUES
      ('atlas','publication.publish','{"resource":"a","locale":"zh","version":1}','2026-01-01T00:00:00Z'),
      ('atlas','publication.publish','{"resource":"a","locale":"zh","version":2}','2026-02-01T00:00:00Z'),
-     ('atlas','publication.publish','{"resource":"a","locale":"en","version":1}','2026-03-01T00:00:00Z')`,
+     ('atlas','publication.publish','{"resource":"a","locale":"en","version":1}','2026-03-01T00:00:00Z'),
+     ('atlas','publication.publish','{"resource":"d","locale":"zh","version":1}','2026-04-01T00:00:00Z'),
+     ('atlas','publication.publish','{"resource":"d","locale":"zh","version":2}','2026-05-01T00:00:00Z')`,
   );
   await migrate(pool);
 });
@@ -51,7 +54,7 @@ test("P13 migration backfills category_ids and publish times from the audit log"
       "SELECT resource_id,category_ids,tag_ids,details,logo,first_published_at,published_at FROM publication ORDER BY resource_id",
     )
   ).rows;
-  const [a, b, c] = rows;
+  const [a, b, c, d] = rows;
   assert.deepEqual(a.category_ids, ["design"]);
   assert.deepEqual(a.tag_ids, []);
   assert.deepEqual(a.details, {});
@@ -66,6 +69,9 @@ test("P13 migration backfills category_ids and publish times from the audit log"
   // Never published: no times.
   assert.equal(c.first_published_at, null);
   assert.equal(c.published_at, null);
+  // Unpublished after publishing keeps the true first/last publish times.
+  assert.equal(d.first_published_at.toISOString(), "2026-04-01T00:00:00.000Z");
+  assert.equal(d.published_at.toISOString(), "2026-05-01T00:00:00.000Z");
   const listing = (await pool.query("SELECT slug,published_at,updated_at,category_ids FROM public_listing ORDER BY slug")).rows;
   assert.deepEqual(
     listing.map((r) => r.slug),

@@ -337,15 +337,22 @@ export class Media {
     });
     return this.dto(row);
   }
-  // Deletes one non-current version. The caller has already checked publications do
-  // not pin it; the stored file goes only when no other version in the site uses it,
-  // and only after the deletion has committed.
-  async removeVersion(actor: Operator, id: string, version: number) {
+  // Deletes one non-current version. The caller pre-checks publications; the optional
+  // guard re-checks under the media row lock so a concurrent publish cannot pin it
+  // between that check and the delete. The stored file goes only when no other version
+  // in the site uses it, and only after the deletion has committed.
+  async removeVersion(
+    actor: Operator,
+    id: string,
+    version: number,
+    guard?: (client: PoolClient) => Promise<void>,
+  ) {
     const current = await this.row(id);
     await this.operators.require(actor, current.site_id, true);
     const site = current.site_id;
     await this.mutate(site, async (client, release) => {
       const media = await this.lockRow(client, id);
+      await guard?.(client);
       const target = (
         await client.query(
           "DELETE FROM media_version WHERE media_id=$1 AND version=$2 AND version<>$3 RETURNING sha256,mime",
@@ -432,13 +439,21 @@ export class Media {
     await this.operators.require(actor, row.site_id, write);
     return this.dto(row);
   }
-  async remove(actor: Operator, id: string) {
+  async remove(
+    actor: Operator,
+    id: string,
+    guard?: (client: PoolClient) => Promise<void>,
+  ) {
     const row = await this.row(id);
     await this.operators.require(actor, row.site_id, true);
     // Under the upload lock; files are shared between versions and media, so only those
     // left unreferenced by this deletion are handed back, and unlinked after commit.
     const site = row.site_id;
     await this.mutate(site, async (client, release) => {
+      // FOR UPDATE serializes with material()'s FOR SHARE. Re-check references after the
+      // lock: a concurrent stage/publish that committed before it may now use this media.
+      await this.lockRow(client, id);
+      await guard?.(client);
       const files = (
         await client.query(
           `SELECT sha256,mime FROM media WHERE id=$1

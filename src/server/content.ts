@@ -612,8 +612,12 @@ export class Content {
       project: data.project ?? null,
     };
   }
-  async mediaUsage(site: string, mediaId: string) {
-    const { rows } = await this.pool.query(
+  async mediaUsage(
+    site: string,
+    mediaId: string,
+    executor: Pool | PoolClient = this.pool,
+  ) {
+    const { rows } = await executor.query(
       `SELECT EXISTS(SELECT 1 FROM public_listing WHERE site_id=$1 AND (image_media_id=$2::uuid OR logo_media_id=$2::uuid)) AS published,
               EXISTS(SELECT 1 FROM content_draft WHERE site_id=$1 AND $2::text IN(candidate->'overrides'->'image'->>'mediaId',candidate->'overrides'->'logo'->>'mediaId')) AS draft`,
       [site, mediaId],
@@ -631,8 +635,13 @@ export class Content {
   }
   // A version is pinned by any publication row (any status) so republish/unpublish
   // history never points at a deleted file.
-  async mediaVersionPinned(site: string, mediaId: string, version: number) {
-    const { rowCount } = await this.pool.query(
+  async mediaVersionPinned(
+    site: string,
+    mediaId: string,
+    version: number,
+    executor: Pool | PoolClient = this.pool,
+  ) {
+    const { rowCount } = await executor.query(
       `SELECT 1 FROM publication WHERE site_id=$1 AND (
          (image->>'mediaId'=$2 AND coalesce((image->>'version')::int,1)=$3) OR
          (logo->>'mediaId'=$2 AND (logo->>'version')::int=$3)) LIMIT 1`,

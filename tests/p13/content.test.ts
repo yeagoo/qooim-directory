@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { before, after, test } from "node:test";
 import assert from "node:assert/strict";
 import { configSchema } from "../../src/domain/config.js";
+import { pagination, searchForm, type TemplatePage } from "../../src/public/sdk.js";
 import { setup, type Fixture } from "../p6/helpers.js";
 
 let f: Fixture;
@@ -241,6 +242,29 @@ test("P13 tag pages are routed, indexable and list hreflang only where the tag h
   assert.match(await (await get(`/zh/${catalogPath}?tag=free`)).text(), /noindex/);
 });
 
+test("P13 basic template keeps tags on term pagination and in the search form", () => {
+  type DirectoryPage = Extract<TemplatePage, { kind: "directory" }>;
+  const page = {
+    site: { name: "Atlas", locales: ["zh"], navigation: [] },
+    origin: "https://atlas.p6.test",
+    catalogPath: "tools",
+    locale: "zh",
+    canonical: "https://atlas.p6.test/zh/tools/tag/free",
+    alternates: [],
+    noindex: false,
+    kind: "directory",
+    result: { total: 72, items: [], page: 2, limit: 24 },
+    categories: [],
+    q: "",
+    tag: "free",
+    tagPage: { id: "free", label: "免费", count: 72 },
+  } as DirectoryPage;
+  const nav = pagination(page);
+  assert.match(nav, /href="\/zh\/tools\/tag\/free\?page=1"/);
+  assert.match(nav, /href="\/zh\/tools\/tag\/free\?page=3"/);
+  assert.match(searchForm(page), /<input type="hidden" name="tag" value="free">/);
+});
+
 test("P13 media in use as a logo cannot be deleted", async () => {
   const media = await f.app.media.upload(f.editor, { site: "atlas", alt: "logo", ...png(2) });
   await publish("plain", "zh", { overrides: { logo: { mediaId: media.id } } });
@@ -255,6 +279,30 @@ test("P13 media in use as a logo cannot be deleted", async () => {
     }),
     /logo 不属于本站/,
   );
+});
+
+test("P13 deleting media re-checks references under the row lock", async () => {
+  const media = await f.app.media.upload(f.editor, { site: "atlas", alt: "logo", ...png(4) });
+  // A publish in progress: it holds the media row FOR SHARE (as material() does) and
+  // commits a logo reference only after the delete's fast pre-check has passed.
+  const client = await f.pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT version FROM media WHERE id=$1 FOR SHARE", [media.id]);
+    await client.query(
+      "UPDATE publication SET logo=$1 WHERE site_id='atlas' AND resource_id='figma' AND locale='zh'",
+      [{ mediaId: media.id, alt: "", version: 1 }],
+    );
+    const deletion = f.api(`/media/${media.id}`, { method: "DELETE" });
+    // Let the delete pass its pre-check and block on the row lock.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await client.query("COMMIT");
+    assert.equal((await deletion).status, 409);
+  } finally {
+    client.release();
+  }
+  assert.equal((await f.pool.query("SELECT 1 FROM media WHERE id=$1", [media.id])).rowCount, 1);
+  assert.equal((await get(`/media/${media.id}/1`)).status, 200);
 });
 
 test("P13 comparing a newer master keeps extra categories and tags of the published entry", async () => {
@@ -297,6 +345,13 @@ test("P13 admin resource form keeps rich translation fields", async () => {
     pricing: "free",
     translations: { zh: { title: "新", description: "新说明", tagline: "口号", faqs: rich.faqs } },
   });
+  // Clearing both fields drops the language, including its rich fields.
+  const cleared = applyResourceForm(data, {
+    url: "https://example.org",
+    zh: { title: "", description: "" },
+    en: { title: "", description: "" },
+  });
+  assert.deepEqual(cleared.translations, {});
   // The input is not mutated.
   assert.equal(data.translations.zh.title, "旧");
 });

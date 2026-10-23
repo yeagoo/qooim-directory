@@ -159,14 +159,21 @@ export function pagination(page: Extract<TemplatePage, { kind: "directory" }>) {
   const link = (number: number) => {
     const params = new URLSearchParams();
     if (page.q) params.set("q", page.q);
+    if (page.categoryPage || page.tagPage) {
+      params.set("page", String(number));
+      const kind = page.categoryPage ? "category" : "tag",
+        term = (page.categoryPage ?? page.tagPage)!;
+      return `/${page.locale}/${page.catalogPath}/${kind}/${term.id}?${params}`;
+    }
     if (page.category) params.set("category", page.category);
+    if (page.tag) params.set("tag", page.tag);
     params.set("page", String(number));
     return `/${page.locale}/${page.catalogPath}?${params}`;
   };
   return `<nav class="pagination" aria-label="分页">${page.result.page > 1 ? `<a class="button secondary" href="${escapeHtml(link(page.result.page - 1))}">上一页</a>` : ""}${page.result.page * page.result.limit < page.result.total ? `<a class="button secondary" href="${escapeHtml(link(page.result.page + 1))}">下一页</a>` : ""}</nav>`;
 }
 export function searchForm(page: Extract<TemplatePage, { kind: "directory" }>) {
-  return `<form class="search" method="get" action="/${page.locale}/${escapeHtml(page.catalogPath)}"><label for="q">搜索本站资源</label><div class="row"><input id="q" name="q" value="${escapeHtml(page.q)}" maxlength="200" placeholder="输入关键词，发现新方向"><select aria-label="筛选分类" name="category"><option value="">全部分类</option>${page.categories.map((c) => `<option value="${escapeHtml(c.id)}" ${page.category === c.id ? "selected" : ""}>${escapeHtml(c.label)} (${c.count})</option>`).join("")}</select><button>搜索</button></div></form>`;
+  return `<form class="search" method="get" action="/${page.locale}/${escapeHtml(page.catalogPath)}"><label for="q">搜索本站资源</label><div class="row"><input id="q" name="q" value="${escapeHtml(page.q)}" maxlength="200" placeholder="输入关键词，发现新方向">${page.tag ? `<input type="hidden" name="tag" value="${escapeHtml(page.tag)}">` : ""}<select aria-label="筛选分类" name="category"><option value="">全部分类</option>${page.categories.map((c) => `<option value="${escapeHtml(c.id)}" ${page.category === c.id ? "selected" : ""}>${escapeHtml(c.label)} (${c.count})</option>`).join("")}</select><button>搜索</button></div></form>`;
 }
 export function detailBody(page: Extract<TemplatePage, { kind: "detail" }>) {
   return `<section class="resource-detail"><a href="/${page.locale}/${escapeHtml(page.catalogPath)}">← 全部资源</a><p class="eyebrow">精选自 ${escapeHtml(page.site.name)}</p>${page.item.image ? `<img class="detail-image" src="${escapeHtml(page.item.image.url)}" alt="${escapeHtml(page.item.image.alt)}" loading="eager" decoding="async">` : ""}<h1>${escapeHtml(page.item.title)}</h1><p class="detail-description">${escapeHtml(page.item.description)}</p>${projectSummary(page.item.project)}${page.item.project ? `<p class="muted">Forks ${escapeHtml(page.item.project.forks)} · Issues ${escapeHtml(page.item.project.openIssues)} · ${page.item.project.topics.map(escapeHtml).join(" / ")}</p>` : ""}<div class="actions">${page.item.url ? `<a class="button" href="${escapeHtml(page.item.url)}" target="_blank" rel="noopener noreferrer">访问网站 ↗</a>` : ""}<button class="secondary favorite" data-id="${escapeHtml(page.item.resource_id)}">收藏</button></div><nav>${page.alternates.map((a) => `<a href="${escapeHtml(a.url)}">${a.locale === "zh" ? "中文" : "English"}</a>`).join(" · ")}</nav></section>`;

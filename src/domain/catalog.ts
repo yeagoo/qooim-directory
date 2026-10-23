@@ -128,10 +128,11 @@ export class Catalog {
       })
       .parse(input);
     const q = options.q.trim().replace(/[%_]/g, " ").slice(0, 200);
-    // Cards get the short rich fields only; long text stays on the detail page.
+    // Keep the filtered CTE to raw rows and score; labels and dates are only computed
+    // for the page that is actually returned. Cards get the short rich fields only.
     const { rows } = await this.pool.query(
       `WITH filtered AS (
-      SELECT ${columns("p", "p.details-ARRAY['content','faqs','features','useCases','pros','cons']")},
+      SELECT p.*,
         CASE WHEN $3='' THEN 0
           ELSE similarity(lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description),lower($3))
         END AS score
@@ -142,7 +143,8 @@ export class Catalog {
       AND ($8::text IS NULL OR ($8=ANY(p.tag_ids) AND ${visible("tag", "$8")}))
       AND ($5::uuid IS NULL OR EXISTS(SELECT 1 FROM favorite f WHERE f.site_id=p.site_id AND f.resource_id=p.resource_id AND f.user_id=$5))
     ), paged AS(SELECT * FROM filtered ORDER BY score DESC,rank,slug LIMIT $6 OFFSET $7)
-    SELECT (SELECT count(*)::int FROM filtered) AS total,COALESCE((SELECT jsonb_agg(to_jsonb(paged)-'score' ORDER BY score DESC,rank,slug) FROM paged),'[]'::jsonb) AS items`,
+    SELECT (SELECT count(*)::int FROM filtered) AS total,COALESCE((SELECT jsonb_agg(to_jsonb(r)-'score' ORDER BY r.score DESC,r.rank,r.slug)
+      FROM (SELECT ${columns("paged", "paged.details-ARRAY['content','faqs','features','useCases','pros','cons']")},paged.score FROM paged) r),'[]'::jsonb) AS items`,
       [
         ctx.siteId,
         options.locale,

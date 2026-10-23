@@ -14,6 +14,7 @@ const CONTENT = [
   "## Getting started",
   "",
   "Read the [docs](https://docs.example.com/start) first. A [bad link](javascript:alert(1)) stays inert.",
+  "External: [a](//evil.example/x) and [b](/\\evil.example).",
   "",
   '<script>alert("x")</script>',
   "",
@@ -166,6 +167,14 @@ test("P13 Markdown overview renders GFM and is sanitized", async () => {
   assert.match(
     overview,
     /<a href="https:\/\/docs\.example\.com\/start" target="_blank" rel="noopener noreferrer nofollow ugc">docs<\/a>/,
+  );
+  assert.match(
+    overview,
+    /<a href="\/\/evil\.example\/x" target="_blank" rel="noopener noreferrer nofollow ugc">a<\/a>/,
+  );
+  assert.match(
+    overview,
+    /<a href="\/%5Cevil\.example" target="_blank" rel="noopener noreferrer nofollow ugc">b<\/a>/,
   );
   // Raw HTML, unsafe link schemes and external images never reach the page.
   assert.doesNotMatch(overview, /<script/);

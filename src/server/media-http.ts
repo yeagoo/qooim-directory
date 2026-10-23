@@ -77,7 +77,17 @@ export async function mediaHttp(
             409,
             `图片的第 ${entry.version} 版仍被发布记录引用（含已下架内容），不能删除`,
           );
-      await media.remove(actor, id);
+      await media.remove(actor, id, async (client) => {
+        const usage = await content.mediaUsage(item.siteId, id, client);
+        if (usage.published || usage.draft)
+          throw new HttpError(409, "图片仍被已发布内容或草稿引用");
+        for (const entry of (await media.versions(actor, id)).versions)
+          if (await content.mediaVersionPinned(item.siteId, id, entry.version, client))
+            throw new HttpError(
+              409,
+              `图片的第 ${entry.version} 版仍被发布记录引用（含已下架内容），不能删除`,
+            );
+      });
       return Response.json({ ok: true });
     }
     return null;
@@ -100,7 +110,13 @@ export async function mediaHttp(
         409,
         `第 ${version} 版仍被发布记录引用（含已下架内容），不能删除`,
       );
-    await media.removeVersion(actor, id, version);
+    await media.removeVersion(actor, id, version, async (client) => {
+      if (await content.mediaVersionPinned(item.siteId, id, version, client))
+        throw new HttpError(
+          409,
+          `第 ${version} 版仍被发布记录引用（含已下架内容），不能删除`,
+        );
+    });
     return Response.json({ ok: true });
   }
   return null;

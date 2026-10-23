@@ -37,7 +37,7 @@ function ToolsListView({ page }: { page: Page }) {
   const current = page.result.page;
   const totalPages = Math.ceil(total / limit);
   const base = localePath("/tools");
-  const filtered = Boolean(page.q || page.category);
+  const filtered = Boolean(page.q || page.category || page.tag);
   const title = t("title");
   const translations = {
     searchPlaceholder: t("searchPlaceholder"),
