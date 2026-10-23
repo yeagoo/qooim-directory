@@ -977,22 +977,24 @@ export async function renderContent(
       aiBusy = true;
       aiApply.disabled = true;
       try {
-        const { id, locale } = aiTarget;
-        const rows = await api("/resources?q=" + encodeURIComponent(id));
-        const master = rows.find((row) => row.id === id);
-        if (!master) throw new Error("找不到资源主档 " + id);
+        const { id, locale, data, version, public: isPublic, internal_note } = aiTarget;
         await api("/resources", {
           id,
-          expectedVersion: master.version,
-          data: mergeEnrichment(master.data, locale, aiOutput),
-          public: master.public,
-          internalNote: master.internal_note,
+          expectedVersion: version,
+          data: mergeEnrichment(data, locale, aiOutput),
+          public: isPublic,
+          internalNote: internal_note,
         });
         aiResult.textContent = `已写入主档 ${id} 的新版本（${locale}）。请用“载入并比较主档新版”检查后保存草稿并发布。`;
         notice("富字段已写入主档新版本。");
       } catch (error) {
         aiApply.disabled = false;
-        notice("写入主档失败：" + error.message, true);
+        notice(
+          error.status === 409
+            ? "主档在生成后已被修改，请重新生成"
+            : "写入主档失败：" + error.message,
+          true,
+        );
       } finally {
         aiBusy = false;
       }
@@ -1024,11 +1026,13 @@ export async function renderContent(
       throw new Error("富字段补全会写入资源主档，需要站群管理员操作");
     if (kind === "enrich" && !selected)
       throw new Error("请先在发布记录中选择一个资源");
+    if (kind === "enrich" && !selected?.data?.translations?.[locale])
+      throw new Error(`主档还没有 ${locale} 的名称和说明，请先补录主档`);
     const candidate = JSON.parse(
       root.querySelector("#publication-candidate").value,
     );
     // Enrichment starts from the master's own text for this locale.
-    const master = kind === "enrich" ? selected.data?.translations?.[locale] : null;
+    const master = kind === "enrich" ? selected.data.translations[locale] : null;
     const title =
       master?.title ??
       candidate.overrides?.title ??
@@ -1041,11 +1045,28 @@ export async function renderContent(
       "";
     if (!title && !description)
       throw new Error("当前候选没有标题或说明可供 AI 参考");
+    let snapshot = null;
+    if (kind === "enrich") {
+      // Public/internal fields are not exposed on site publications; only the global
+      // administrator running enrichment can read them here. Data/version come from
+      // the selected publication row, so a master changed after this point is rejected.
+      const rows = await api("/resources?q=" + encodeURIComponent(selected.id));
+      const record = rows.find((row) => row.id === selected.id);
+      if (!record) throw new Error("找不到资源主档 " + selected.id);
+      snapshot = {
+        id: selected.id,
+        locale,
+        data: selected.data,
+        version: selected.resource_version,
+        public: record.public,
+        internal_note: record.internal_note,
+      };
+    }
     aiBusy = true;
     aiApply.disabled = true;
     aiOutput = null;
     aiKind = kind;
-    aiTarget = { id: selected?.id, locale };
+    aiTarget = snapshot ?? { id: selected?.id, locale };
     aiApply.textContent = kind === "enrich" ? "写入主档新版本" : "应用到候选 JSON";
     aiResult.textContent = "已提交，等待 Worker…";
     try {

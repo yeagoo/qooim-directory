@@ -976,6 +976,24 @@ export class Application {
         status: 308,
         headers: { location: "/" + url.search },
       });
+    // Query-string collection filters on the catalog root have a canonical term URL.
+    if (
+      parts.length === 3 &&
+      options.collection &&
+      /^[a-z][a-z0-9-]{0,63}$/.test(options.collection)
+    ) {
+      const params = new URLSearchParams(url.searchParams);
+      params.delete("collection");
+      const search = params.toString();
+      return new Response(null, {
+        status: 308,
+        headers: {
+          location:
+            `/${language}/${config.catalogPath}/collection/${options.collection}` +
+            (search ? "?" + search : ""),
+        },
+      });
+    }
     if ((path === "/" || localeRoot) && templateHasHome(config.template)) {
       const [featured, categories, lists] = await Promise.all([
         this.catalog.browse(ctx, { locale: language, limit: 12 }),
@@ -983,14 +1001,17 @@ export class Application {
         this.catalog.collections(ctx, language),
       ]);
       // The first four collections, eight entries each, in curated order.
-      const collections = await Promise.all(
-        lists.slice(0, 4).map(async (list) => ({
-          ...list,
-          items: (
-            await this.catalog.browse(ctx, { locale: language, collection: list.id, limit: 8 })
-          ).items,
-        })),
+      const shown = lists.slice(0, 4);
+      const items = await this.catalog.collectionItems(
+        ctx,
+        language,
+        shown.map((list) => list.id),
+        8,
       );
+      const collections = shown.map((list) => ({
+        ...list,
+        items: items.get(list.id) ?? [],
+      }));
       return this.html(
         renderHomeTemplate(config.template, {
           kind: "home",

@@ -3,6 +3,7 @@ import { before, after, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { setup, type Fixture } from "../p6/helpers.js";
 import { AiWorker, BUILTIN_PROMPTS, ENRICH_SYSTEM_PROMPT, SYSTEM_PROMPT, type AiTransport } from "../../src/server/ai.js";
+import { HttpError } from "../../src/server/operators.js";
 
 let f: Fixture;
 before(async () => {
@@ -42,7 +43,7 @@ function fake(output: unknown) {
   return { calls, transport };
 }
 const create = (kind: string) =>
-  f.app.ai.create(f.editor, {
+  f.app.ai.create(f.admin, {
     site: "atlas",
     kind,
     locale: "zh",
@@ -52,6 +53,36 @@ const create = (kind: string) =>
     brief: "",
   }) as Promise<{ id: string }>;
 const row = async (id: string) => (await f.pool.query("SELECT * FROM ai_job WHERE id=$1", [id])).rows[0];
+
+test("P13 enrich jobs and retries require a network administrator", async () => {
+  const input = {
+    site: "atlas",
+    kind: "enrich",
+    locale: "zh",
+    title: "Figma",
+    description: "在线设计工具",
+    url: "https://figma.com",
+    brief: "",
+  };
+  await assert.rejects(
+    f.app.ai.create(f.editor, input),
+    (error: unknown) => error instanceof HttpError && error.status === 403,
+  );
+  const job = await create("enrich");
+  await f.pool.query(
+    "UPDATE ai_job SET status='failed',error_code='invalid_output' WHERE id=$1",
+    [job.id],
+  );
+  await assert.rejects(
+    f.app.ai.retry(f.editor, job.id, { site: "atlas" }),
+    (error: unknown) => error instanceof HttpError && error.status === 403,
+  );
+  for (const kind of ["generate", "seo"]) {
+    const created = await f.app.ai.create(f.editor, { ...input, kind });
+    assert.equal(created.kind, kind);
+  }
+  assert.equal((await f.app.ai.retry(f.admin, job.id, { site: "atlas" })).kind, "enrich");
+});
 
 test("P13 enrich jobs use their own prompt and store the validated rich fields", async () => {
   const job = await create("enrich");

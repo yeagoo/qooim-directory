@@ -36,7 +36,9 @@ async function api(path, body) {
   const data = await response.json();
   if (!response.ok) {
     if (response.status === 401 && workspace) location.assign("/admin/login");
-    throw new Error(data.error || "操作失败");
+    const error = new Error(data.error || "操作失败");
+    error.status = response.status;
+    throw error;
   }
   return data;
 }

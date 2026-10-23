@@ -129,6 +129,13 @@ export class Catalog {
       })
       .parse(input);
     const q = options.q.trim().replace(/[%_]/g, " ").slice(0, 200);
+    const collectionJoin = options.collection
+      ? "LEFT JOIN collection_item ci ON ci.site_id=p.site_id AND ci.collection_id=$9 AND ci.resource_id=p.resource_id"
+      : "";
+    const collectionRank = options.collection ? "ci.rank" : "NULL::int";
+    const collectionFilter = options.collection
+      ? `AND (ci.resource_id IS NOT NULL AND ${visible("collection", "$9")})`
+      : "AND $9::text IS NULL";
     // Keep the filtered CTE to raw rows and score; labels and dates are only computed
     // for the page that is actually returned. Cards get the short rich fields only.
     const { rows } = await this.pool.query(
@@ -137,14 +144,14 @@ export class Catalog {
         CASE WHEN $3='' THEN 0
           ELSE similarity(lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description),lower($3))
         END AS score,
-        ci.rank AS collection_rank
+        ${collectionRank} AS collection_rank
       FROM public_listing p
-      LEFT JOIN collection_item ci ON $9::text IS NOT NULL AND ci.site_id=p.site_id AND ci.collection_id=$9 AND ci.resource_id=p.resource_id
+      ${collectionJoin}
       WHERE p.site_id=$1 AND p.locale=$2
       AND ($3='' OR lower(p.title||' '||p.description||' '||p.seo_title||' '||p.seo_description) LIKE '%'||lower($3)||'%')
       AND ($4::text IS NULL OR ($4=ANY(p.category_ids) AND ${visible("category", "$4")}))
       AND ($8::text IS NULL OR ($8=ANY(p.tag_ids) AND ${visible("tag", "$8")}))
-      AND ($9::text IS NULL OR (ci.resource_id IS NOT NULL AND ${visible("collection", "$9")}))
+      ${collectionFilter}
       AND ($5::uuid IS NULL OR EXISTS(SELECT 1 FROM favorite f WHERE f.site_id=p.site_id AND f.resource_id=p.resource_id AND f.user_id=$5))
     ), paged AS(SELECT * FROM filtered ORDER BY score DESC,collection_rank,rank,slug LIMIT $6 OFFSET $7)
     SELECT (SELECT count(*)::int FROM filtered) AS total,COALESCE((SELECT jsonb_agg(to_jsonb(r)-'score'-'collection_rank' ORDER BY r.score DESC,r.collection_rank,r.rank,r.slug)
@@ -167,6 +174,30 @@ export class Catalog {
       page: number;
       limit: number;
     };
+  }
+  /** First `limit` visible entries of each collection, in curated order, in one query. */
+  async collectionItems(ctx: SiteContext, locale: string, ids: string[], limit: number) {
+    this.check(ctx);
+    if (!ids.length) return new Map<string, PublicItem[]>();
+    const { rows } = await this.pool.query(
+      `WITH ranked AS (
+        SELECT i.collection_id,i.rank AS collection_rank,p.*,
+          row_number() OVER (PARTITION BY i.collection_id ORDER BY i.rank,p.rank,p.slug) AS item_position
+        FROM collection_item i
+        JOIN public_listing p ON p.site_id=i.site_id AND p.resource_id=i.resource_id
+        WHERE i.site_id=$1 AND i.collection_id=ANY($2::text[]) AND p.locale=$3
+          AND ${visible("collection", "i.collection_id", "p")}
+      ), limited AS (
+        SELECT * FROM ranked WHERE item_position <= $4
+      )
+      SELECT collection_id,COALESCE(jsonb_agg(to_jsonb(r)-'collection_id'-'item_position' ORDER BY r.item_position),'[]'::jsonb) AS items
+      FROM (SELECT limited.collection_id,limited.item_position,${columns("limited", "limited.details-ARRAY['content','faqs','features','useCases','pros','cons']")} FROM limited) r
+      GROUP BY collection_id`,
+      [ctx.siteId, ids, locale, limit],
+    );
+    return new Map(
+      rows.map((row) => [row.collection_id as string, row.items as PublicItem[]]),
+    );
   }
   async detail(ctx: SiteContext, locale: string, slug: string) {
     this.check(ctx);

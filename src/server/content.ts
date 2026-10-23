@@ -377,7 +377,8 @@ export class Content {
     await this.operators.require(actor);
     return (
       await this.pool.query(
-        "SELECT id,version,data,public,internal_note FROM resource WHERE strpos(lower(id),lower($1))>0 ORDER BY id LIMIT 100 OFFSET $2",
+        // An exact identifier match sorts first, so a lookup by id finds it on page 1.
+        "SELECT id,version,data,public,internal_note FROM resource WHERE strpos(lower(id),lower($1))>0 ORDER BY lower(id)=lower($1) DESC,id LIMIT 100 OFFSET $2",
         [
           z.string().max(200).parse(query),
           (z.coerce.number().int().min(1).max(100000).parse(page) - 1) * 100,

@@ -438,6 +438,7 @@ export class AiService {
   async create(actor: Operator, input: unknown) {
     const value = jobInput.parse(input);
     await this.operators.require(actor, value.site, true);
+    if (value.kind === "enrich") await this.operators.require(actor);
     if (!value.title && !value.description)
       throw new HttpError(400, "至少提供标题或说明");
     const version = await this.admit(this.pool, value.site, value.kind);
@@ -545,6 +546,8 @@ export class AiService {
         )
       ).rows[0];
       if (!job) throw new HttpError(404, "任务不存在");
+      if (job.kind === "enrich")
+        await this.operators.require(actor, undefined, false, client);
       if (job.status !== "failed" && job.status !== "cancelled")
         throw new HttpError(409, "只有失败或已取消的任务可以重试");
       const existing = (

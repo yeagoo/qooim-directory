@@ -140,3 +140,33 @@ test("P13 collection pages are routed, indexable and list hreflang only where th
   ])
     assert.equal((await get(path)).status, 404, path);
 });
+
+test("P13 catalog root redirects collection filters to the canonical collection page", async () => {
+  const response = await get(`/zh/${catalogPath}?collection=hot&q=a&page=2`);
+  assert.equal(response.status, 308);
+  assert.equal(
+    response.headers.get("location"),
+    `/zh/${catalogPath}/collection/hot?q=a&page=2`,
+  );
+  // Invalid identifiers are ignored rather than becoming redirect targets.
+  const invalid = await get(`/zh/${catalogPath}?collection=Not%20Valid`);
+  assert.equal(invalid.status, 200);
+  assert.equal(invalid.headers.get("location"), null);
+  // The JSON search API keeps accepting collection=.
+  assert.deepEqual(slugs(await json("/api/search?locale=zh&collection=hot")), ["a", "b"]);
+});
+
+test("P13 resource search lists the exact identifier first", async () => {
+  // "a-z" sorts before "z" and also contains it; the exact id still comes first.
+  await f.app.content.saveResource(f.admin, {
+    id: "a-z",
+    expectedVersion: 0,
+    public: true,
+    data: { url: "https://example.com/a-z", source: "manual", translations: { zh: { title: "a-z", description: "x" } } },
+  });
+  const rows = await f.app.content.resources(f.admin, "z");
+  assert.deepEqual(
+    rows.map((row: { id: string }) => row.id),
+    ["z", "a-z"],
+  );
+});

@@ -83,6 +83,52 @@ test("P13 admin writes an AI enrichment into a new master version", async () => 
   }
 });
 
+test("P13 enrichment refuses to overwrite a master changed after generation", async () => {
+  const output = { tagline: "竞态口号", features: ["竞态"] };
+  const transport: AiTransport = async () => ({ output, tokensIn: 1, tokensOut: 1, model: "m" });
+  const worker = new AiWorker(f.pool, f.key, transport);
+  const session = await f.browse(f.admin, "#content/atlas");
+  const { page } = session;
+  let polling = true;
+  const loop = (async () => {
+    while (polling) {
+      await worker.runOnce();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  })();
+  try {
+    await page.locator(".edit-publication").first().click();
+    await page.locator("#ai-kind").selectOption("enrich");
+    await page.locator("#ai-run").click();
+    await page.waitForFunction(() => {
+      const button = document.querySelector<HTMLButtonElement>("#ai-apply");
+      return button && !button.disabled && button.textContent === "写入主档新版本";
+    });
+    const current = (await f.pool.query("SELECT version,data,public,internal_note FROM resource WHERE id='figma'")).rows[0];
+    const other = structuredClone(current.data);
+    other.translations.zh.title = "另一位编辑";
+    const version = await f.app.content.saveResource(f.admin, {
+      id: "figma",
+      expectedVersion: current.version,
+      data: other,
+      public: current.public,
+      internalNote: current.internal_note,
+    });
+    await page.locator("#ai-apply").click();
+    await page.waitForFunction(() => document.querySelector("#message")?.textContent === "主档在生成后已被修改，请重新生成");
+    const master = (await f.pool.query("SELECT version,data FROM resource WHERE id='figma'")).rows[0];
+    assert.equal(master.version, version);
+    assert.equal(master.data.translations.zh.title, "另一位编辑");
+    // The other writer's master is kept as it was; the stale AI fields were not merged in.
+    assert.deepEqual(master.data, other);
+    assert.deepEqual(JSON.parse(await page.locator("#ai-result").textContent() ?? "{}"), output);
+  } finally {
+    polling = false;
+    await loop;
+    await session.close();
+  }
+});
+
 test("P13 enrichment needs a network administrator", async () => {
   const session = await f.browse(f.editor, "#content/atlas");
   try {
