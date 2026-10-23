@@ -9,7 +9,7 @@ const escape = (value) =>
   );
 function notice(text) {
   message.textContent = text;
-  message.className = text ? "notice" : "";
+  message.classList.toggle("notice", !!text);
 }
 let actionVersion = 0,
   confirmation = null;

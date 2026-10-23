@@ -1,26 +1,150 @@
-// Per-page <head> data (title, description, image, JSON-LD). Placeholder: titles only.
-import type { TemplateHomePage, TemplatePage } from "../../../public/sdk.js";
+// Ported from toolso-ai-open src/lib/metadata.ts (title template, __BRAND__ substitution) and the
+// generateMetadata/JSON-LD blocks of src/app/[locale]/(marketing)/{page,tools/page,category/[slug]/page,
+// tools/[slug]/page}.tsx (Apache-2.0, Copyright 2025 CoolChange.AI).
+// Changes: computed from the template page DTO only. These functions run while the props for
+// <Document> are built, i.e. before Document calls provide(), so they must not touch the render
+// context (context()/translator()/localePath()); messages are looked up with the page's own locale.
+// Titles get the "%s · Brand" template unless they already contain the brand. See NOTICE.md.
+import type { PublicCategory, PublicResource, TemplateHomePage, TemplatePage } from "../../../public/sdk.js";
 import type { Seo } from "../document.js";
+import { messages } from "../i18n/messages.js";
+import {
+  buildBreadcrumbList,
+  buildItemList,
+  buildOrganization,
+  buildSoftwareApplication,
+  buildWebSite,
+  type BreadcrumbItem,
+} from "./jsonld.js";
 
 type Directory = Extract<TemplatePage, { kind: "directory" }>;
 type Detail = Extract<TemplatePage, { kind: "detail" }>;
 type Missing = Extract<TemplatePage, { kind: "missing" }>;
+type Base = Pick<TemplateHomePage, "site" | "origin" | "catalogPath" | "locale">;
+type Locale = keyof typeof messages;
 
-export const homeSeo = (page: TemplateHomePage): Seo => ({
-  title: page.site.name,
-  description: page.site.tagline ?? "",
-});
-export const directorySeo = (page: Directory): Seo => ({
-  title: page.categoryPage ? `${page.categoryPage.label} · ${page.site.name}` : page.site.name,
-  description: page.site.tagline ?? "",
-});
-export const detailSeo = (page: Detail): Seo => ({
-  title: page.item.seo_title || page.item.title,
-  description: page.item.seo_description || page.item.description,
-  image: page.item.image?.url,
-  type: "article",
-});
-export const missingSeo = (page: Missing): Seo => ({
-  title: page.site.name,
-  description: page.site.tagline ?? "",
-});
+const localeOf = (page: Base): Locale => (page.locale === "en" ? "en" : "zh");
+
+/** messages lookup with the same fallback as runtime.ts (page locale, then en), plus {name} values and __BRAND__. */
+function message(page: Base, key: string, values: Record<string, string | number> = {}): string {
+  const walk = (root: unknown) =>
+    key
+      .split(".")
+      .reduce<unknown>(
+        (node, part) => (node && typeof node === "object" ? (node as Record<string, unknown>)[part] : undefined),
+        root,
+      );
+  const found = walk(messages[localeOf(page)]) ?? walk(messages.en);
+  const text = typeof found === "string" ? found : key;
+  return text
+    .replace(/\{(\w+)\}/g, (whole, name: string) => (name in values ? String(values[name]) : whole))
+    .replaceAll("__BRAND__", page.site.name);
+}
+
+/** toolso generatePageMetadata: apply the per-site title template unless the brand is already there. */
+function titled(page: Base, title: string) {
+  const brand = page.site.name;
+  if (!title) return brand;
+  return title.includes(brand) ? title : `${title} · ${brand}`;
+}
+
+// Absolute URLs, matching runtime.ts localePath(): the default locale's home is "/", others "/<locale>".
+const homeUrl = (page: Base) =>
+  page.origin + (page.locale === (page.site.locales[0] ?? page.locale) ? "/" : `/${page.locale}`);
+const catalogUrl = (page: Base) => `${page.origin}/${page.locale}/${page.catalogPath}`;
+const categoryUrl = (page: Base, id: string) => `${catalogUrl(page)}/category/${encodeURIComponent(id)}`;
+const itemUrl = (page: Base, item: Pick<PublicResource, "locale" | "slug">) =>
+  `${page.origin}/${item.locale}/${page.catalogPath}/${item.slug}`;
+const absolute = (page: Base, url: string | null | undefined) => {
+  if (!url) return undefined;
+  try {
+    return new URL(url, page.origin).toString();
+  } catch {
+    return undefined;
+  }
+};
+
+const homeCrumb = (page: Base): BreadcrumbItem => ({ name: message(page, "tools.detail.home"), url: homeUrl(page) });
+const catalogCrumb = (page: Base): BreadcrumbItem => ({ name: message(page, "tools.title"), url: catalogUrl(page) });
+
+export function homeSeo(page: TemplateHomePage): Seo {
+  const tagline = page.site.tagline?.trim();
+  return {
+    title: tagline ? titled(page, tagline) : page.site.name,
+    description: tagline || message(page, "seo.tools.description"),
+    jsonLd: [
+      buildWebSite({
+        name: page.site.name,
+        description: tagline,
+        url: homeUrl(page),
+        locale: page.locale,
+        searchUrl: catalogUrl(page),
+      }),
+      buildOrganization({ name: page.site.name, url: page.origin + "/" }),
+    ],
+  };
+}
+
+export function directorySeo(page: Directory): Seo {
+  const category: PublicCategory | undefined = page.categoryPage;
+  const pageSuffix = page.result.page > 1 ? ` · ${message(page, "tools.category.page", { page: page.result.page })}` : "";
+  const listName = category ? category.label : message(page, "tools.title");
+  const items = page.result.items.map((item) => ({ name: item.title, url: itemUrl(page, item) }));
+  if (category) {
+    const browse = message(page, "tools.category.browseCategory", { category: category.label });
+    return {
+      // toolso: `${category.name} · ${browseCategory}`
+      title: titled(page, `${category.label} · ${browse}${pageSuffix}`),
+      description: browse,
+      jsonLd: [
+        buildBreadcrumbList([
+          homeCrumb(page),
+          catalogCrumb(page),
+          { name: category.label, url: categoryUrl(page, category.id) },
+        ]),
+        buildItemList(listName, items),
+      ],
+    };
+  }
+  return {
+    title: titled(page, (page.q ? `${page.q} · ` : "") + listName + pageSuffix),
+    description: page.site.tagline?.trim() || message(page, "seo.tools.description"),
+    jsonLd: [buildItemList(listName, items)],
+  };
+}
+
+export function detailSeo(page: Detail): Seo {
+  const item = page.item;
+  const category = item.category_id ? page.categories?.find((c) => c.id === item.category_id) : undefined;
+  const url = itemUrl(page, item);
+  const description = item.seo_description || item.description || `${message(page, "tools.subtitle")} - ${item.title}`;
+  return {
+    // An editor's SEO title wins; otherwise toolso's `${tool.name} - ${listLabel}`.
+    title: titled(page, item.seo_title || `${item.title} - ${message(page, "tools.title")}`),
+    description,
+    image: item.image?.url,
+    type: "article",
+    jsonLd: [
+      buildSoftwareApplication({
+        name: item.title,
+        description: item.description || item.seo_description,
+        url: item.url || url,
+        image: absolute(page, item.image?.url),
+        applicationSubCategory: category?.label,
+      }),
+      buildBreadcrumbList([
+        homeCrumb(page),
+        catalogCrumb(page),
+        ...(category ? [{ name: category.label, url: categoryUrl(page, category.id) }] : []),
+        { name: item.title, url },
+      ]),
+    ],
+  };
+}
+
+export function missingSeo(page: Missing): Seo {
+  return {
+    title: titled(page, message(page, "errors.404.title")),
+    description: message(page, "errors.404.message"),
+  };
+}

@@ -608,3 +608,20 @@ html.js .site-reveal {
     opacity: 1;
   }
 }
+
+/* Qoo.IM: the AGPL source link the server appends after every template's markup. */
+body > footer[aria-label="Source"] {
+  position: relative;
+  z-index: 1;
+  padding: 1.25rem 1rem 2rem;
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: hsl(var(--muted-foreground));
+}
+body > footer[aria-label="Source"] a {
+  transition: color 0.2s ease;
+}
+body > footer[aria-label="Source"] a:hover {
+  color: hsl(var(--foreground));
+}

@@ -34,7 +34,7 @@
     "test:p9": "node scripts/test-p0.mjs tests/p9/foundation.test.ts tests/p9/prompts.test.ts tests/p9/billing.test.ts",
     "test:p10": "node scripts/test-p0.mjs tests/p10/migration.test.ts tests/p10/unified.test.ts tests/p10/ui.test.ts",
     "test:p11": "node scripts/test-p0.mjs tests/p11/foundation.test.ts tests/p11/media.test.ts tests/p11/access-ui.test.ts",
-    "test:p12": "node scripts/test-p0.mjs tests/p12/render.test.ts tests/p12/browser.test.ts",
+    "test:p12": "node scripts/test-p0.mjs tests/p12/render.test.ts tests/p12/home.test.ts tests/p12/catalog.test.ts tests/p12/browser.test.ts",
     "test:capacity": "node scripts/test-p0.mjs tests/p5/capacity.test.ts",
     "release:check": "node scripts/release.mjs check",
     "test:release": "node --test tests/p5/release.test.mjs",
