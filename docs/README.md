@@ -52,6 +52,11 @@
 | [M14 验收记录](ACCEPTANCE-M14-20261024.md) | sitemap 分片、RSS、替代品页、A vs B 对比页，回归结果 |
 | [M15 验收记录](ACCEPTANCE-M15-20261024.md) | 投稿自动填充、徽章、静态页面，回归结果 |
 | [M16 验收记录](ACCEPTANCE-M16-20261024.md) | 投稿附图、经典模板富字段、镜像裁剪 |
+| [M17 验收记录](ACCEPTANCE-M17-20261024.md) | 新站点默认 toolso 模板 |
+| [M18 开发方案](PLAN-M18-DISTRIBUTION.md) | persona 与统一分发的决策和 Codex 修订 |
+| [M18 验收记录](ACCEPTANCE-M18-20261025.md) | 站点 persona、统一分发、定时发布、AI 额度预扣、手动模式 |
+| [M19 验收记录](ACCEPTANCE-M19-20261025.md) | 后台方案 3 改版 |
+| [rc.3 镜像复核材料](IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md) | v0.2.0-rc.3 候选镜像证据，待 QooIM 确认 |
 | [M11 验收记录](ACCEPTANCE-M11-20261023.md) | 按角色显示操作、媒体提交后删除、单条候选审核修复 |
 | [M2 验收记录](ACCEPTANCE-M2-20261021.md) | 站点级 Passkey、虚拟认证器测试、升级与安全边界 |
 | [M3 验收记录](ACCEPTANCE-M3-20261021.md) | 媒体库、图片发布、加密媒体备份与恢复 |

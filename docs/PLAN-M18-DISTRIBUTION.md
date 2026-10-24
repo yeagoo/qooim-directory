@@ -1,6 +1,6 @@
 # M18 plan: site personas and multi-site distribution
 
-Status: draft for Codex review (2026-10-24). Base: main with M17 (admin redesign, toolso default) merged.
+Status: implemented in M18 (2026-10-25); see docs/ACCEPTANCE-M18-20261025.md. Planned 2026-10-24 and revised after Codex review. Base: main with M17 (admin redesign, toolso default) merged.
 
 ## Decisions confirmed by QooIM
 
