@@ -1,7 +1,7 @@
 {
   "format": 1,
   "reviewedAt": "2026-10-21",
-  "lockfileSha256": "70a3be3688f38fd5af564cc5b691098b2177c3ab70f5b8a3a83129a52d9123e8",
+  "lockfileSha256": "d4c5724824982881cd8477589301889f4b4c21ac2142b6612949773c27a309dd",
   "notices": [
     {
       "name": "@esbuild/linux-arm64",
@@ -121,6 +121,7 @@
       "react-markdown": "10.1.0",
       "remark-gfm": "4.0.1",
       "tailwind-merge": "2.6.0",
+      "tsx": "4.23.15",
       "zod": "4.6.7"
     },
     "devDependencies": {
@@ -133,7 +134,6 @@
       "@types/react-dom": "19.3.0",
       "geist": "1.5.1",
       "tailwindcss": "3.4.17",
-      "tsx": "4.23.15",
       "typescript": "5.9.3"
     }
   },

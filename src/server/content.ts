@@ -1113,7 +1113,7 @@ export class Content {
     id: string,
     input: unknown,
     media?: Media,
-  ) {
+  ): Promise<{ resourceId: string | null; imageError?: string }> {
     await this.operators.require(actor, site, true);
     z.uuid().parse(id);
     const value = z
