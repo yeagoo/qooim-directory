@@ -436,6 +436,9 @@ export class Application {
         await this.pool.query("SELECT 1 FROM schema_migration LIMIT 1");
         return this.json({ status: "ok" });
       }
+      // The admin origin's root goes to the console, which sends signed-out visitors to login.
+      if (path === "/" && request.method === "GET")
+        return Response.redirect(this.config.adminOrigin + "/admin", 303);
       if (path === "/admin/login" && request.method === "GET")
         return this.html(adminLogin());
       if (path === "/admin/api/login" && request.method === "POST") {
