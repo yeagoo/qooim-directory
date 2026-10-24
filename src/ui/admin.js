@@ -91,7 +91,18 @@ async function load() {
     notice(error.message, true);
   }
 }
+// Marks the sidebar link for the current section (site pages belong to the overview).
+function markNav() {
+  const section = location.hash.match(/^#([a-z]+)/)?.[1] ?? "";
+  for (const link of document.querySelectorAll("#nav a")) {
+    const target = new URL(link.href).hash.slice(1);
+    if (target === section || (!target && (!section || section === "site")))
+      link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  }
+}
 async function render() {
+  markNav();
   if (!me) return;
   cancelContentRender(workspace);
   cancelGithubRender(workspace);
