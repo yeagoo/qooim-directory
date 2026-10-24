@@ -44,6 +44,8 @@ import { GithubSources } from "./github.js";
 import { githubHttp } from "./github-http.js";
 import { Content, webUrl } from "./content.js";
 import { contentHttp } from "./content-http.js";
+import { Distribution } from "./distribution.js";
+import { distributionHttp } from "./distribution-http.js";
 import { AiService } from "./ai.js";
 import { Collectors } from "./collectors.js";
 import { collectorsHttp } from "./collectors-http.js";
@@ -86,6 +88,7 @@ export class Application {
   readonly auth: AuthRegistry;
   readonly catalog: Catalog;
   readonly content: Content;
+  readonly distribution: Distribution;
   readonly personal: Personal;
   readonly metadata: MetadataService;
   readonly github: GithubSources;
@@ -126,6 +129,7 @@ export class Application {
     );
     this.catalog = new Catalog(pool);
     this.content = new Content(pool);
+    this.distribution = new Distribution(pool, this.content);
     this.personal = new Personal(pool);
     this.metadata = new MetadataService(pool, config.metadataFetcher);
     this.github = new GithubSources(pool, this.content);
@@ -415,6 +419,8 @@ export class Application {
               ? "github-admin.js"
               : path === "/assets/content-admin.js" && admin
                 ? "content-admin.js"
+                : path === "/assets/distribution-admin.js" && admin
+                  ? "distribution-admin.js"
                 : path === "/assets/directory.js" && !admin
                   ? "directory.js"
                   : path === "/assets/toolso.js" && !admin
@@ -538,6 +544,14 @@ export class Application {
         () => this.body(request),
       );
       if (githubResponse) return githubResponse;
+      const distributionResponse = await distributionHttp(
+        this.distribution,
+        operator,
+        action,
+        request,
+        () => this.body(request),
+      );
+      if (distributionResponse) return distributionResponse;
       const contentResponse = await contentHttp(
         this.content,
         operator,

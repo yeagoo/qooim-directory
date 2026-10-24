@@ -212,7 +212,7 @@ function parseOutput(content: string): unknown {
     throw new Error("invalid_output");
   }
 }
-async function providerRequest(input: Parameters<AiTransport>[0]) {
+export async function providerRequest(input: Parameters<AiTransport>[0]) {
   const url = new URL(input.endpoint),
     host = url.hostname.replace(/^\[|\]$/g, ""),
     addresses = await lookup(host, { all: true, verbatim: true });
@@ -566,6 +566,9 @@ export class AiService {
         )
       ).rows[0];
       if (!job) throw new HttpError(404, "任务不存在");
+      // Distribution jobs are retried through their task, which re-reserves the budget.
+      if (job.kind === "distribute")
+        throw new HttpError(409, "分发任务请在统一分发页面重试");
       if (job.kind === "enrich")
         await this.operators.require(actor, undefined, false, client);
       if (job.status !== "failed" && job.status !== "cancelled")
@@ -672,12 +675,12 @@ export class AiWorker {
   }
   async runOnce() {
     await this.pool.query(
-      "UPDATE ai_job SET status='pending',lease_token=NULL,lease_until=NULL WHERE status='processing' AND lease_until<now()",
+      "UPDATE ai_job SET status='pending',lease_token=NULL,lease_until=NULL WHERE status='processing' AND kind<>'distribute' AND lease_until<now()",
     );
     const row = (
       await this.pool.query(
         `UPDATE ai_job SET status='processing',attempts=attempts+1,lease_token=gen_random_uuid(),lease_until=now()+interval '2 minutes'
-         WHERE id=(SELECT id FROM ai_job WHERE status='pending' AND available_at<=now() ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
+         WHERE id=(SELECT id FROM ai_job WHERE status='pending' AND kind<>'distribute' AND available_at<=now() ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
          RETURNING id,site_id,kind,prompt_version,payload,attempts,lease_token`,
       )
     ).rows[0] as (AiJobRow & { lease_token: string }) | undefined;
@@ -780,7 +783,8 @@ export async function monthlyTokensUsed(
 ) {
   const row = (
     await db.query(
-      `SELECT (coalesce((SELECT sum(tokens_in+tokens_out) FROM ai_job
+      // A queued distribution job counts its reservation until it finishes.
+      `SELECT (coalesce((SELECT sum(greatest(tokens_in+tokens_out,CASE WHEN status IN ('pending','processing') THEN reserved_tokens ELSE 0 END)) FROM ai_job
                  WHERE site_id=$1 AND created_at>=date_trunc('month',now())
                    AND ($2::uuid IS NULL OR id<>$2::uuid)),0)
              + coalesce((SELECT tokens_in+tokens_out FROM ai_usage_month

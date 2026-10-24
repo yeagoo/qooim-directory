@@ -128,7 +128,7 @@ const bundleSchema = z
   );
 // The candidate a published row was made from (site fields only; resourceVersion is set by the caller).
 // Extra categories and tags are included only when present, so pre-M13a entries keep their shape.
-function publishedCandidate(row: {
+export function publishedCandidate(row: {
   slug: string;
   category_id: string | null;
   category_ids?: string[] | null;
@@ -189,12 +189,12 @@ export class Content {
     const version = value.expectedVersion + 1;
     if (row)
       await c.query(
-        "UPDATE resource SET version=$2,data=$3,public=$4,internal_note=$5 WHERE id=$1",
+        "UPDATE resource SET version=$2,content_version=$2,data=$3,public=$4,internal_note=$5 WHERE id=$1",
         [value.id, version, value.data, value.public, value.internalNote],
       );
     else
       await c.query(
-        "INSERT INTO resource(id,version,data,public,internal_note) VALUES($1,$2,$3,$4,$5)",
+        "INSERT INTO resource(id,version,content_version,data,public,internal_note) VALUES($1,$2,$2,$3,$4,$5)",
         [value.id, version, value.data, value.public, value.internalNote],
       );
     await c.query("INSERT INTO resource_revision VALUES($1,$2,$3)", [
@@ -680,7 +680,7 @@ export class Content {
       )
     ).rows;
   }
-  private async lock(
+  async lock(
     c: PoolClient,
     site: string,
     resource: string,
@@ -831,7 +831,22 @@ export class Content {
     const { candidate, expected } = z
       .strictObject({ candidate: candidateSchema, expected: expectedSchema })
       .parse(input);
-    return transaction(this.pool, async (c) => {
+    return transaction(this.pool, (c) =>
+      this.stageWith(c, actor, site, resource, locale, candidate, expected),
+    );
+  }
+  // Shared by interactive staging and distribution; the caller holds the transaction.
+  async stageWith(
+    c: PoolClient,
+    actor: Operator,
+    site: string,
+    resource: string,
+    locale: string,
+    candidate: z.infer<typeof candidateSchema>,
+    expected: Expected,
+    detail: Record<string, unknown> = {},
+  ) {
+    {
       await this.lock(c, site, resource, locale);
       await this.operators.require(actor, site, true, c);
       const pub = (
@@ -858,12 +873,15 @@ export class Content {
         "INSERT INTO content_draft(site_id,resource_id,locale,candidate,version) VALUES($1,$2,$3,$4,$5) ON CONFLICT(site_id,resource_id,locale) DO UPDATE SET candidate=$4,version=$5",
         [site, resource, locale, candidate, expected.draft + 1],
       );
+      // A schedule belongs to the draft it was set for; new content needs a new one.
+      await cancelSchedules(c, site, resource, locale);
       await this.audit(c, actor, site, "publication.stage", {
         resource,
         locale,
+        ...detail,
       });
       return expected.draft + 1;
-    });
+    }
   }
   async preview(
     actor: Operator,
@@ -904,12 +922,26 @@ export class Content {
     const value = z
       .strictObject({ expected: expectedSchema, operationId: z.uuid() })
       .parse(input);
+    return transaction(this.pool, (c) =>
+      this.publishWith(c, actor, site, resource, locale, value),
+    );
+  }
+  // Shared by interactive and scheduled publishing; the caller holds the transaction.
+  async publishWith(
+    c: PoolClient,
+    actor: Operator,
+    site: string,
+    resource: string,
+    locale: string,
+    value: { expected: Expected; operationId: string },
+    detail: Record<string, unknown> = {},
+  ): Promise<number> {
     const fingerprint = createHash("sha256")
       .update(
         JSON.stringify({ site, resource, locale, expected: value.expected }),
       )
       .digest("hex");
-    return transaction(this.pool, async (c) => {
+    {
       await this.lock(c, site, resource, locale);
       await this.operators.require(actor, site, true, c);
       const previous = (
@@ -987,13 +1019,15 @@ export class Content {
         fingerprint,
         version,
       ]);
+      await cancelSchedules(c, site, resource, locale);
       await this.audit(c, actor, site, "publication.publish", {
         resource,
         locale,
         version,
+        ...detail,
       });
       return version;
-    });
+    }
   }
   async unpublish(
     actor: Operator,
@@ -1013,6 +1047,7 @@ export class Content {
         )
       ).rows[0];
       if (!row) throw new Conflict("Publication version changed");
+      await afterUnpublish(c, site, resource, locale);
       await this.audit(c, actor, site, "publication.unpublish", {
         resource,
         locale,
@@ -1338,7 +1373,7 @@ export class Content {
         if (!s) throw new HttpError(404, "站点不存在");
         const row = (
           await c.query(
-            "SELECT p.status,p.module,p.category_id,r.public,r.version,p.source_version FROM publication p JOIN resource r ON r.id=p.resource_id WHERE p.site_id=$1 AND p.resource_id=$2 AND p.locale=$3",
+            "SELECT p.status,p.module,p.category_id,r.public,r.content_version AS version,p.source_version FROM publication p JOIN resource r ON r.id=p.resource_id WHERE p.site_id=$1 AND p.resource_id=$2 AND p.locale=$3",
             [site, id, locale],
           )
         ).rows[0];
@@ -1374,12 +1409,40 @@ export class Content {
         return {
           visible,
           reasons,
-          sourceUpdate: !!row && row.version > row.source_version,
+          // source_version 0 predates tracking: unknown, not stale.
+          sourceUpdate:
+            !!row && row.source_version > 0 && row.version > row.source_version,
         };
       },
       true,
     );
   }
+}
+// Pending schedules for a pair are void once its draft or publication changes.
+export async function cancelSchedules(
+  c: PoolClient,
+  site: string,
+  resource: string,
+  locale: string,
+) {
+  await c.query(
+    "UPDATE scheduled_publish SET state='cancelled',completed_at=now(),error='superseded' WHERE site_id=$1 AND resource_id=$2 AND locale=$3 AND state='pending'",
+    [site, resource, locale],
+  );
+}
+// Unpublishing cancels pending schedules and drops a primary-site pin that no
+// longer has any published locale.
+export async function afterUnpublish(
+  c: PoolClient,
+  site: string,
+  resource: string,
+  locale: string,
+) {
+  await cancelSchedules(c, site, resource, locale);
+  await c.query(
+    "UPDATE resource SET primary_site_id=NULL WHERE id=$1 AND primary_site_id=$2 AND NOT EXISTS(SELECT 1 FROM publication WHERE resource_id=$1 AND site_id=$2 AND status='published')",
+    [resource, site],
+  );
 }
 export const submissionInput = z.strictObject({
   locale: localeSchema,

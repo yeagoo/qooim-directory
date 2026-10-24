@@ -65,7 +65,9 @@ fieldset{border-radius:10px}
 .account-layout{background:var(--surface);border-radius:16px;overflow:hidden}.account-story{background:var(--rail);color:var(--rail-ink)}.account-story h1,.account-story .brand{color:#fff}
 .footer{color:var(--muted)}.footer a{color:var(--muted)}body>.footer{text-align:center;padding:28px 16px}
 @media(max-width:850px){.shell{display:block}.sidebar{position:static;height:auto;padding:14px 16px}.sidebar nav{margin-top:10px;flex-direction:row}.sidebar a[aria-current=page]::before{display:none}.sidebar .footer{display:none}.content{padding:20px 16px 48px}.login{margin:6vh 16px;padding:28px}}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}`;
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+:where(:not(.actions,.row))>button+button{margin-left:8px}
+textarea.short{min-height:96px}.badge.stale{background:var(--danger-soft);color:var(--danger)}label+small,input+small,select+small,textarea+small{display:block;color:var(--muted);margin-top:4px}`;
 export function document(
   title: string,
   body: string,
@@ -92,7 +94,7 @@ export function staticPage(
     .filter(Boolean)
     .map((paragraph) => `<p>${escape(paragraph).replace(/\n/g, "<br>")}</p>`)
     .join("");
-  const head = `<meta name="description" content="${escape(description)}"><link rel="canonical" href="${escape(canonical)}"><meta property="og:title" content="${escape(page.title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${escape(canonical)}">${alternates.map((alternate) => `<link rel="alternate" hreflang="${escape(alternate.locale)}" href="${escape(alternate.url)}">`).join("")}:where(:not(.actions,.row))>button+button{margin-left:8px}`;
+  const head = `<meta name="description" content="${escape(description)}"><link rel="canonical" href="${escape(canonical)}"><meta property="og:title" content="${escape(page.title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${escape(canonical)}">${alternates.map((alternate) => `<link rel="alternate" hreflang="${escape(alternate.locale)}" href="${escape(alternate.url)}">`).join("")}`;
   return document(
     page.title + " · " + siteName,
     `<main class="public"><header><a class="brand" href="/">${escape(siteName)}</a><nav><a href="/">返回目录</a></nav></header><article class="resource-detail"><h1>${escape(page.title)}</h1>${paragraphs}</article></main>`,
@@ -104,7 +106,7 @@ export function staticPage(
 export function adminPage() {
   return document(
     "站群工作台",
-    `<div class="shell"><aside class="sidebar"><div class="brand">Qoo.IM Directory<span>站群工作台</span></div><nav id="nav"><a href="/admin">站点总览</a><a href="/admin#resources">资源主档</a><a href="/admin#github">开源项目</a><a href="/admin#team">成员权限</a><a href="/admin#tasks">运行任务</a><a href="/admin#audit">审计日志</a></nav><p class="footer">一个后台，管理每个独立站点。</p></aside><main class="content"><div class="topline"><span class="eyebrow">工作台 / 站群管理</span><div class="row"><span id="account" class="muted"></span><button class="secondary" id="logout">退出</button></div></div><div id="message" role="status" aria-live="polite"></div><div id="workspace"><p>正在加载站点…</p></div></main></div>`,
+    `<div class="shell"><aside class="sidebar"><div class="brand">Qoo.IM Directory<span>站群工作台</span></div><nav id="nav"><a href="/admin">站点总览</a><a href="/admin#resources">资源主档</a><a href="/admin#distribute">统一分发</a><a href="/admin#github">开源项目</a><a href="/admin#team">成员权限</a><a href="/admin#tasks">运行任务</a><a href="/admin#audit">审计日志</a></nav><p class="footer">一个后台，管理每个独立站点。</p></aside><main class="content"><div class="topline"><span class="eyebrow">工作台 / 站群管理</span><div class="row"><span id="account" class="muted"></span><button class="secondary" id="logout">退出</button></div></div><div id="message" role="status" aria-live="polite"></div><div id="workspace"><p>正在加载站点…</p></div></main></div>`,
     "/assets/admin.js",
   );
 }
