@@ -38,7 +38,7 @@
     "test:p13": "node scripts/test-p0.mjs tests/p13/migration.test.ts tests/p13/content.test.ts tests/p13/template.test.ts tests/p13/collections.test.ts tests/p13/collections-template.test.ts tests/p13/enrich.test.ts tests/p13/admin-ui.test.ts",
     "test:p14": "node scripts/test-p0.mjs tests/p14/seo.test.ts tests/p14/alternatives-template.test.ts tests/p14/compare.test.ts tests/p14/compare-template.test.ts",
     "test:p15": "node scripts/test-p0.mjs tests/p15/metadata.test.ts tests/p15/badge.test.ts tests/p15/pages.test.ts",
-    "test:p16": "node scripts/test-p0.mjs tests/p16/templates.test.ts tests/p16/compare-lookup.test.ts tests/p16/submission-image.test.ts",
+    "test:p16": "node scripts/test-p0.mjs tests/p16/templates.test.ts tests/p16/compare-lookup.test.ts tests/p16/submission-image.test.ts tests/p16/admin-root.test.ts",
     "test:capacity": "node scripts/test-p0.mjs tests/p5/capacity.test.ts",
     "release:check": "node scripts/release.mjs check",
     "test:release": "node --test tests/p5/release.test.mjs",
