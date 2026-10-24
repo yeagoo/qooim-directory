@@ -11,8 +11,8 @@
   "scopes": [
     {
       "id": "node-base",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (admin root redirect only). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (linux/arm64). Observations, runtime packages and OS packages are identical to the M16 sign-off; only image identity and collectedAt changed (admin root redirect). Previous decisions and reservations carry forward unchanged (see previousReview).",
       "evidence": [
         {
           "file": "third-party/image-evidence/node-base.json",
@@ -30,12 +30,14 @@
             "sha256": "7bad44cf691ac0a9b61b1d2673328cad5107ffe772b74ccac355c5753c07b9d2"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "global-pnpm",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (admin root redirect only). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (linux/arm64). Observations, runtime packages and OS packages are identical to the M16 sign-off; only image identity and collectedAt changed (admin root redirect). Previous decisions and reservations carry forward unchanged (see previousReview).",
       "evidence": [
         {
           "file": "third-party/image-evidence/global-pnpm.json",
@@ -53,12 +55,14 @@
             "sha256": "7903d66a1b2464f8eb1d809e2c5ca9bc0fe90f11a545da5d10f109317c053096"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "next-swc",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (admin root redirect only). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (linux/arm64). Observations, runtime packages and OS packages are identical to the M16 sign-off; only image identity and collectedAt changed (admin root redirect). Previous decisions and reservations carry forward unchanged (see previousReview).",
       "evidence": [
         {
           "file": "third-party/image-evidence/next-swc.json",
@@ -76,12 +80,14 @@
             "sha256": "2a58f5816cfe78b0c4bd4d005fe19058767699a400b2cef9934fc9b06f11f65f"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "esbuild",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (admin root redirect only). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (linux/arm64). Observations, runtime packages and OS packages are identical to the M16 sign-off; only image identity and collectedAt changed (admin root redirect). Previous decisions and reservations carry forward unchanged (see previousReview).",
       "evidence": [
         {
           "file": "third-party/image-evidence/esbuild.json",
@@ -99,12 +105,14 @@
             "sha256": "7b74614aa329b3fe7788457272f84d886262c8e90a20b095efaaa6aa84a50ded"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "postgres-image",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (admin root redirect only). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (linux/arm64). Observations, runtime packages and OS packages are identical to the M16 sign-off; only image identity and collectedAt changed (admin root redirect). Previous decisions and reservations carry forward unchanged (see previousReview).",
       "evidence": [
         {
           "file": "third-party/image-evidence/postgres-image.json",
@@ -122,12 +130,14 @@
             "sha256": "7359d187b8dc738e3958ee4b15fe6c499f75e0e6696e92bc6fce4760ca35d3cd"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "demo-proxy-image",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (admin root redirect only). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md for the v0.2.0-rc.2 candidate image sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd (linux/arm64). Observations, runtime packages and OS packages are identical to the M16 sign-off; only image identity and collectedAt changed (admin root redirect). Previous decisions and reservations carry forward unchanged (see previousReview).",
       "evidence": [
         {
           "file": "third-party/image-evidence/demo-proxy-image.json",
@@ -145,15 +155,21 @@
             "sha256": "1f4107751ec450c429b8c9e2ec588d74e2d1815279b44b48e06046a3c285c121"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     }
   ],
   "targetPlatform": "linux/arm64",
   "confirmation": {
-    "status": "pending",
-    "candidateImage": "sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd",
+    "status": "complete",
+    "reviewer": "QooIM",
+    "confirmedAt": "2026-10-24",
     "targetTag": "v0.2.0-rc.2",
+    "applicationImage": "sha256:83d351684c12fe18203cfec4b01fe388e5c1e778b2a2d030b30071814e5279fd",
     "basis": "docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-RC2.md",
+    "scope": "Item 1: previous decisions and reservations carry forward; item 2: this image approved as v0.2.0-rc.2.",
+    "legalAdvice": false,
     "previous": {
       "reviewer": "QooIM",
       "confirmedAt": "2026-10-24",
