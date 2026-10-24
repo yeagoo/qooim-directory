@@ -75,7 +75,7 @@ function publicationRows(rows, bulk = false) {
   return rows
     .map(
       (p, index) =>
-        `<tr>${bulk ? `<td><input type="checkbox" class="bulk-publication" data-index="${index}" ${p.draft_version ? "" : "disabled"} aria-label="选择 ${escape(p.id)} ${escape(p.locale)}"></td>` : ""}<td>${escape(p.id)} · ${escape(p.locale)}</td><td>${escape(p.status ?? "尚未发布")} · ${p.version ?? 0}</td><td>${p.resource_version > p.source_version ? "有新版本" : "已同步"}</td><td><button class="secondary edit-publication" data-index="${index}">编辑</button></td></tr>`,
+        `<tr>${bulk ? `<td><input type="checkbox" class="bulk-publication" data-index="${index}" ${p.draft_version ? "" : "disabled"} aria-label="选择 ${escape(p.id)} ${escape(p.locale)}"></td>` : ""}<td>${escape(p.id)} · ${escape(p.locale)}</td><td>${escape(p.status ?? "尚未发布")} · ${p.version ?? 0}</td><td>${!p.source_version ? "—" : p.resource_version > p.source_version ? "有新版本" : "已同步"}</td><td><button class="secondary edit-publication" data-index="${index}">编辑</button></td></tr>`,
     )
     .join("");
 }

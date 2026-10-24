@@ -19,7 +19,7 @@ CREATE TABLE distribution (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), resource_id text NOT NULL REFERENCES resource(id),
  created_by uuid REFERENCES operator_user(id), mode text NOT NULL CHECK(mode IN ('ai','manual')),
  stagger_days integer NOT NULL DEFAULT 0 CHECK(stagger_days BETWEEN 0 AND 30),
- replace_drafts boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now()
+ created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX distribution_resource ON distribution(resource_id,created_at DESC);
 CREATE TABLE distribution_task (

@@ -111,9 +111,15 @@ const textOf = (o: Partial<DistributeOutput>) =>
   [o.title, o.description, o.tagline, o.content, o.seoTitle, o.seoDescription]
     .filter(Boolean)
     .join("\n");
-const domains = /(https?:\/\/\S+|www\.\S+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|ai|dev|app|cn|co|so)\b)/gi;
+// Any host-like token (letters-only last label) or link destination counts as a URL.
+const domains =
+  /(https?:\/\/\S+|\/\/[^\s)]+|www\.\S+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,24}\b)/gi;
 const firstHand =
-  /(我们?|笔者|小编)(亲自|实际|已经)?(测试|试用|体验|实测|用)(过|了)|亲测|实测|\bwe (tested|tried|used)\b|\bi (tested|tried|used)\b|\bin our (tests?|testing)\b|\bhands-on\b/i;
+  /(我们?|笔者|小编)(亲自|实际|已经)?(测试|试用|体验|实测|用)(过|了)|亲测|实测|实际体验|体验(过|后)|上手后发现|用了\s*\S{0,3}\s*(天|周|个月|年)|\bwe(?:'ve| have)? (tested|tried|used)\b|\bi(?:'ve| have)? (tested|tried|used)\b|\bin our (tests?|testing|experience)\b|\bhands-on\b|\bafter using\b/i;
+const numbersIn = (value: string) =>
+  new Set((value.match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => n.replace(/,/g, "")));
+const headings = (markdown: string) =>
+  [...markdown.matchAll(/^\s{0,3}#{2,3}\s+(.+?)\s*#*\s*$/gm)].map((m) => m[1].trim());
 // Returns the reasons the output must be reviewed by a person; [] means it may go live.
 export function gate(output: DistributeOutput, facts: Facts, persona: Persona) {
   const all = textOf(output),
@@ -121,22 +127,34 @@ export function gate(output: DistributeOutput, facts: Facts, persona: Persona) {
     reasons = new Set<string>();
   for (const match of all.match(domains) ?? [])
     if (!known.includes(match.toLowerCase())) reasons.add("new_url");
+  if (/\]\s*\(/.test(all)) reasons.add("link");
   if (/[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/i.test(all)) reasons.add("email");
-  const numbers = all
-    .replace(/^\s*\d+[.)]\s/gm, "")
-    .match(/\d+(?:[.,]\d+)*/g);
-  for (const number of numbers ?? [])
-    if (!known.includes(number)) reasons.add("new_number");
+  // Exact numeric tokens: 200 is not "in" a fact of 1200.
+  const allowed = numbersIn(known);
+  for (const number of numbersIn(all.replace(/^\s*\d+[.)]\s/gm, "")))
+    if (!allowed.has(number)) reasons.add("new_number");
   if (/[$¥€£]|\b(usd|rmb|cny|eur)\b|美元|人民币|元\s*\/|元每/i.test(all) && !/[$¥€£]|usd|rmb|cny|eur|美元|人民币|元/i.test(known))
     reasons.add("price");
   if (/<\/?[a-z!][^>]*>/i.test(all)) reasons.add("html");
-  if (/^\s{0,3}#\s/m.test(all)) reasons.add("h1");
+  if (/^\s{0,3}#\s/m.test(all) || /^[^\n]+\n\s{0,3}=+\s*$/m.test(all)) reasons.add("h1");
   if (/!\[/.test(all)) reasons.add("image");
   if (firstHand.test(all)) reasons.add("first_hand");
   const lower = all.toLowerCase();
+  // The listing must still be about this product.
+  const name = typeof facts.name === "string" ? facts.name.toLowerCase() : "";
+  if (name && !`${output.title}\n${output.description}`.toLowerCase().includes(name))
+    reasons.add("name_missing");
+  // Without its own content the page would silently reuse the master text.
+  if (!output.content?.trim()) reasons.add("content_missing");
   if (persona.banned.some((term) => lower.includes(term.toLowerCase()))) reasons.add("banned");
   if (persona.required.some((term) => !lower.includes(term.toLowerCase())))
     reasons.add("required_missing");
+  if (persona.structure.length && output.content) {
+    const found = headings(output.content);
+    let at = 0;
+    for (const heading of found) if (heading === persona.structure[at]) at++;
+    if (at < persona.structure.length) reasons.add("structure");
+  }
   if ((output.content?.length ?? 0) > LENGTH[persona.length].content) reasons.add("too_long");
   if ((output.seoTitle?.length ?? 0) > 70 || (output.seoDescription?.length ?? 0) > 170)
     reasons.add("seo_length");
@@ -224,7 +242,7 @@ const reservation = (messages: { content: string }[], persona: Persona) =>
   // Two calls at most (the differentiate retry), each its input plus the output cap.
   2 *
   (LENGTH[persona.length].tokens +
-    Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) / 2) +
+    messages.reduce((n, m) => n + m.content.length, 0) +
     300);
 const hash = (value: string) => createHash("sha256").update(normalize(value)).digest("hex");
 const moduleOf = (kind: unknown) => (kind === "repository" ? "opensource" : "directory");
@@ -248,10 +266,9 @@ type TaskRow = {
   attempts: number;
   resource_id: string;
   mode: "ai" | "manual";
-  replace_drafts: boolean;
   created_by: string | null;
 };
-const TASK_SELECT = `SELECT t.*,d.resource_id,d.mode,d.replace_drafts,d.created_by FROM distribution_task t JOIN distribution d ON d.id=t.distribution_id`;
+const TASK_SELECT = `SELECT t.*,d.resource_id,d.mode,d.created_by FROM distribution_task t JOIN distribution d ON d.id=t.distribution_id`;
 const createInput = z
   .strictObject({
     resourceId: identifier,
@@ -261,7 +278,6 @@ const createInput = z
       .max(100),
     mode: z.enum(["ai", "manual"]).default("ai"),
     staggerDays: z.number().int().min(0).max(30).default(0),
-    replaceDrafts: z.boolean().default(false),
   })
   .refine(
     (v) => new Set(v.targets.map((t) => t.site + ":" + t.locale)).size === v.targets.length,
@@ -396,8 +412,8 @@ export class Distribution {
       }
       const distribution = (
         await c.query(
-          "INSERT INTO distribution(resource_id,created_by,mode,stagger_days,replace_drafts) VALUES($1,$2,$3,$4,$5) RETURNING id",
-          [value.resourceId, actor.id, value.mode, value.staggerDays, value.replaceDrafts],
+          "INSERT INTO distribution(resource_id,created_by,mode,stagger_days) VALUES($1,$2,$3,$4) RETURNING id",
+          [value.resourceId, actor.id, value.mode, value.staggerDays],
         )
       ).rows[0].id as string;
       const skipped: { site: string; locale: string; reason: string }[] = [];
@@ -797,6 +813,8 @@ export class Distribution {
       .strictObject({
         text: z.string().min(1).max(60000),
         confirm: z.boolean().default(false),
+        // Returned by the preview of this exact text and draft state; saving requires it.
+        previewToken: z.string().max(100).optional(),
         replaceDraft: z.boolean().default(false),
       })
       .parse(input);
@@ -814,8 +832,12 @@ export class Distribution {
         throw new HttpError(409, "该任务当前不接受手动结果");
       await this.lockCheck(c, row);
       const evaluation = await this.evaluate(c, row, output);
+      const token = createHash("sha256")
+        .update(JSON.stringify([id, value.text, evaluation.expected]))
+        .digest("hex");
       if (!value.confirm)
-        return { id, preview: true, state: row.state, output, ...evaluation.public };
+        return { id, preview: true, state: row.state, previewToken: token, output, ...evaluation.public };
+      if (value.previewToken !== token) throw new HttpError(409, "请先预览这份结果，再保存");
       if (evaluation.blocker === "draft_conflict" && !value.replaceDraft)
         throw new HttpError(409, "该站点已有人工草稿；确认替换后再保存");
       if (evaluation.blocker && evaluation.blocker !== "draft_conflict")
@@ -838,7 +860,7 @@ export class Distribution {
         taskId: id,
         reasons: evaluation.reasons,
       });
-      return { id, preview: false, state: "review", output, ...evaluation.public };
+      return { id, preview: false, state: "review", previewToken: token, output, ...evaluation.public };
     });
   }
   // Review -> published: publishes the draft this task staged, if nobody changed it.
@@ -942,8 +964,9 @@ export class Distribution {
     let blocker: string | null = null;
     if (resource.content_version !== row.source_version) blocker = "source_changed";
     const versions = await this.versions(c, row.site_id, row.resource_id, row.locale);
-    // Never overwrite a draft someone else is working on.
-    if (!blocker && versions.pending && !row.replace_drafts) blocker = "draft_conflict";
+    // Never overwrite a draft someone else is working on; only an explicit,
+    // audited per-task confirmation (approve/paste with replaceDraft) may.
+    if (!blocker && versions.pending) blocker = "draft_conflict";
     const base = versions.pub
       ? publishedCandidate(versions.pub)
       : { slug: row.resource_id, categoryId: null, rank: 0, overrides: {} };
@@ -1048,17 +1071,19 @@ export class Distribution {
     const row = await this.task(this.pool, claimed.id);
     const attempt = claimed.attempts as number;
     const owned = "id=$1 AND state='generating' AND attempts=$2";
-    const finish = async (state: string, error: string) => {
-      await this.pool.query(
-        `UPDATE distribution_task SET state=$3,error=$4,lease_until=NULL,updated_at=now() WHERE ${owned}`,
-        [row.id, attempt, state, error],
-      );
-      if (row.ai_job_id)
-        await this.pool.query(
-          "UPDATE ai_job SET status='failed',error_code=$2,completed_at=now(),lease_token=NULL,lease_until=NULL WHERE id=$1 AND status IN ('pending','processing')",
-          [row.ai_job_id, error],
+    // Task and job end together, so a crash never leaves a reservation counted forever.
+    const finish = (state: string, error: string) =>
+      transaction(this.pool, async (c) => {
+        await c.query(
+          `UPDATE distribution_task SET state=$3,error=$4,lease_until=NULL,updated_at=now() WHERE ${owned}`,
+          [row.id, attempt, state, error],
         );
-    };
+        if (row.ai_job_id)
+          await c.query(
+            "UPDATE ai_job SET status='failed',error_code=$2,completed_at=now(),lease_token=NULL,lease_until=NULL WHERE id=$1 AND status IN ('pending','processing')",
+            [row.ai_job_id, error],
+          );
+      });
     const job = row.ai_job_id
       ? (await this.pool.query("SELECT status FROM ai_job WHERE id=$1", [row.ai_job_id])).rows[0]
       : undefined;
@@ -1114,16 +1139,17 @@ export class Distribution {
       });
       if (first >= DUPLICATE) output = await call(true);
       const outcome = await transaction(this.pool, async (c) => {
-        await this.lockCheck(c, row);
+        // Lock order everywhere: task row, then the check/pair advisory locks.
         const live = (
           await c.query("SELECT state,attempts FROM distribution_task WHERE id=$1 FOR UPDATE", [row.id])
         ).rows[0];
         if (live.state !== "generating" || live.attempts !== attempt) return "lost";
+        await this.lockCheck(c, row);
         const creator = await this.creator(c, row);
         const evaluation = await this.evaluate(c, row, output);
         let state = evaluation.reasons.length ? "review" : "scheduled",
           draftVersion: number | null = null;
-        // A draft conflict is held without staging unless the distribution replaces drafts.
+        // A draft conflict is held without staging.
         if (!evaluation.blocker) {
           draftVersion = await this.content.stageWith(
             c,
@@ -1217,24 +1243,30 @@ export class Distribution {
         )
       ).rows[0];
       if (!item) break;
-      const close = (state: string, error: string | null) =>
-        this.pool.query(
-          "UPDATE scheduled_publish SET state=$2,error=$3,completed_at=now(),claimed_until=NULL WHERE id=$1 AND state='pending'",
-          [item.id, state, error],
-        );
-      const review = (reason: string) =>
-        item.task_id &&
-        this.pool.query(
-          "UPDATE distribution_task SET state='review',reasons=array_append(reasons,$2),updated_at=now() WHERE id=$1 AND state='scheduled'",
-          [item.task_id, reason],
-        );
+      // The schedule closes and its task returns to review in one transaction.
+      const close = (state: string, error: string, reason: string) =>
+        transaction(this.pool, async (c) => {
+          if (item.task_id)
+            await c.query("SELECT 1 FROM distribution_task WHERE id=$1 FOR UPDATE", [item.task_id]);
+          const closed = await c.query(
+            "UPDATE scheduled_publish SET state=$2,error=$3,completed_at=now(),claimed_until=NULL WHERE id=$1 AND state='pending'",
+            [item.id, state, error],
+          );
+          if (closed.rowCount && item.task_id)
+            await c.query(
+              "UPDATE distribution_task SET state='review',reasons=array_append(reasons,$2),updated_at=now() WHERE id=$1 AND state='scheduled'",
+              [item.task_id, reason],
+            );
+        });
       if (new Date(item.publish_at).getTime() < Date.now() - LATE_GRACE_HOURS * 3600000) {
-        await close("missed", "late");
-        await review("missed");
+        await close("missed", "late", "missed");
         continue;
       }
       try {
         await transaction(this.pool, async (c) => {
+          // Same lock order as task actions: task row, then the pair lock.
+          if (item.task_id)
+            await c.query("SELECT 1 FROM distribution_task WHERE id=$1 FOR UPDATE", [item.task_id]);
           await this.content.lock(c, item.site_id, item.resource_id, item.locale);
           const live = (
             await c.query("SELECT state FROM scheduled_publish WHERE id=$1 FOR UPDATE", [item.id])
@@ -1288,10 +1320,8 @@ export class Distribution {
               : error instanceof Error && error.message === "creator_disabled"
                 ? "creator_disabled"
                 : null;
-        if (code || item.attempts >= 3) {
-          await close("failed", code ?? "publish_failed");
-          await review(code ?? "publish_failed");
-        }
+        if (code || item.attempts >= 3)
+          await close("failed", code ?? "publish_failed", code ?? "publish_failed");
       }
     }
     return handled;

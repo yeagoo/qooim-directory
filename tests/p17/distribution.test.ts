@@ -227,7 +227,7 @@ test("P17 a passing AI draft is staged, scheduled and published under the creato
 
 test("P17 gates hold invented URLs, numbers, prices, first-hand claims and banned terms", () => {
   const persona = personaSchema.parse({ banned: ["最强"], required: ["协作"] });
-  const base = { title: "Figma", description: "协作设计工具" };
+  const base = { title: "Figma", description: "协作设计工具", content: "## 概览\n\n协作工具。" };
   const check = (extra: Record<string, string>) => gate({ ...base, ...extra }, { name: "Figma", stars: 1200 }, persona);
   assert.deepEqual(check({}), []);
   assert.ok(check({ content: "访问 https://figma.evil" }).includes("new_url"));
@@ -245,6 +245,18 @@ test("P17 gates hold invented URLs, numbers, prices, first-hand claims and banne
   assert.ok(check({ content: "联系 a@b.co" }).includes("email"));
   assert.ok(check({ seoTitle: "x".repeat(80) }).includes("seo_length"));
   assert.ok(gate({ ...base, content: "协作".repeat(800) }, {}, personaSchema.parse({ length: "short" })).includes("too_long"));
+  // Exact numeric tokens: 200 is not covered by a fact of 1200.
+  assert.ok(check({ content: "已有 200 万用户" }).includes("new_number"));
+  assert.ok(check({ content: "见 evil.xyz" }).includes("new_url"));
+  assert.ok(check({ content: "[官网](//evil.xyz)" }).includes("link"));
+  assert.ok(check({ title: "Notion" }).includes("name_missing"));
+  assert.ok(gate({ title: "Figma", description: "协作" }, { name: "Figma" }, persona).includes("content_missing"));
+  assert.ok(check({ content: "Figma\n=====\n协作" }).includes("h1"));
+  assert.ok(check({ content: "I've used it daily, 协作" }).includes("first_hand"));
+  const structured = personaSchema.parse({ structure: ["总结", "适合谁"] });
+  const withContent = (content: string) => gate({ title: "Figma", description: "d", content }, { name: "Figma" }, structured);
+  assert.deepEqual(withContent("## 总结\n\na\n\n## 适合谁\n\nb"), []);
+  assert.ok(withContent("## 适合谁\n\nb\n\n## 总结\n\na").includes("structure"));
   assert.equal(similarity("多人实时协作的在线界面设计工具", "多人实时协作的在线界面设计工具"), 1);
   assert.ok(similarity("多人实时协作的在线界面设计工具", "为独立开发者准备的命令行效率套件") < 0.1);
 });
@@ -536,7 +548,12 @@ test("P17 manual mode: copy the prompt, paste a fenced reply, preview, then stag
   assert.equal((await f.pool.query("SELECT 1 FROM content_draft WHERE site_id='atlas' AND resource_id='manual-a'")).rowCount, 0);
   await assert.rejects(f.app.distribution.paste(f.admin, id, { text: "no json here" }), status(400));
   await assert.rejects(f.app.distribution.paste(f.admin, id, { text: '{"title": ""}' }), status(400));
-  const saved = await f.app.distribution.paste(f.admin, id, { text: reply, confirm: true });
+  await assert.rejects(f.app.distribution.paste(f.admin, id, { text: reply, confirm: true }), status(409));
+  const saved = await f.app.distribution.paste(f.admin, id, {
+    text: reply,
+    confirm: true,
+    previewToken: preview.previewToken,
+  });
   assert.equal(saved.state, "review");
   const t = await task("atlas", "manual-a");
   assert.ok(t.reasons.includes("manual"));

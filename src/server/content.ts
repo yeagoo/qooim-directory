@@ -669,7 +669,7 @@ export class Content {
             .parse(ids.split(","));
     return (
       await this.pool.query(
-        `SELECT r.id,r.version AS resource_version,r.data,a.locale,p.slug,p.title,p.status,p.version,p.source_version,p.category_id,p.category_ids,p.tag_ids,p.rank,p.overrides,d.version AS draft_version,d.candidate
+        `SELECT r.id,r.content_version AS resource_version,r.data,a.locale,p.slug,p.title,p.status,p.version,p.source_version,p.category_id,p.category_ids,p.tag_ids,p.rank,p.overrides,d.version AS draft_version,d.candidate
  FROM resource r JOIN (SELECT resource_id,locale FROM publication WHERE site_id=$1 UNION SELECT resource_id,locale FROM content_draft WHERE site_id=$1) a ON a.resource_id=r.id
  LEFT JOIN publication p ON p.resource_id=a.resource_id AND p.locale=a.locale AND p.site_id=$1 LEFT JOIN content_draft d ON d.resource_id=a.resource_id AND d.locale=a.locale AND d.site_id=$1 WHERE $3::text[] IS NULL OR r.id=ANY($3) ORDER BY r.id,a.locale LIMIT 100 OFFSET $2`,
         [

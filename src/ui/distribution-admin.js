@@ -26,6 +26,10 @@ const stateLabels = {
 };
 const reasonLabels = {
   new_url: "出现资料外网址",
+  link: "含链接",
+  name_missing: "标题未提到产品名",
+  content_missing: "缺少本站正文",
+  structure: "未按 persona 结构",
   email: "出现邮箱",
   new_number: "出现资料外数字",
   price: "出现价格",
@@ -136,6 +140,13 @@ function cell(value, locale, site) {
     );
   if (value.draft?.pending) parts.push('<span class="badge">有草稿</span>');
   if (value.schedule) parts.push(`<small>排期 ${escape(time(value.schedule.publishAt))}</small>`);
+  // Scheduling acts on the pair's current draft; the server rechecks both versions.
+  if (site.write && value.draft?.pending) {
+    const data = `data-site="${escape(site.id)}" data-locale="${locale}" data-published="${pub?.version ?? 0}" data-draft="${value.draft.version}"`;
+    parts.push(
+      `<span class="row"><input type="datetime-local" class="sched-at" ${data} aria-label="${escape(site.id)} ${locale} 发布时间"><button class="secondary sched-set" ${data}>设定排期</button>${value.schedule ? `<button class="secondary sched-clear" ${data}>取消排期</button>` : ""}</span>`,
+    );
+  }
   if (value.task)
     parts.push(
       `<small>最近任务：${escape(stateLabels[value.task.state] || value.task.state)}${value.task.reasons?.length ? " · " + value.task.reasons.map(reason).map(escape).join("、") : ""}</small>`,
@@ -186,7 +197,7 @@ export async function renderDistribute(resource, workspace, api, notice, context
         (site) =>
           `<tr><td><input type="checkbox" class="dist-site" value="${escape(site.id)}"${site.write && site.active ? "" : " disabled"}></td><td>${escape(site.name || site.id)}<br><small>${escape(site.id)}</small></td><td>${cell(site.cells.zh, "zh", site)}</td><td>${cell(site.cells.en, "en", site)}</td><td>${site.persona ? "已设置" : `<a href="#persona/${encodeURIComponent(site.id)}">去设置</a>`}</td></tr>`,
       )
-      .join("")}</tbody></table></div><div class="actions"><button class="secondary" id="dist-all">全选可写站点</button><button class="secondary" id="dist-stale">选中“源已更新”的站点</button></div><div class="split"><div><label>语言</label><label><input type="checkbox" class="dist-locale" value="zh" checked>中文</label><label><input type="checkbox" class="dist-locale" value="en">English</label><label for="dist-mode">生成方式</label><select id="dist-mode"><option value="ai">AI 自动（通过检查即按排期发布）</option><option value="manual">手动复制提示词（不自动发布）</option></select></div><div><label for="dist-stagger">错开发布（天）</label><input id="dist-stagger" type="number" min="0" max="30" value="0"><small>0 表示通过检查后立即发布；大于 0 时在该天数内随机错开。</small><label><input type="checkbox" id="dist-replace">允许替换站点上已有的人工草稿</label></div></div><div class="actions"><button id="dist-create">开始分发</button></div></section>${
+      .join("")}</tbody></table></div><div class="actions"><button class="secondary" id="dist-all">全选可写站点</button><button class="secondary" id="dist-stale">选中“源已更新”的站点</button></div><div class="split"><div><label>语言</label><label><input type="checkbox" class="dist-locale" value="zh" checked>中文</label><label><input type="checkbox" class="dist-locale" value="en">English</label><label for="dist-mode">生成方式</label><select id="dist-mode"><option value="ai">AI 自动（通过检查即按排期发布）</option><option value="manual">手动复制提示词（不自动发布）</option></select></div><div><label for="dist-stagger">错开发布（天）</label><input id="dist-stagger" type="number" min="0" max="30" value="0"><small>0 表示通过检查后立即发布；大于 0 时在该天数内随机错开。</small><small>已有人工草稿的站点不会被覆盖，结果会留在审核里。</small></div></div><div class="actions"><button id="dist-create">开始分发</button></div></section>${
       context.globalAdmin || published.length
         ? `<section class="panel"><h2>批量操作</h2><div class="actions">${published.length ? `<button class="secondary" id="dist-unpublish">从全部站点下线（${published.length} 处）</button>` : ""}${context.globalAdmin ? `<select id="dist-primary"><option value="">不设主站</option>${matrix.sites.map((s) => `<option value="${escape(s.id)}"${s.id === matrix.resource.primarySite ? " selected" : ""}>${escape(s.name || s.id)}</option>`).join("")}</select><button class="secondary" id="dist-primary-save">设置主站</button>` : ""}</div></section>`
         : ""
@@ -240,7 +251,6 @@ export async function renderDistribute(resource, workspace, api, notice, context
         targets,
         mode: body.querySelector("#dist-mode").value,
         staggerDays: Number(body.querySelector("#dist-stagger").value || 0),
-        replaceDrafts: body.querySelector("#dist-replace").checked,
       });
       const skipped = result.tasks.filter((t) => t.state === "skipped");
       notice(
@@ -263,6 +273,34 @@ export async function renderDistribute(resource, workspace, api, notice, context
       notice("主站已更新。");
       await load();
     });
+    for (const button of body.querySelectorAll(".sched-set,.sched-clear"))
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          const d = button.dataset;
+          let publishAt = null;
+          if (button.classList.contains("sched-set")) {
+            const input = body.querySelector(
+              `.sched-at[data-site="${CSS.escape(d.site)}"][data-locale="${d.locale}"]`,
+            );
+            if (!input.value) throw new Error("请选择发布时间");
+            publishAt = new Date(input.value).toISOString();
+          }
+          await api("/schedules", {
+            site: d.site,
+            resourceId: matrix.resource.id,
+            locale: d.locale,
+            publishAt,
+            expected: { published: Number(d.published), draft: Number(d.draft) },
+          });
+          notice(publishAt ? "已设定排期。" : "已取消排期。");
+          await load();
+        } catch (error) {
+          notice(error.message, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
     for (const button of body.querySelectorAll(".task-action"))
       button.addEventListener("click", async () => {
         button.disabled = true;
@@ -298,6 +336,8 @@ export async function renderDistribute(resource, workspace, api, notice, context
           panel.querySelector("h2").textContent = `手动生成 · ${prompt.site} / ${prompt.locale}`;
           panel.querySelector("#manual-prompt").value = prompt.text;
           panel.querySelector("#manual-reply").value = "";
+          previewToken = null;
+          save.disabled = true;
           panel.querySelector("#manual-result").innerHTML = "";
           panel.scrollIntoView({ behavior: "smooth" });
         } catch (error) {
@@ -314,18 +354,40 @@ export async function renderDistribute(resource, workspace, api, notice, context
       }
       notice("提示词已复制。");
     });
+    let previewToken = null;
+    const save = panel.querySelector("#manual-save");
+    save.disabled = true;
+    // Any edit of the reply needs a fresh preview before it can be saved.
+    panel.querySelector("#manual-reply").addEventListener("input", () => {
+      previewToken = null;
+      save.disabled = true;
+    });
     const paste = async (confirm) => {
       if (!manualTask) throw new Error("请先选择任务");
       const result = await api(`/distribution-tasks/${manualTask}/paste`, {
         text: panel.querySelector("#manual-reply").value,
         confirm,
+        ...(confirm ? { previewToken } : {}),
         replaceDraft: panel.querySelector("#manual-replace").checked,
       });
+      if (!confirm) previewToken = result.previewToken;
       panel.querySelector("#manual-result").innerHTML = `<div class="notice${result.reasons.length ? " error" : ""}">${result.reasons.length ? "需要人工留意：" + result.reasons.map(reason).map(escape).join("、") : "检查通过"} · 相似度 ${Math.round(result.similarity * 100)}%</div><h3>${escape(result.output.title)}</h3><p>${escape(result.output.description)}</p>${result.output.tagline ? `<p class="muted">${escape(result.output.tagline)}</p>` : ""}${result.output.content ? `<pre>${escape(result.output.content)}</pre>` : ""}`;
       return result;
     };
-    act("#manual-preview", () => paste(false));
+    body.querySelector("#manual-preview").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        await paste(false);
+        save.disabled = false;
+      } catch (error) {
+        notice(error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
     act("#manual-save", async () => {
+      if (!previewToken) throw new Error("请先预览");
       await paste(true);
       notice("已保存为草稿，审核后可发布。");
       await load();
