@@ -81,7 +81,7 @@ M5 已完成：RSS/npm/通用 JSON 采集器、统一候选审核、接受只建
 
 - M6–M16 已完成，`v0.2.0-rc.2` 已由 QooIM 确认镜像证据并打 tag（3925765）。
 - M17（新站点默认 toolso）、M18（站点 persona 和统一分发）、M19（后台方案 3）已合并进 `main`（c54f9f9）。验收记录：[M17](ACCEPTANCE-M17-20261024.md)、[M18](ACCEPTANCE-M18-20261025.md)、[M19](ACCEPTANCE-M19-20261025.md)。
-- `v0.2.0-rc.3` 候选镜像证据已重新采集，状态为 pending，等 QooIM 本人确认，见[复核材料](IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md)。在确认之前，`release:check:image` 会按预期失败，不能代填签署。
+- `v0.2.0-rc.3` 镜像证据已由 QooIM 于 2026-10-25 确认并打 tag，见[复核材料](IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md)。
 - 稳定版 `v0.2.0` 仍需外部验收：真实 GitHub/Google OAuth、真实 AI 提供方、真实 RSS/npm 源、Passkey 真机。另需确定域名和公开仓库名，并做公开前的最终审查。容量只有共享主机上的短期基线数据。
 - 尚未承诺、可放到下一轮的事项：AI 向量查重、按规则自动分发、zh/en 以外的语言、链接失效提醒下线、批量改分类、投稿一次投多个站点、分发效果统计。
 
