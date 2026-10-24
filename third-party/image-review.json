@@ -11,8 +11,8 @@
   "scopes": [
     {
       "id": "node-base",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (dev dependencies pruned). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (linux/arm64). Observations are identical to the earlier 2026-10-24 sign-off; only image identity and collectedAt changed. Previous decisions and reservations carry forward unchanged (see previousReview). Also accepted: 82 runtime npm packages removed with none added, and the Dockerfile/dependency change (prune dev dependencies, tsx as runtime dependency).",
       "evidence": [
         {
           "file": "third-party/image-evidence/node-base.json",
@@ -30,12 +30,14 @@
             "sha256": "5b2a4db55208e23b45a18aeac954bc4b25457b17b4da51b9a4df2158bc0bc501"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "global-pnpm",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (dev dependencies pruned). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (linux/arm64). Observations are identical to the earlier 2026-10-24 sign-off; only image identity and collectedAt changed. Previous decisions and reservations carry forward unchanged (see previousReview). Also accepted: 82 runtime npm packages removed with none added, and the Dockerfile/dependency change (prune dev dependencies, tsx as runtime dependency).",
       "evidence": [
         {
           "file": "third-party/image-evidence/global-pnpm.json",
@@ -53,12 +55,14 @@
             "sha256": "596910a8b67b183dd0f7b655a0d02c40b8d743fe52e3918a3a1833ca78d99eb1"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "next-swc",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (dev dependencies pruned). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (linux/arm64). Observations are identical to the earlier 2026-10-24 sign-off; only image identity and collectedAt changed. Previous decisions and reservations carry forward unchanged (see previousReview). Also accepted: 82 runtime npm packages removed with none added, and the Dockerfile/dependency change (prune dev dependencies, tsx as runtime dependency).",
       "evidence": [
         {
           "file": "third-party/image-evidence/next-swc.json",
@@ -76,12 +80,14 @@
             "sha256": "e94f5f0ee7a34f99eef7d7e77af8ba357446ebf87d8c417bd93c148e1d4833a1"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "esbuild",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (dev dependencies pruned). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (linux/arm64). Observations are identical to the earlier 2026-10-24 sign-off; only image identity and collectedAt changed. Previous decisions and reservations carry forward unchanged (see previousReview). Also accepted: 82 runtime npm packages removed with none added, and the Dockerfile/dependency change (prune dev dependencies, tsx as runtime dependency).",
       "evidence": [
         {
           "file": "third-party/image-evidence/esbuild.json",
@@ -99,12 +105,14 @@
             "sha256": "f652c1a4a349045d4188a732466f03a35f21e407eed35c23246e0fd362e1381f"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "postgres-image",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (dev dependencies pruned). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (linux/arm64). Observations are identical to the earlier 2026-10-24 sign-off; only image identity and collectedAt changed. Previous decisions and reservations carry forward unchanged (see previousReview). Also accepted: 82 runtime npm packages removed with none added, and the Dockerfile/dependency change (prune dev dependencies, tsx as runtime dependency).",
       "evidence": [
         {
           "file": "third-party/image-evidence/postgres-image.json",
@@ -122,12 +130,14 @@
             "sha256": "f6c9297177f05a508fefad42cf0667eb8c4c87a7bbe2ced23503ce8ce657ecf4"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "demo-proxy-image",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (dev dependencies pruned). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md for the M16 candidate image sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e (linux/arm64). Observations are identical to the earlier 2026-10-24 sign-off; only image identity and collectedAt changed. Previous decisions and reservations carry forward unchanged (see previousReview). Also accepted: 82 runtime npm packages removed with none added, and the Dockerfile/dependency change (prune dev dependencies, tsx as runtime dependency).",
       "evidence": [
         {
           "file": "third-party/image-evidence/demo-proxy-image.json",
@@ -145,14 +155,21 @@
             "sha256": "76eefce0e25f55c5957aeba5a8ce551737e404ce06695d1edbfc5d39c99ca59b"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     }
   ],
   "targetPlatform": "linux/arm64",
   "confirmation": {
-    "status": "pending",
-    "candidateImage": "sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e",
+    "status": "complete",
+    "reviewer": "QooIM",
+    "confirmedAt": "2026-10-24",
+    "targetTag": null,
+    "applicationImage": "sha256:6c1cb9358f887a038df4c7634e2e33df34a4d4ae7bd4fcf36bde8fdecf02e02e",
     "basis": "docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024-M16.md",
+    "scope": "Item 1: previous decisions and reservations carry forward; item 2: 82 removed runtime packages accepted; item 3: dev-dependency pruning and tsx move accepted.",
+    "legalAdvice": false,
     "previous": {
       "reviewer": "QooIM",
       "confirmedAt": "2026-10-24",
