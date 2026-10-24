@@ -20,6 +20,7 @@ export class Sites {
     private key: string,
     private adminOrigin: string,
     private insecure = false,
+    private defaultTemplate = "toolso",
   ) {
     this.operators = new Operators(pool);
   }
@@ -55,7 +56,7 @@ export class Sites {
       throw new HttpError(400, "域名不合法或与后台冲突");
     const config = configSchema.parse({
       name: value.name,
-      template: "basic",
+      template: this.defaultTemplate,
       locales: ["zh"],
       tagline: "从这里开始，发现值得收藏的网站。",
     });

@@ -85,6 +85,7 @@ test(
       (_, i) => `https://site-${i}.${hosts[0]}:${port}`,
     );
     const app = new Application(pool, {
+      defaultTemplate: "basic",
       key,
       adminOrigin,
       databaseUrl: process.env.P0_DATABASE_URL!,

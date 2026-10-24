@@ -107,6 +107,8 @@ export class Application {
       mediaRoot?: string;
       retention?: RetentionPolicy;
       metadataFetcher?: typeof import("./outbound.js").fetchPublicText;
+      // Template for newly created sites; toolso unless a caller (tests) asks otherwise.
+      defaultTemplate?: string;
     },
   ) {
     this.sites = new Sites(
@@ -114,6 +116,7 @@ export class Application {
       config.key,
       config.adminOrigin,
       config.development,
+      config.defaultTemplate,
     );
     this.auth = new AuthRegistry(
       pool,

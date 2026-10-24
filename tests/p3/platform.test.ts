@@ -109,6 +109,7 @@ before(async () => {
     .P0_HOSTS!.split(",")
     .map((host) => `https://${host}:${port}`);
   app = new Application(pool, {
+    defaultTemplate: "basic",
     key,
     adminOrigin: origins[3],
     databaseUrl: process.env.P0_DATABASE_URL!,

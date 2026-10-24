@@ -123,6 +123,7 @@ before(async () => {
   const port = (server.address() as AddressInfo).port;
   origins = process.env.P0_HOSTS!.split(",").map((h) => `https://${h}:${port}`);
   app = new Application(pool, {
+    defaultTemplate: "basic",
     key: randomBytes(32).toString("hex"),
     adminOrigin: origins[3],
     databaseUrl: process.env.P0_DATABASE_URL!,

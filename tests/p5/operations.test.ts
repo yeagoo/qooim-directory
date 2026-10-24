@@ -71,6 +71,7 @@ before(async () => {
   process.env.BACKUP_ENCRYPTION_KEY = randomBytes(32).toString("hex");
   process.env.NAV_DOCKER_SUDO = "true";
   app = new Application(pool, {
+    defaultTemplate: "basic",
     key,
     adminOrigin: `https://${process.env.P0_HOSTS!.split(",")[3]}`,
     databaseUrl: process.env.P0_DATABASE_URL!,
@@ -183,6 +184,7 @@ test("P5 encrypted backup restores identities, sessions, content, favorites, sec
   const restoredPool = new Pool({ connectionString: target.toString() });
   const original = app;
   app = new Application(restoredPool, {
+    defaultTemplate: "basic",
     ...original.config,
     databaseUrl: target.toString(),
   });

@@ -38,6 +38,7 @@ export async function setup(): Promise<Fixture> {
     (name) => `https://${name}.p6.test`,
   );
   const app = new Application(pool, {
+    defaultTemplate: "basic",
     key,
     adminOrigin: origins[2],
     databaseUrl: process.env.P0_DATABASE_URL!,
