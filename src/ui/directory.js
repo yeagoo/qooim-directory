@@ -172,7 +172,7 @@ if (form) {
         submissions
           .map(
             (s) =>
-              `<article class="resource"><strong>${escape(s.data.title)}</strong><p>${escape({ pending: "待审核", accepted: "已通过审核", rejected: "未接受" }[s.status])} · ${escape(s.note)}</p></article>`,
+              `<article class="resource"><strong>${escape(s.data.title)}</strong><p>${escape({ pending: "待审核", accepted: "已通过审核", rejected: "未接受" }[s.status])}${s.has_image ? " · 附图片" : ""} · ${escape(s.note)}</p></article>`,
           )
           .join("") ||
         (currentSubmissionPage > 1
@@ -302,11 +302,24 @@ if (form) {
     button.disabled = true;
     const submittedVersion = formVersion;
     try {
+      const file = form.elements.namedItem("image")?.files?.[0];
+      let image;
+      if (file) {
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type))
+          throw new Error("图片只支持 JPEG、PNG 或 WebP。");
+        if (file.size > 1024 * 1024) throw new Error("图片不能超过 1 MiB。");
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 0x8000)
+          binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        image = { mime: file.type, data: btoa(binary) };
+      }
       await api("/api/me/submissions", {
         locale: document.querySelector("#personal-locale").value,
         title: form.elements.namedItem("title").value,
         url: form.elements.namedItem("url").value,
         description: form.elements.namedItem("description").value,
+        ...(image ? { image } : {}),
       });
       const keptEdits = formVersion !== submittedVersion;
       if (!keptEdits) form.reset();

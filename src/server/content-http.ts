@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Content } from "./content.js";
+import type { Media } from "./media.js";
 import { HttpError, type Operator } from "./operators.js";
 import { Conflict } from "../domain/config.js";
 export async function contentHttp(
@@ -8,6 +9,7 @@ export async function contentHttp(
   path: string,
   request: Request,
   body: () => Promise<unknown>,
+  media?: Media,
 ): Promise<Response | null> {
   const page = z.coerce
     .number()
@@ -145,8 +147,24 @@ export async function contentHttp(
   );
   if (review && !get)
     return json(
-      await content.review(actor, review[1], review[2], await body()),
+      await content.review(actor, review[1], review[2], await body(), media),
     );
+  const picture = path.match(
+    /^\/content\/([a-z][a-z0-9-]{0,47})\/submissions\/([0-9a-f-]+)\/image$/,
+  );
+  if (picture && get) {
+    const { mime, data } = await content.submissionImage(actor, picture[1], picture[2]);
+    return new Response(new Uint8Array(data), {
+      headers: {
+        "content-type": mime,
+        "content-length": String(data.length),
+        "cache-control": "private, no-store",
+        "content-disposition": "inline",
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'; sandbox",
+      },
+    });
+  }
   const action = path.match(
     /^\/content\/([a-z][a-z0-9-]{0,47})\/([a-z][a-z0-9-]{0,63})\/(zh|en)\/(stage|publish|unpublish|preview|diagnose|history|diff)$/,
   );

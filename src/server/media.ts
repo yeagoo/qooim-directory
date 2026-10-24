@@ -143,13 +143,34 @@ function dimensions(data: Buffer): { mime: Mime; width: number; height: number }
   }
   return null;
 }
-function decodeBase64(value: string) {
+function decodeBase64(value: string, maxBytes = MAX_BYTES) {
   if (value.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value))
     throw new HttpError(400, "图片内容不是合法 base64");
   const data = Buffer.from(value, "base64");
-  if (!data.length || data.length > MAX_BYTES)
-    throw new HttpError(413, "图片必须在 10 MiB 以内");
+  if (!data.length || data.length > maxBytes)
+    throw new HttpError(413, `图片必须在 ${maxBytes / 1024 / 1024} MiB 以内`);
   return data;
+}
+// Validates an uploaded image by magic bytes and parsed dimensions only.
+export function inspectImage(
+  input: { mime: string; data: string },
+  maxBytes = MAX_BYTES,
+  maxSide = MAX_SIDE,
+) {
+  const data = decodeBase64(input.data, maxBytes);
+  const info = dimensions(data);
+  if (!info) throw new HttpError(415, "仅支持 JPEG、PNG 或 WebP 图片");
+  if (info.mime !== input.mime)
+    throw new HttpError(415, "图片类型与文件内容不一致");
+  if (
+    info.width < 1 ||
+    info.height < 1 ||
+    info.width > maxSide ||
+    info.height > maxSide ||
+    info.width * info.height > MAX_PIXELS
+  )
+    throw new HttpError(400, "图片尺寸过大");
+  return { data, info, sha: createHash("sha256").update(data).digest("hex") };
 }
 export class Media {
   private readonly root: string;
@@ -164,22 +185,9 @@ export class Media {
   private path(site: string, sha: string, mime: Mime) {
     return join(this.root, site, `${sha}.${mimeExtension[mime]}`);
   }
-  // Shared upload/replace validation: trusts only magic bytes and parsed dimensions.
+  // Shared upload/replace validation.
   private image(input: { mime: string; data: string }) {
-    const data = decodeBase64(input.data);
-    const info = dimensions(data);
-    if (!info) throw new HttpError(415, "仅支持 JPEG、PNG 或 WebP 图片");
-    if (info.mime !== input.mime)
-      throw new HttpError(415, "图片类型与文件内容不一致");
-    if (
-      info.width < 1 ||
-      info.height < 1 ||
-      info.width > MAX_SIDE ||
-      info.height > MAX_SIDE ||
-      info.width * info.height > MAX_PIXELS
-    )
-      throw new HttpError(400, "图片尺寸过大");
-    return { data, info, sha: createHash("sha256").update(data).digest("hex") };
+    return inspectImage(input);
   }
   private bytesError(limit: number, used: number, size: number) {
     return new HttpError(

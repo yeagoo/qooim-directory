@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
+import type { Media } from "./media.js";
 import { transaction } from "../domain/transaction.js";
 import { activeProjectSite } from "./module-gate.js";
 import { projectSchema, sourceFields } from "../domain/project.js";
@@ -1082,7 +1083,7 @@ export class Content {
     await this.operators.require(actor, site);
     return (
       await this.pool.query(
-        "SELECT id,data,status,version,note,resource_id,created_at FROM submission WHERE site_id=$1 ORDER BY created_at DESC,id LIMIT 100 OFFSET $2",
+        "SELECT id,data,status,version,note,resource_id,created_at,EXISTS(SELECT 1 FROM submission_image i WHERE i.submission_id=submission.id) AS has_image FROM submission WHERE site_id=$1 ORDER BY created_at DESC,id LIMIT 100 OFFSET $2",
         [
           site,
           (z.coerce.number().int().min(1).max(100000).parse(page) - 1) * 100,
@@ -1090,7 +1091,29 @@ export class Content {
       )
     ).rows;
   }
-  async review(actor: Operator, site: string, id: string, input: unknown) {
+  async submissionImage(actor: Operator, site: string, id: string) {
+    await this.operators.require(actor, site);
+    z.uuid().parse(id);
+    const row = (
+      await this.pool.query(
+        "SELECT i.mime,i.data FROM submission_image i JOIN submission s ON s.id=i.submission_id WHERE s.site_id=$1 AND s.id=$2",
+        [site, id],
+      )
+    ).rows[0];
+    if (!row) throw new HttpError(404, "投稿没有图片");
+    return row as { mime: string; data: Buffer };
+  }
+  // Accepting imports an attached image into the media library first (its own
+  // transaction, deduplicated by content) and uses it as the draft's logo. If the import
+  // fails, for example over quota, the submission is still accepted without a logo, the
+  // image is kept for a later manual import and the reason is returned as imageError.
+  async review(
+    actor: Operator,
+    site: string,
+    id: string,
+    input: unknown,
+    media?: Media,
+  ) {
     await this.operators.require(actor, site, true);
     z.uuid().parse(id);
     const value = z
@@ -1100,7 +1123,32 @@ export class Content {
         note: z.string().max(500).default(""),
       })
       .parse(input);
-    return transaction(this.pool, async (c) => {
+    let logo: { mediaId: string; alt: string } | null = null,
+      imageError: string | null = null;
+    if (value.decision === "accepted" && media) {
+      const pending = (
+        await this.pool.query(
+          "SELECT s.data,i.mime,i.data AS image FROM submission s JOIN submission_image i ON i.submission_id=s.id WHERE s.site_id=$1 AND s.id=$2 AND s.status='pending' AND s.version=$3",
+          [site, id, value.expectedVersion],
+        )
+      ).rows[0];
+      if (pending)
+        try {
+          const alt = String(pending.data.title).slice(0, 200);
+          const uploaded = await media.upload(actor, {
+            site,
+            filename: `submission-${id}.${pending.mime.split("/")[1].replace("jpeg", "jpg")}`,
+            mime: pending.mime,
+            alt,
+            data: (pending.image as Buffer).toString("base64"),
+          });
+          logo = { mediaId: uploaded.id, alt };
+        } catch (error) {
+          if (!(error instanceof HttpError)) throw error;
+          imageError = error.message;
+        }
+    }
+    const result = await transaction(this.pool, async (c) => {
       const row = (
         await c.query(
           "SELECT * FROM submission WHERE site_id=$1 AND id=$2 FOR UPDATE",
@@ -1139,6 +1187,7 @@ export class Content {
         const candidate = candidateSchema.parse({
           resourceVersion: 1,
           slug: resource,
+          ...(logo ? { overrides: { logo } } : {}),
         });
         await c.query(
           "INSERT INTO content_draft(site_id,resource_id,locale,candidate) VALUES($1,$2,$3,$4)",
@@ -1149,12 +1198,17 @@ export class Content {
         "UPDATE submission SET status=$3,note=$4,resource_id=$5,version=version+1 WHERE site_id=$1 AND id=$2",
         [site, id, value.decision, value.note, resource],
       );
+      // The held image is no longer needed once rejected or imported.
+      if (value.decision === "rejected" || logo)
+        await c.query("DELETE FROM submission_image WHERE submission_id=$1", [id]);
       await this.audit(c, actor, site, "submission.review", {
         id,
         decision: value.decision,
+        ...(logo ? { logoMediaId: logo.mediaId } : {}),
       });
       return { resourceId: resource };
     });
+    return imageError ? { ...result, imageError } : result;
   }
   async updateDiff(actor: Operator, site: string, id: string, locale: string) {
     await this.operators.require(actor, site);
@@ -1297,4 +1351,13 @@ export const submissionInput = z.strictObject({
   url: webUrl,
   title: text,
   description,
+  // Optional logo or screenshot, base64; checked by inspectImage before it is stored.
+  image: z
+    .strictObject({
+      mime: z.enum(["image/jpeg", "image/png", "image/webp"]),
+      data: z.string().min(1).max(1_400_000),
+    })
+    .optional(),
 });
+export const SUBMISSION_IMAGE_BYTES = 1024 * 1024,
+  SUBMISSION_IMAGE_SIDE = 4096;
