@@ -1103,10 +1103,11 @@ export class Content {
     if (!row) throw new HttpError(404, "投稿没有图片");
     return row as { mime: string; data: Buffer };
   }
-  // Accepting imports an attached image into the media library first (its own
-  // transaction, deduplicated by content) and uses it as the draft's logo. If the import
-  // fails, for example over quota, the submission is still accepted without a logo, the
-  // image is kept for a later manual import and the reason is returned as imageError.
+  // Accepting creates the resource and draft in the locked review transaction. An
+  // attached image is imported into the media library only after that transaction
+  // commits, then linked to the draft if nobody replaced it in the meantime. If the
+  // import fails, the submission is still accepted without a logo, the held image is
+  // kept for a later manual import and the reason is returned as imageError.
   async review(
     actor: Operator,
     site: string,
@@ -1123,32 +1124,7 @@ export class Content {
         note: z.string().max(500).default(""),
       })
       .parse(input);
-    let logo: { mediaId: string; alt: string } | null = null,
-      imageError: string | null = null;
-    if (value.decision === "accepted" && media) {
-      const pending = (
-        await this.pool.query(
-          "SELECT s.data,i.mime,i.data AS image FROM submission s JOIN submission_image i ON i.submission_id=s.id WHERE s.site_id=$1 AND s.id=$2 AND s.status='pending' AND s.version=$3",
-          [site, id, value.expectedVersion],
-        )
-      ).rows[0];
-      if (pending)
-        try {
-          const alt = String(pending.data.title).slice(0, 200);
-          const uploaded = await media.upload(actor, {
-            site,
-            filename: `submission-${id}.${pending.mime.split("/")[1].replace("jpeg", "jpg")}`,
-            mime: pending.mime,
-            alt,
-            data: (pending.image as Buffer).toString("base64"),
-          });
-          logo = { mediaId: uploaded.id, alt };
-        } catch (error) {
-          if (!(error instanceof HttpError)) throw error;
-          imageError = error.message;
-        }
-    }
-    const result = await transaction(this.pool, async (c) => {
+    const committed = await transaction(this.pool, async (c) => {
       const row = (
         await c.query(
           "SELECT * FROM submission WHERE site_id=$1 AND id=$2 FOR UPDATE",
@@ -1159,7 +1135,23 @@ export class Content {
       await this.operators.require(actor, site, true, c);
       if (row.version !== value.expectedVersion || row.status !== "pending")
         throw new Conflict("Submission already reviewed");
-      let resource: string | null = null;
+      let resource: string | null = null,
+        draft: {
+          version: number;
+          candidate: z.infer<typeof candidateSchema>;
+          locale: string;
+        } | null = null;
+      // Read the held image under the submission lock, but keep it until the media
+      // import succeeds so a failed import can be retried manually.
+      const held =
+        value.decision === "accepted" && media
+          ? (
+              await c.query(
+                "SELECT mime,data FROM submission_image WHERE submission_id=$1",
+                [id],
+              )
+            ).rows[0]
+          : null;
       if (value.decision === "accepted") {
         resource = "submission-" + id;
         const data = resourceData.parse({
@@ -1184,31 +1176,74 @@ export class Content {
           },
           site,
         );
-        const candidate = candidateSchema.parse({
-          resourceVersion: 1,
-          slug: resource,
-          ...(logo ? { overrides: { logo } } : {}),
-        });
-        await c.query(
-          "INSERT INTO content_draft(site_id,resource_id,locale,candidate) VALUES($1,$2,$3,$4)",
+        const candidate = candidateSchema.parse({ resourceVersion: 1, slug: resource });
+        const inserted = await c.query(
+          "INSERT INTO content_draft(site_id,resource_id,locale,candidate) VALUES($1,$2,$3,$4) RETURNING version",
           [site, resource, row.data.locale, candidate],
         );
+        draft = {
+          version: Number(inserted.rows[0].version),
+          candidate,
+          locale: row.data.locale,
+        };
       }
       await c.query(
         "UPDATE submission SET status=$3,note=$4,resource_id=$5,version=version+1 WHERE site_id=$1 AND id=$2",
         [site, id, value.decision, value.note, resource],
       );
-      // The held image is no longer needed once rejected or imported.
-      if (value.decision === "rejected" || logo)
+      if (value.decision === "rejected")
         await c.query("DELETE FROM submission_image WHERE submission_id=$1", [id]);
       await this.audit(c, actor, site, "submission.review", {
         id,
         decision: value.decision,
-        ...(logo ? { logoMediaId: logo.mediaId } : {}),
       });
-      return { resourceId: resource };
+      return {
+        result: { resourceId: resource },
+        draft,
+        held: held
+          ? {
+              mime: held.mime as string,
+              data: held.data as Buffer,
+              alt: String(row.data.title).slice(0, 200),
+            }
+          : null,
+      };
     });
-    return imageError ? { ...result, imageError } : result;
+    const { result, draft, held } = committed;
+    if (!held || !draft || !media || !result.resourceId) return result;
+    const resource = result.resourceId;
+    let logo: { mediaId: string; alt: string };
+    try {
+      const uploaded = await media.upload(actor, {
+        site,
+        filename: `submission-${id}.${held.mime.split("/")[1].replace("jpeg", "jpg")}`,
+        mime: held.mime,
+        alt: held.alt,
+        data: held.data.toString("base64"),
+      });
+      logo = { mediaId: uploaded.id, alt: held.alt };
+    } catch (error) {
+      if (!(error instanceof HttpError)) throw error;
+      return { ...result, imageError: error.message };
+    }
+    await transaction(this.pool, async (c) => {
+      await this.lock(c, site, resource, draft.locale);
+      const candidate = candidateSchema.parse({
+        ...draft.candidate,
+        overrides: { ...draft.candidate.overrides, logo },
+      });
+      // Only replace the exact draft created by this review; a concurrent stage or
+      // publish must win. The imported media stays in the library either way.
+      await c.query(
+        `UPDATE content_draft SET candidate=$4,version=version+1
+         WHERE site_id=$1 AND resource_id=$2 AND locale=$3
+           AND version=$5 AND candidate=$6::jsonb`,
+        [site, resource, draft.locale, candidate, draft.version, draft.candidate],
+      );
+      // The import succeeded, so the held copy is no longer needed.
+      await c.query("DELETE FROM submission_image WHERE submission_id=$1", [id]);
+    });
+    return result;
   }
   async updateDiff(actor: Operator, site: string, id: string, locale: string) {
     await this.operators.require(actor, site);
@@ -1360,4 +1395,14 @@ export const submissionInput = z.strictObject({
     .optional(),
 });
 export const SUBMISSION_IMAGE_BYTES = 1024 * 1024,
-  SUBMISSION_IMAGE_SIDE = 4096;
+  SUBMISSION_IMAGE_SIDE = 4096,
+  SUBMISSION_IMAGE_SITE_BYTES = 100 * 1024 * 1024;
+// Held images of reviewed submissions are kept for manual import for 30 days.
+export async function pruneSubmissionImages(pool: Pool) {
+  const result = await pool.query(
+    `DELETE FROM submission_image i USING submission s
+     WHERE i.submission_id=s.id AND s.status<>'pending'
+       AND s.created_at<clock_timestamp()-interval '30 days'`,
+  );
+  return { deleted: result.rowCount ?? 0 };
+}

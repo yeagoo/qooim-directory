@@ -7,6 +7,7 @@ import {
   submissionInput,
   SUBMISSION_IMAGE_BYTES,
   SUBMISSION_IMAGE_SIDE,
+  SUBMISSION_IMAGE_SITE_BYTES,
 } from "./content.js";
 import { inspectImage } from "./media.js";
 export type Visitor = { id: string; user_id: string };
@@ -80,6 +81,10 @@ export class Personal {
     return transaction(this.pool, async (c) => {
       // Wait for the business lock before retaining identity locks so logout
       // and bans can finish while a submission is queued.
+      if (picture)
+        await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
+          "submission-image:" + site,
+        ]);
       await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
         "submission:" + site + ":" + user.user_id,
       ]);
@@ -103,6 +108,23 @@ export class Personal {
       ).rows[0].n;
       if (recent >= 10)
         throw new HttpError(429, "每小时最多提交 10 条，请稍后再试");
+      if (picture) {
+        const used = Number(
+          (
+            await c.query(
+              `SELECT coalesce(sum(i.bytes),0)::bigint AS bytes
+               FROM submission_image i JOIN submission s ON s.id=i.submission_id
+               WHERE s.site_id=$1 AND s.status='pending'`,
+              [site],
+            )
+          ).rows[0].bytes,
+        );
+        if (used + picture.data.length > SUBMISSION_IMAGE_SITE_BYTES)
+          throw new HttpError(
+            413,
+            `本站待审核投稿图片总量已达上限（${SUBMISSION_IMAGE_SITE_BYTES / 1024 / 1024} MiB），请等待现有投稿审核后再试`,
+          );
+      }
       const created = (
         await c.query(
           "INSERT INTO submission(site_id,space_id,user_id,data,created_at) VALUES($1,$2,$3,$4,clock_timestamp()) RETURNING id,status",

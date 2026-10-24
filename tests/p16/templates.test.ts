@@ -128,6 +128,12 @@ for (const template of ["basic", "editorial"]) {
     assert.equal(listing.includes(XSS), false);
     const tag = await html("/zh/tools/tag/bad");
     assert.equal(tag.includes(XSS), false);
+    // Term pages keep the normal intro/search and add the term header.
+    const term = await html("/zh/tools/tag/collab");
+    assert.match(term, /<form class="search"/);
+    assert.match(term, /<input type="hidden" name="tag" value="collab">/);
+    assert.match(term, /<h1>#协作<\/h1>/);
+    if (template === "editorial") assert.match(term, /class="editorial-masthead"/);
   });
 
   test(`P16 ${template}: alternatives and comparison pages render and escape`, async () => {

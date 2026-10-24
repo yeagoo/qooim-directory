@@ -138,9 +138,10 @@ function directory(page: Directory, l: ClassicLayout): { meta: PageMeta; body: R
     };
   }
   const term = page.categoryPage ?? page.tagPage ?? page.collectionPage;
-  const intro = term
+  const termHeader = term
     ? `<section class="directory-intro"><a href="${escapeHtml(base(page))}">${escapeHtml(t.all)}</a><h1>${page.tagPage ? "#" : ""}${escapeHtml(term.label)}</h1>${page.collectionPage?.description ? `<p class="muted">${escapeHtml(page.collectionPage.description)}</p>` : ""}</section>`
-    : l.intro(page) + searchForm(page);
+    : "";
+  const intro = l.intro(page) + searchForm(page) + termHeader;
   return {
     meta: term ? { title: `${term.label} · ${page.site.name}` } : {},
     body: <Html html={`${intro}<div class="result-label">${escapeHtml(t.results(page.result.total))}</div>${listing}${pagination(page)}`} />,

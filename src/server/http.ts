@@ -258,10 +258,13 @@ export class Application {
     response.headers.set("x-content-type-options", "nosniff");
     response.headers.set("referrer-policy", "no-referrer");
     response.headers.set("x-frame-options", "DENY");
-    response.headers.set(
-      "content-security-policy",
-      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
-    );
+    // Keep a route's own stricter policy (the sandboxed submission image); any other
+    // CSP is replaced by the site policy.
+    if (!response.headers.get("content-security-policy")?.startsWith("default-src 'none'"))
+      response.headers.set(
+        "content-security-policy",
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+      );
     return response;
   }
   private async body(request: Request, limit = BODY_LIMIT) {
