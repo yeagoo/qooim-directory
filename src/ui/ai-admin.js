@@ -122,7 +122,7 @@ function promptsPanel(prompts, selected, global, write = true) {
         ? list
         : [{ version: current, note: "不存在", builtin: false }, ...list];
       const shown = list.find((entry) => entry.version === current);
-      return `<div class="ai-prompt-kind" data-kind="${kind}"><label for="ai-prompt-${kind}">${escape(kindLabels[kind])}</label><select id="ai-prompt-${kind}" data-kind="${kind}">${options.map((entry) => `<option value="${entry.version}" ${entry.version === current ? "selected" : ""}>${escape(versionLabel(entry))}</option>`).join("")}</select><pre id="ai-prompt-text-${kind}" style="white-space:pre-wrap">${escape(shown?.instructions ?? "该版本不存在。")}</pre><p class="muted" id="ai-prompt-meta-${kind}">${escape(promptMeta(shown))}</p></div>`;
+      return `<div class="ai-prompt-kind" data-kind="${kind}"><label for="ai-prompt-${kind}">${escape(kindLabels[kind])}</label><select id="ai-prompt-${kind}" data-kind="${kind}">${options.map((entry) => `<option value="${entry.version}" ${entry.version === current ? "selected" : ""}>${escape(versionLabel(entry))}</option>`).join("")}</select><pre id="ai-prompt-text-${kind}" class="pre-wrap">${escape(shown?.instructions ?? "该版本不存在。")}</pre><p class="muted" id="ai-prompt-meta-${kind}">${escape(promptMeta(shown))}</p></div>`;
     })
     .join("");
   const create = global

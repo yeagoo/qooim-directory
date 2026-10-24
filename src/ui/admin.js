@@ -249,7 +249,7 @@ async function renderView(scope) {
 async function overview(scope, draft) {
   const { api, notice } = scope;
   const cards = sites.length
-    ? `<div class="site-grid">${sites.map((site) => `<a class="site-card" href="#site/${encodeURIComponent(site.id)}" data-site="${escape(site.id)}"><span class="who"><span class="avatar" aria-hidden="true">${escape(Array.from(site.config.name || site.id)[0]?.toUpperCase())}</span><span><h2>${escape(site.config.name)}</h2><span class="host">${escape(site.host)}</span></span></span><span class="counts"><span><b class="stat-published">—</b>已发布</span><span><b class="stat-pending">—</b>待审核</span></span><span class="last"><span class="status ${site.active ? "ok" : ""}">${site.active ? "运行中" : "已停用"}</span> <span class="muted">${escape(site.state)} · 修订 ${site.revision} · ${site.center_site ? "共享账号（legacy）" : "独立账号"}</span></span></a>`).join("")}</div>`
+    ? `<div class="site-grid">${sites.map((site) => `<a class="site-card" href="#site/${encodeURIComponent(site.id)}" data-site="${escape(site.id)}"><span class="who"><span class="avatar" aria-hidden="true">${escape(Array.from(site.config.name || site.id)[0]?.toUpperCase())}</span><span><h2>${escape(site.config.name)}</h2><span class="host">${escape(site.host)}</span></span></span><span class="counts"><span><b class="stat-published">—</b>已发布</span><span><b class="stat-drafts">—</b>草稿</span><span><b class="stat-submissions">—</b>投稿待审</span></span><span class="last"><span class="status ${site.active ? "ok" : ""}">${site.active ? "运行中" : "已停用"}</span> <span class="muted">${escape(site.state)} · 修订 ${site.revision} · ${site.center_site ? "共享账号（legacy）" : "独立账号"}</span></span></a>`).join("")}</div>`
     : `<div class="empty-state"><strong>还没有站点</strong>${me.global_admin ? "在下方创建第一个站点，账号服务会自动准备。" : "请联系管理员为你分配站点权限。"}</div>`;
   workspace.innerHTML = `<div class="overview"><div><div class="overview-head"><h1>站点</h1><span class="muted">${sites.length} 个</span><div class="row"><button class="secondary" id="refresh-sites">刷新列表</button></div></div>${cards}${
     me.global_admin
@@ -342,33 +342,52 @@ async function overview(scope, draft) {
   }
   update();
 }
-// Fills the overview's counts and activity after the cards render; failures stay inline.
-async function fillOverview(scope) {
+// Fills the overview's counts and activity after the cards render; each part fails inline.
+function fillOverview(scope) {
+  void scope
+    .api("/content/site-stats")
+    .then((rows) => {
+      if (!scope.current()) return;
+      for (const row of rows) {
+        const card = workspace.querySelector(`.site-card[data-site="${CSS.escape(row.id)}"]`);
+        if (!card) continue;
+        card.querySelector(".stat-published").textContent = row.published.toLocaleString("zh-CN");
+        card.querySelector(".stat-drafts").textContent = row.drafts.toLocaleString("zh-CN");
+        card.querySelector(".stat-submissions").textContent = row.submissions.toLocaleString("zh-CN");
+      }
+    })
+    .catch(() => {});
+  void recentActivity(scope);
+}
+// Global admins read the network-wide log; others merge the logs of up to 5 granted sites.
+async function recentActivity(scope) {
   const list = workspace.querySelector("#recent-activity");
-  const [stats, events] = await Promise.allSettled([
-    scope.api("/content/site-stats"),
-    scope.api("/audit?limit=8" + (me.global_admin || !sites[0] ? "" : "&site=" + encodeURIComponent(sites[0].id))),
-  ]);
-  if (!scope.current() || !list?.isConnected) return;
-  if (stats.status === "fulfilled")
-    for (const row of stats.value) {
-      const card = workspace.querySelector(`.site-card[data-site="${CSS.escape(row.id)}"]`);
-      if (!card) continue;
-      card.querySelector(".stat-published").textContent = row.published.toLocaleString("zh-CN");
-      card.querySelector(".stat-pending").textContent = (row.drafts + row.submissions).toLocaleString("zh-CN");
-    }
-  if (events.status !== "fulfilled") {
-    list.innerHTML = `<li class="muted">活动暂时无法载入：${escape(events.reason?.message ?? "")}</li>`;
-    return;
+  const show = (html) => {
+    if (scope.current() && list.isConnected) list.innerHTML = html;
+  };
+  const scoped = me.global_admin ? [""] : sites.slice(0, 5).map((site) => site.id);
+  if (!scoped.length) return show('<li class="muted">没有可查看的站点记录。</li>');
+  try {
+    const pages = await Promise.all(
+      scoped.map((id) => scope.api("/audit?limit=8" + (id ? "&site=" + encodeURIComponent(id) : ""))),
+    );
+    const events = pages
+      .flatMap((page) => page.events)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 8);
+    show(
+      events.length
+        ? events
+            .map(
+              (event) =>
+                `<li><span class="dot" aria-hidden="true"></span><span class="text">${escape(auditLabels[event.action] ?? event.action)}${event.site_id ? ` · <span class="muted">${escape(event.site_id)}</span>` : ""}</span><time datetime="${escape(event.created_at)}">${escape(relativeTime(event.created_at))}</time></li>`,
+            )
+            .join("")
+        : '<li class="muted">还没有活动记录。</li>',
+    );
+  } catch (error) {
+    if (error !== staleView) show(`<li class="muted">活动暂时无法载入：${escape(error.message)}</li>`);
   }
-  list.innerHTML = events.value.events.length
-    ? events.value.events
-        .map(
-          (event) =>
-            `<li><span class="dot" aria-hidden="true"></span><span class="text">${escape(auditLabels[event.action] ?? event.action)}${event.site_id ? ` · <span class="muted">${escape(event.site_id)}</span>` : ""}</span><time datetime="${escape(event.created_at)}">${escape(relativeTime(event.created_at))}</time></li>`,
-        )
-        .join("")
-    : '<li class="muted">还没有活动记录。</li>';
 }
 function relativeTime(value) {
   const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60000);
@@ -418,10 +437,13 @@ if (palette) {
       ? items
           .map(
             (item, i) =>
-              `<li role="option" data-index="${i}" aria-selected="${i === index}">${escape(item.label)}<small>${escape(item.hint)}</small></li>`,
+              `<li role="option" id="cmdk-option-${i}" data-index="${i}" aria-selected="${i === index}">${escape(item.label)}<small>${escape(item.hint)}</small></li>`,
           )
           .join("")
-      : '<li class="muted">没有匹配项</li>';
+      : '<li class="muted" role="presentation">没有匹配项</li>';
+    if (items.length) input.setAttribute("aria-activedescendant", "cmdk-option-" + index);
+    else input.removeAttribute("aria-activedescendant");
+    list.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
   };
   const go = (item) => {
     if (!item) return;
@@ -472,6 +494,7 @@ if (palette) {
   });
   input.addEventListener("input", () => void search());
   input.addEventListener("keydown", (event) => {
+    if (event.isComposing || event.keyCode === 229) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       if (!items.length) return;
@@ -494,6 +517,13 @@ if (palette) {
 document.addEventListener("click", (event) => {
   const menu = document.querySelector("#account-menu");
   if (menu?.open && !menu.contains(event.target)) menu.open = false;
+});
+document.addEventListener("keydown", (event) => {
+  const menu = document.querySelector("#account-menu");
+  if (event.key === "Escape" && menu?.open) {
+    menu.open = false;
+    menu.querySelector("summary").focus();
+  }
 });
 function providerPanel(data, id) {
   if (data.site.center_site)

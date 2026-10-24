@@ -70,17 +70,17 @@ fieldset{border-radius:10px}
 textarea.short{min-height:96px}.badge.stale{background:var(--danger-soft);color:var(--danger)}label+small,input+small,select+small,textarea+small{display:block;color:var(--muted);margin-top:4px}
 /* Monochrome console (scheme 3): black/white, hairline borders, Geist. */
 @font-face{font-family:Geist;src:url(/assets/fonts/Geist-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}@font-face{font-family:"Geist Mono";src:url(/assets/fonts/GeistMono-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
-:root{--ink:#0a0a0a;--muted:#666;--paper:#fafafa;--surface:#fff;--line:#eaeaea;--line-strong:#d4d4d4;--accent:#0a0a0a;--accent-ink:#fff;--accent-soft:#f2f2f2;--warm:#fafafa;--ok:#1a7f45;--ok-soft:#e8f6ee;--danger:#d9342b;--danger-soft:#fdeceb;--info:#0068d6;--info-soft:#e9f2fe;--warn:#a35200;--warn-soft:#fff4e0;--idle:#666;--idle-soft:#f2f2f2;--shadow:none;--mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;color-scheme:light}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--ink:#ededed;--muted:#a1a1a1;--paper:#000;--surface:#0a0a0a;--line:#262626;--line-strong:#3a3a3a;--accent:#ededed;--accent-ink:#0a0a0a;--accent-soft:#1a1a1a;--warm:#111;--ok:#4cc38a;--ok-soft:#0f2a1c;--danger:#ff6b61;--danger-soft:#2c1210;--info:#52a8ff;--info-soft:#0d2240;--warn:#f5b54a;--warn-soft:#2e2008;--idle:#a1a1a1;--idle-soft:#1a1a1a;color-scheme:dark}}
-:root[data-theme=dark]{--ink:#ededed;--muted:#a1a1a1;--paper:#000;--surface:#0a0a0a;--line:#262626;--line-strong:#3a3a3a;--accent:#ededed;--accent-ink:#0a0a0a;--accent-soft:#1a1a1a;--warm:#111;--ok:#4cc38a;--ok-soft:#0f2a1c;--danger:#ff6b61;--danger-soft:#2c1210;--info:#52a8ff;--info-soft:#0d2240;--warn:#f5b54a;--warn-soft:#2e2008;--idle:#a1a1a1;--idle-soft:#1a1a1a;color-scheme:dark}
-body{background:var(--paper);font:14px/1.6 Geist,ui-sans-serif,-apple-system,"PingFang SC","Noto Sans SC","Microsoft Yahei",sans-serif}
-h1{font-size:28px;font-weight:600;letter-spacing:-.03em}h2{font-size:16px;font-weight:600;letter-spacing:-.01em}
-code,pre,kbd,.project-facts,.mono,td.num{font-family:var(--mono)}td,th,.num{font-variant-numeric:tabular-nums}
-a{color:var(--ink)}a:hover{opacity:.75}
-button,.button{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);border-radius:6px;padding:7px 14px;font-weight:500}
-button:hover{box-shadow:none;opacity:.85}button.secondary,.button.secondary{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}button.secondary:hover{border-color:var(--ink);color:var(--ink)}
-button:active{transform:translateY(1px)}
-input,textarea,select{border-color:var(--line-strong);border-radius:6px}input:focus,textarea:focus,select:focus{border-color:var(--ink);box-shadow:0 0 0 3px var(--accent-soft)}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.console{--ink:#0a0a0a;--muted:#666;--paper:#fafafa;--surface:#fff;--line:#eaeaea;--line-strong:#d4d4d4;--accent:#0a0a0a;--accent-ink:#fff;--accent-soft:#f2f2f2;--warm:#fafafa;--ok:#1a7f45;--ok-soft:#e8f6ee;--danger:#d9342b;--danger-soft:#fdeceb;--info:#0068d6;--info-soft:#e9f2fe;--warn:#a35200;--warn-soft:#fff4e0;--idle:#666;--idle-soft:#f2f2f2;--shadow:none;--mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .console{--ink:#ededed;--muted:#a1a1a1;--paper:#000;--surface:#0a0a0a;--line:#262626;--line-strong:#3a3a3a;--accent:#ededed;--accent-ink:#0a0a0a;--accent-soft:#1a1a1a;--warm:#111;--ok:#4cc38a;--ok-soft:#0f2a1c;--danger:#ff6b61;--danger-soft:#2c1210;--info:#52a8ff;--info-soft:#0d2240;--warn:#f5b54a;--warn-soft:#2e2008;--idle:#a1a1a1;--idle-soft:#1a1a1a;color-scheme:dark}}
+:root[data-theme=dark] .console{--ink:#ededed;--muted:#a1a1a1;--paper:#000;--surface:#0a0a0a;--line:#262626;--line-strong:#3a3a3a;--accent:#ededed;--accent-ink:#0a0a0a;--accent-soft:#1a1a1a;--warm:#111;--ok:#4cc38a;--ok-soft:#0f2a1c;--danger:#ff6b61;--danger-soft:#2c1210;--info:#52a8ff;--info-soft:#0d2240;--warn:#f5b54a;--warn-soft:#2e2008;--idle:#a1a1a1;--idle-soft:#1a1a1a;color-scheme:dark}
+body.console{background:var(--paper);font:14px/1.6 Geist,ui-sans-serif,-apple-system,"PingFang SC","Noto Sans SC","Microsoft Yahei",sans-serif}
+.console h1{font-size:28px;font-weight:600;letter-spacing:-.03em}.console h2{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.console code,.console pre,.console kbd,.console .project-facts,.console .mono,.console td.num{font-family:var(--mono)}.console td,.console th,.console .num{font-variant-numeric:tabular-nums}
+.console a{color:var(--ink)}.console a:hover{opacity:.75}
+.console button,.console .button{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);border-radius:6px;padding:7px 14px;font-weight:500}
+.console button:hover{box-shadow:none;opacity:.85}.console button.secondary,.console .button.secondary{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}.console button.secondary:hover{border-color:var(--ink);color:var(--ink)}
+.console button:active{transform:translateY(1px)}
+.console input,.console textarea,.console select{border-color:var(--line-strong);border-radius:6px}.console input:focus,.console textarea:focus,.console select:focus{border-color:var(--ink);box-shadow:0 0 0 3px var(--accent-soft)}.console button:focus-visible,.console a:focus-visible,.console summary:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .shell{display:block;min-height:100vh;background:var(--paper)}@media(min-width:851px){.shell{display:block}}
 .topbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);padding:0 32px}
 .topbar-row{height:60px;display:flex;align-items:center;gap:16px}
@@ -96,14 +96,14 @@ kbd{margin-left:auto;font-size:11px;border:1px solid var(--line);border-radius:4
 .tabs{display:flex;gap:24px;overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
 .tabs a{padding:10px 0 12px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}.tabs a:hover{color:var(--ink);opacity:1}.tabs a[aria-current=page]{color:var(--ink);border-bottom-color:var(--ink)}
 .content{max-width:1280px;padding:32px 32px 72px}
-.eyebrow{font-size:13px;color:var(--muted)}
-.panel{border-radius:12px;border-color:var(--line);box-shadow:none;background:var(--surface)}.panel>h2:first-child{border-bottom-color:var(--line)}
-.table-wrap{border-color:var(--line);border-radius:8px;background:var(--surface);max-height:70vh}
-th{background:var(--warm);font-size:12px;font-weight:500;color:var(--muted);position:sticky;top:0;z-index:1}tbody tr:hover td{background:var(--warm)}
-.badge{background:var(--idle-soft);color:var(--ink);border-radius:999px;font-weight:500}.badge.stale{background:var(--warn-soft);color:var(--warn)}
+.console .eyebrow{font-size:13px;color:var(--muted)}
+.console .panel{border-radius:12px;border-color:var(--line);box-shadow:none;background:var(--surface)}.console .panel>h2:first-child{border-bottom-color:var(--line)}
+.console .table-wrap{border-color:var(--line);border-radius:8px;background:var(--surface);max-height:70vh}
+.console th{background:var(--warm);font-size:12px;font-weight:500;color:var(--muted);position:sticky;top:0;z-index:1}.console tbody tr:hover td{background:var(--warm)}
+.console .badge{background:var(--idle-soft);color:var(--ink);border-radius:999px;font-weight:500}.console .badge.stale{background:var(--warn-soft);color:var(--warn)}
 .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--idle-soft);color:var(--idle)}.status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .status.ok{background:var(--ok-soft);color:var(--ok)}.status.run{background:var(--info-soft);color:var(--info)}.status.review{background:var(--warn-soft);color:var(--warn)}.status.fail{background:var(--danger-soft);color:var(--danger)}
-.notice{border:1px solid var(--line);border-left:3px solid var(--ok);background:var(--surface)}.notice.error{border-left-color:var(--danger);background:var(--danger-soft)}
+.console .notice{border:1px solid var(--line);border-left:3px solid var(--ok);background:var(--surface)}.console .notice.error{border-left-color:var(--danger);background:var(--danger-soft)}
 .overview{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:32px;align-items:start}
 .overview-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}.overview-head h1{margin:0}.overview-head .row{margin-left:auto}
 .site-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
@@ -119,18 +119,19 @@ th{background:var(--warm);font-size:12px;font-weight:500;color:var(--muted);posi
 dialog#cmdk{width:min(560px,calc(100vw - 32px));margin-top:12vh;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.25)}dialog#cmdk::backdrop{background:rgba(0,0,0,.35)}
 #cmdk-input{border:0;border-bottom:1px solid var(--line);border-radius:0;padding:16px;font-size:15px;box-shadow:none}#cmdk-list{list-style:none;margin:0;padding:6px;max-height:50vh;overflow:auto}#cmdk-list li{padding:9px 12px;border-radius:6px;cursor:pointer;display:flex;gap:10px}#cmdk-list li small{margin-left:auto;color:var(--muted);font-family:var(--mono)}#cmdk-list li[aria-selected=true]{background:var(--accent-soft)}.cmdk-hint{margin:0;padding:8px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 .login{max-width:380px;margin:14vh auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:32px;box-shadow:none}.login-brand{display:flex;align-items:center;gap:10px;margin-bottom:28px}.login h1{font-size:24px;margin-bottom:4px}
-.account-story{background:var(--ink);color:var(--paper)}.account-story h1,.account-story .brand{color:var(--paper)}
 @media(max-width:850px){.topbar{padding:0 16px}.search-entry{width:auto}.search-entry kbd,.topbar .pill,.topbar-tools .button{display:none}.content{padding:20px 16px 48px}.overview,.site-grid{grid-template-columns:1fr}.tabs{gap:18px}}
-@media(max-width:520px){.search-entry{width:34px;padding:0;justify-content:center;font-size:0}.search-entry::before{content:"⌕";font-size:16px}.topbar .brand b{display:none}}
-@media(prefers-reduced-motion:reduce){.skeleton-page span,.skeleton{animation:none}}`;
+@media(max-width:520px){.search-entry{width:34px;padding:0;justify-content:center;font-size:0}.search-entry::before{content:"⌕";font-size:16px}.topbar .brand b,.topbar .sep{display:none}}
+@media(prefers-reduced-motion:reduce){.skeleton-page span,.skeleton{animation:none}}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.meter{width:100%}.media-thumb{width:100%;max-height:180px;object-fit:cover;border-radius:6px}.media-thumb.contain{max-height:140px;object-fit:contain}.pre-wrap{white-space:pre-wrap}td.alert{color:var(--danger);font-weight:600}`;
 export function document(
   title: string,
   body: string,
   script?: string,
   head = "",
   lang = "zh-CN",
+  bodyClass = "",
 ) {
-  return `<!doctype html><html lang="${escape(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title>${head}<link rel="stylesheet" href="/assets/network.css"></head><body>${body}<footer class="footer" aria-label="Source"><a href="/source.tar.gz">获取本部署源码 · AGPL-3.0</a></footer>${script ? `<script type="module" src="${script}"></script>` : ""}</body></html>`;
+  return `<!doctype html><html lang="${escape(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title>${head}<link rel="stylesheet" href="/assets/network.css"></head><body${bodyClass ? ` class="${escape(bodyClass)}"` : ""}>${body}<footer class="footer" aria-label="Source"><a href="/source.tar.gz">获取本部署源码 · AGPL-3.0</a></footer>${script ? `<script type="module" src="${script}"></script>` : ""}</body></html>`;
 }
 export function staticPage(
   siteName: string,
@@ -162,8 +163,11 @@ const logo = `<svg class="logo" width="20" height="20" viewBox="0 0 24 24" aria-
 export function adminPage() {
   return document(
     "站群工作台",
-    `<div class="shell"><header class="topbar"><div class="topbar-row"><a class="brand" href="/admin">${logo}<span class="sep" aria-hidden="true">/</span><b>Qoo.IM 站群</b><span class="pill">运营者</span></a><div class="topbar-tools"><button type="button" class="search-entry" id="cmdk-open" aria-haspopup="dialog">搜索站点、条目、页面…<kbd>⌘K</kbd></button><a class="button" href="/admin#distribute">统一分发</a><details class="menu" id="account-menu"><summary aria-label="账号与外观"><span id="account" class="muted"></span></summary><div class="menu-panel"><fieldset class="theme-choice"><legend>外观</legend><label><input type="radio" name="theme" value="system">跟随系统</label><label><input type="radio" name="theme" value="light">浅色</label><label><input type="radio" name="theme" value="dark">深色</label></fieldset><button class="secondary" id="logout">退出登录</button></div></details></div></div><nav id="nav" class="tabs" aria-label="主导航"><a href="/admin">总览</a><a href="/admin#resources">资源主档</a><a href="/admin#distribute">统一分发</a><a href="/admin#github">开源项目</a><a href="/admin#team">成员权限</a><a href="/admin#tasks">运行任务</a><a href="/admin#audit">审计日志</a></nav></header><main class="content"><div id="message" role="status" aria-live="polite"></div><div id="workspace"><div class="skeleton-page" aria-label="正在加载"><span></span><span></span><span></span></div></div></main><dialog id="cmdk" aria-label="命令面板"><input id="cmdk-input" placeholder="跳转到页面、站点，或输入资源标识…" autocomplete="off" aria-controls="cmdk-list"><ul id="cmdk-list" role="listbox"></ul><p class="cmdk-hint">↑↓ 选择 · Enter 打开 · Esc 关闭</p></dialog></div>`,
+    `<div class="shell"><header class="topbar"><div class="topbar-row"><a class="brand" href="/admin">${logo}<span class="sep" aria-hidden="true">/</span><b>Qoo.IM 站群</b><span class="pill">运营者</span></a><div class="topbar-tools"><button type="button" class="search-entry" id="cmdk-open" aria-haspopup="dialog">搜索站点、条目、页面…<kbd>⌘K</kbd></button><a class="button" href="/admin#distribute">统一分发</a><details class="menu" id="account-menu"><summary><span id="account" class="muted"></span><span class="visually-hidden">：账号与外观</span></summary><div class="menu-panel"><fieldset class="theme-choice"><legend>外观</legend><label><input type="radio" name="theme" value="system">跟随系统</label><label><input type="radio" name="theme" value="light">浅色</label><label><input type="radio" name="theme" value="dark">深色</label></fieldset><button class="secondary" id="logout">退出登录</button></div></details></div></div><nav id="nav" class="tabs" aria-label="主导航"><a href="/admin">总览</a><a href="/admin#resources">资源主档</a><a href="/admin#distribute">统一分发</a><a href="/admin#github">开源项目</a><a href="/admin#team">成员权限</a><a href="/admin#tasks">运行任务</a><a href="/admin#audit">审计日志</a></nav></header><main class="content"><div id="message" role="status" aria-live="polite"></div><div id="workspace"><div class="skeleton-page" aria-label="正在加载"><span></span><span></span><span></span></div></div></main><dialog id="cmdk" aria-label="命令面板"><input id="cmdk-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-label="搜索页面、站点或资源" placeholder="跳转到页面、站点，或输入资源标识…" autocomplete="off" aria-controls="cmdk-list"><ul id="cmdk-list" role="listbox" aria-label="搜索结果"></ul><p class="cmdk-hint">↑↓ 选择 · Enter 打开 · Esc 关闭</p></dialog></div>`,
     "/assets/admin.js",
+    "",
+    "zh-CN",
+    "console",
   );
 }
 export function adminLogin() {
@@ -171,6 +175,9 @@ export function adminLogin() {
     "登录工作台",
     `<main class="login"><div class="login-brand">${logo}<b>Qoo.IM 站群</b></div><h1>登录工作台</h1><p class="muted">使用运营者账号继续管理你的站点。</p><form id="operator-login"><label for="email">邮箱</label><input id="email" name="email" type="email" autocomplete="username" required><label for="password">密码</label><input id="password" name="password" type="password" autocomplete="current-password" required><div class="actions"><button>登录</button></div></form><div id="message" role="status"></div></main>`,
     "/assets/admin.js",
+    "",
+    "zh-CN",
+    "console",
   );
 }
 export function accountPage(
