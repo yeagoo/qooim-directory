@@ -129,7 +129,13 @@ export function check(rootPath = root) {
 // Public entry points must not bypass the content data layer with business SQL.
 export function checkDataBoundary(sourceRoot = resolve("src")) {
   const errors = [];
-  const allowed = new Set(["domain/catalog.ts", "server/content.ts", "cli.ts"]);
+  // server/distribution.ts is the operator-only distribution layer built on Content.
+  const allowed = new Set([
+    "domain/catalog.ts",
+    "server/content.ts",
+    "server/distribution.ts",
+    "cli.ts",
+  ]);
   for (const file of files(sourceRoot)) {
     const name = relative(sourceRoot, file);
     if (allowed.has(name)) continue;
