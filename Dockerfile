@@ -6,6 +6,9 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
+# Runtime needs only production dependencies (tsx runs the CLI and worker); drop
+# build-only tooling such as Tailwind and TypeScript, and the Next build cache.
+RUN pnpm prune --prod && rm -rf .next/cache
 
 FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
 WORKDIR /app

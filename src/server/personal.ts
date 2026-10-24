@@ -2,7 +2,14 @@ import { z } from "zod";
 import type { Pool } from "pg";
 import { transaction } from "../domain/transaction.js";
 import { HttpError } from "./operators.js";
-import { identifier, submissionInput } from "./content.js";
+import {
+  identifier,
+  submissionInput,
+  SUBMISSION_IMAGE_BYTES,
+  SUBMISSION_IMAGE_SIDE,
+  SUBMISSION_IMAGE_SITE_BYTES,
+} from "./content.js";
+import { inspectImage } from "./media.js";
 export type Visitor = { id: string; user_id: string };
 export class Personal {
   constructor(private pool: Pool) {}
@@ -67,10 +74,17 @@ export class Personal {
     });
   }
   async submit(site: string, user: Visitor, input: unknown) {
-    const value = submissionInput.parse(input);
+    const { image, ...value } = submissionInput.parse(input);
+    const picture = image
+      ? inspectImage(image, SUBMISSION_IMAGE_BYTES, SUBMISSION_IMAGE_SIDE)
+      : null;
     return transaction(this.pool, async (c) => {
       // Wait for the business lock before retaining identity locks so logout
       // and bans can finish while a submission is queued.
+      if (picture)
+        await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
+          "submission-image:" + site,
+        ]);
       await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
         "submission:" + site + ":" + user.user_id,
       ]);
@@ -94,19 +108,50 @@ export class Personal {
       ).rows[0].n;
       if (recent >= 10)
         throw new HttpError(429, "每小时最多提交 10 条，请稍后再试");
-      return (
+      if (picture) {
+        const used = Number(
+          (
+            await c.query(
+              `SELECT coalesce(sum(i.bytes),0)::bigint AS bytes
+               FROM submission_image i JOIN submission s ON s.id=i.submission_id
+               WHERE s.site_id=$1 AND s.status='pending'`,
+              [site],
+            )
+          ).rows[0].bytes,
+        );
+        if (used + picture.data.length > SUBMISSION_IMAGE_SITE_BYTES)
+          throw new HttpError(
+            413,
+            `本站待审核投稿图片总量已达上限（${SUBMISSION_IMAGE_SITE_BYTES / 1024 / 1024} MiB），请等待现有投稿审核后再试`,
+          );
+      }
+      const created = (
         await c.query(
           "INSERT INTO submission(site_id,space_id,user_id,data,created_at) VALUES($1,$2,$3,$4,clock_timestamp()) RETURNING id,status",
           [site, identity.space_id, user.user_id, value],
         )
       ).rows[0];
+      if (picture)
+        await c.query(
+          "INSERT INTO submission_image(submission_id,mime,bytes,width,height,sha256,data) VALUES($1,$2,$3,$4,$5,$6,$7)",
+          [
+            created.id,
+            picture.info.mime,
+            picture.data.length,
+            picture.info.width,
+            picture.info.height,
+            picture.sha,
+            picture.data,
+          ],
+        );
+      return created;
     });
   }
   async submissions(site: string, user: Visitor, page: unknown = 1) {
     const pageNumber = z.coerce.number().int().min(1).max(100000).parse(page);
     return (
       await this.pool.query(
-        "SELECT id,data,status,note,created_at FROM submission WHERE site_id=$1 AND user_id=$2 ORDER BY created_at DESC,id LIMIT 100 OFFSET $3",
+        "SELECT id,data,status,note,created_at,EXISTS(SELECT 1 FROM submission_image i WHERE i.submission_id=submission.id) AS has_image FROM submission WHERE site_id=$1 AND user_id=$2 ORDER BY created_at DESC,id LIMIT 100 OFFSET $3",
         [site, user.user_id, (pageNumber - 1) * 100],
       )
     ).rows;

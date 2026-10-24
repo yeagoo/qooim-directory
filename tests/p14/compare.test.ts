@@ -140,17 +140,16 @@ test("P14 a pair that maps to an existing comparison id is rejected", async () =
   assert.deepEqual(rows, [{ resource_a: "a", resource_b: "b-vs-c" }]);
 });
 
-test("P14 the basic template does not expose comparison pages or sitemap entries", async () => {
+test("P14 the basic template serves published comparisons only (M16)", async () => {
   assert.equal((await get(`/en/${path}/compare/figma-vs-penpot`)).status, 404);
-  assert.equal((await get(`/zh/${path}/compare/figma-vs-penpot`)).status, 404);
+  assert.equal((await get(`/zh/${path}/compare/figma-vs-penpot`)).status, 200);
   // Drafts are private.
   assert.equal((await get(`/zh/${path}/compare/figma-vs-sketch`)).status, 404);
   assert.equal((await get(`/zh/${path}/compare/penpot-vs-figma`)).status, 404);
-  // The detail data and the sitemap do not know about comparisons on this template.
   const detail = await (await f.app.respond(new Request(`${ORIGIN}/api/items/zh/figma`, { headers: { host: "atlas.p6.test" } }))).json();
   assert.equal(detail.slug, "figma");
   const sitemap = await (await get("/sitemap.xml")).text();
-  assert.equal(sitemap.includes("/compare/figma-vs-penpot"), false);
+  assert.equal(sitemap.includes(`/zh/${path}/compare/figma-vs-penpot`), true);
   // Unpublishing one entry hides the comparison everywhere.
   await f.pool.query("UPDATE publication SET status='draft' WHERE resource_id='penpot' AND locale='zh'");
   try {

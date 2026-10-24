@@ -258,10 +258,13 @@ export class Application {
     response.headers.set("x-content-type-options", "nosniff");
     response.headers.set("referrer-policy", "no-referrer");
     response.headers.set("x-frame-options", "DENY");
-    response.headers.set(
-      "content-security-policy",
-      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
-    );
+    // Keep a route's own stricter policy (the sandboxed submission image); any other
+    // CSP is replaced by the site policy.
+    if (!response.headers.get("content-security-policy")?.startsWith("default-src 'none'"))
+      response.headers.set(
+        "content-security-policy",
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+      );
     return response;
   }
   private async body(request: Request, limit = BODY_LIMIT) {
@@ -535,6 +538,7 @@ export class Application {
         action,
         request,
         () => this.body(request),
+        this.media,
       );
       if (contentResponse) return contentResponse;
       const collectorResponse = await collectorsHttp(
@@ -932,7 +936,11 @@ export class Application {
       if (request.method === "POST") {
         if (request.headers.get("origin") !== site.origin)
           throw new HttpError(403, "来源验证失败");
-        const input = await this.body(request);
+        // A submission may carry a base64 image of up to 1 MiB.
+        const input = await this.body(
+          request,
+          path === "/api/me/submissions" ? 2 * 1024 * 1024 : BODY_LIMIT,
+        );
         if (path === "/api/me/favorites") {
           const value = z
             .strictObject({ resourceId: z.string(), enabled: z.boolean() })
