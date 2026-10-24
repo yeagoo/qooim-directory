@@ -122,9 +122,9 @@ test("P14 alternatives rank shared categories above shared tags and exclude the 
     items.map((i) => i.slug),
     ["penpot", "sketch", "vscode"],
   );
-  // The basic template does not render alternatives pages.
-  await text(`/zh/${path}/figma/alternatives`, 404);
-  await text(`/en/${path}/vscode/alternatives`, 404);
+  // M16: the basic template renders alternatives pages too.
+  await text(`/zh/${path}/figma/alternatives`, 200);
+  await text(`/en/${path}/vscode/alternatives`, 200);
   await text(`/zh/${path}/missing/alternatives`, 404);
   await text(`/zh/${path}/figma/other`, 404);
 });

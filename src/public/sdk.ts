@@ -179,15 +179,19 @@ export function escapeHtml(value: unknown) {
       ]!,
   );
 }
-export function metadata(page: TemplatePage) {
+/** Optional title/description for pages the default derivation does not cover (M16). */
+export type PageMeta = { title?: string; description?: string };
+export function metadata(page: TemplatePage, meta: PageMeta = {}) {
   const title =
-      page.kind === "detail"
+      meta.title ??
+      (page.kind === "detail"
         ? page.item.seo_title || page.item.title
-        : page.site.name,
+        : page.site.name),
     description =
-      page.kind === "detail"
+      meta.description ??
+      (page.kind === "detail"
         ? page.item.seo_description || page.item.description
-        : (page.site.tagline ?? "");
+        : (page.site.tagline ?? ""));
   return `<meta name="description" content="${escapeHtml(description)}"><link rel="canonical" href="${escapeHtml(page.canonical)}"><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${escapeHtml(page.canonical)}">${page.noindex ? '<meta name="robots" content="noindex,follow">' : ""}${page.alternates.map((a) => `<link rel="alternate" hreflang="${escapeHtml(a.locale)}" href="${escapeHtml(a.url)}">`).join("")}`;
 }
 export function resourceUrl(
@@ -229,6 +233,25 @@ export function searchForm(page: Extract<TemplatePage, { kind: "directory" }>) {
 }
 export function detailBody(page: Extract<TemplatePage, { kind: "detail" }>) {
   return `<section class="resource-detail"><a href="/${page.locale}/${escapeHtml(page.catalogPath)}">← 全部资源</a><p class="eyebrow">精选自 ${escapeHtml(page.site.name)}</p>${page.item.image ? `<img class="detail-image" src="${escapeHtml(page.item.image.url)}" alt="${escapeHtml(page.item.image.alt)}" loading="eager" decoding="async">` : ""}<h1>${escapeHtml(page.item.title)}</h1><p class="detail-description">${escapeHtml(page.item.description)}</p>${projectSummary(page.item.project)}${page.item.project ? `<p class="muted">Forks ${escapeHtml(page.item.project.forks)} · Issues ${escapeHtml(page.item.project.openIssues)} · ${page.item.project.topics.map(escapeHtml).join(" / ")}</p>` : ""}<div class="actions">${page.item.url ? `<a class="button" href="${escapeHtml(page.item.url)}" target="_blank" rel="noopener noreferrer">访问网站 ↗</a>` : ""}<button class="secondary favorite" data-id="${escapeHtml(page.item.resource_id)}">收藏</button></div><nav>${page.alternates.map((a) => `<a href="${escapeHtml(a.url)}">${a.locale === "zh" ? "中文" : "English"}</a>`).join(" · ")}</nav></section>`;
+}
+/**
+ * M16. The pieces of frame() for templates that return a React element: escaped HTML for the
+ * head, the header above the body and the footer below it, plus the body class.
+ */
+export function frameParts(page: TemplatePage, layout = "basic", meta: PageMeta = {}) {
+  const title =
+    meta.title ??
+    (page.kind === "detail"
+      ? page.item.seo_title || page.item.title
+      : page.site.name);
+  return {
+    lang: page.locale,
+    head: `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>${metadata(page, meta)}<link rel="stylesheet" href="/assets/network.css"><link rel="stylesheet" href="/assets/templates.css">`,
+    bodyClass: `template-${layout} accent-${page.site.templateParams?.accent ?? "forest"} density-${page.site.templateParams?.density ?? "comfortable"}`,
+    top: `${header(page.site)}${page.preview ? '<p class="notice">草稿预览 · 尚未发布</p>' : ""}`,
+    bottom: `<footer class="footer">${escapeHtml(page.site.templateParams?.footer ?? "由本站独立精选 · 欢迎分享你发现的好网站。")}</footer>`,
+    script: !page.preview,
+  };
 }
 export function frame(page: TemplatePage, body: string, layout = "basic") {
   const title =
