@@ -7,7 +7,7 @@ import type { AiTransport } from "../../src/server/ai.js";
 import { AiWorker } from "../../src/server/ai.js";
 import { HttpError } from "../../src/server/operators.js";
 import { Conflict } from "../../src/domain/config.js";
-import { pruneAiJobs } from "../../src/server/ai.js";
+import { monthlyTokensUsed, pruneAiJobs } from "../../src/server/ai.js";
 import { DEFAULT_RETENTION } from "../../src/server/retention.js";
 import { extractJson, gate, personaSchema, similarity } from "../../src/server/distribution.js";
 
@@ -598,4 +598,98 @@ test("P17 pruning AI jobs leaves distribution tasks intact", async () => {
   const t = await task("atlas", "prune-a");
   assert.equal(t.ai_job_id, null);
   assert.equal(t.state, "scheduled");
+});
+
+test("P17 scheduled publishing runs as the system and rechecks the creator's grant", async () => {
+  await resource("sys-a");
+  await publishOn("atlas", "sys-a");
+  await f.app.distribution.create(f.editor, { resourceId: "sys-a", targets: [{ site: "atlas", locale: "zh" }] });
+  await run(fake(() => good("atlas")).transport);
+  assert.equal((await task("atlas", "sys-a")).state, "scheduled");
+  await f.app.distribution.publishDue();
+  assert.equal((await task("atlas", "sys-a")).state, "published");
+  const entry = (
+    await f.pool.query(
+      "SELECT actor_id,detail FROM audit_event WHERE action='publication.publish' AND detail->>'resource'='sys-a' ORDER BY id DESC LIMIT 1",
+    )
+  ).rows[0];
+  // No live operator session: the entry belongs to the system and names the creator.
+  assert.equal(entry.actor_id, null);
+  assert.equal(entry.detail.system, "scheduled publish");
+  assert.equal(entry.detail.onBehalfOf.id, f.editor.id);
+  assert.equal(entry.detail.scheduled, true);
+
+  await resource("sys-b");
+  await publishOn("atlas", "sys-b");
+  await f.app.distribution.create(f.editor, { resourceId: "sys-b", targets: [{ site: "atlas", locale: "zh" }] });
+  await run(fake(() => good("atlas")).transport);
+  assert.equal((await task("atlas", "sys-b")).state, "scheduled");
+  // The creator loses the grant before the publish time: nothing goes live.
+  await f.pool.query("DELETE FROM operator_grant WHERE user_id=$1 AND site_id='atlas'", [f.editor.id]);
+  await f.app.distribution.publishDue();
+  const t = await task("atlas", "sys-b");
+  assert.equal(t.state, "review");
+  const schedule = (await f.pool.query("SELECT state,error FROM scheduled_publish WHERE task_id=$1", [t.id])).rows[0];
+  assert.deepEqual(schedule, { state: "failed", error: "forbidden" });
+  const pub = (
+    await f.pool.query("SELECT version FROM publication WHERE site_id='atlas' AND resource_id='sys-b'")
+  ).rows[0];
+  assert.equal(pub.version, 1);
+});
+
+test("P17 ordinary AI jobs reserve budget atomically; budget_exceeded is terminal", async () => {
+  const job = { site: "atlas", kind: "generate", locale: "zh", title: "预留" };
+  // The reservation of this job, as admission computes it from the stored payload.
+  const probe = await f.app.ai.create(f.admin, job);
+  const one = (await f.pool.query("SELECT reserved_tokens FROM ai_job WHERE id=$1", [probe.id])).rows[0]
+    .reserved_tokens as number;
+  assert.ok(one > 900);
+  await f.pool.query("DELETE FROM ai_job WHERE id=$1", [probe.id]);
+  // Room for exactly two reservations.
+  await f.pool.query("UPDATE ai_config SET monthly_tokens=$1 WHERE site_id='atlas'", [2 * one + 10]);
+  const results = await Promise.allSettled([1, 2, 3].map(() => f.app.ai.create(f.admin, job)));
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 2);
+  const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+  assert.equal((rejected.reason as HttpError).status, 429);
+  assert.equal(await monthlyTokensUsed(f.pool, "atlas"), 2 * one);
+  const [first, second] = results
+    .filter((r): r is PromiseFulfilledResult<{ id: string }> => r.status === "fulfilled")
+    .map((r) => r.value.id);
+  // The first job overspends its estimate; once done, only real spend counts.
+  await f.pool.query("UPDATE ai_job SET status='done',tokens_in=$2,completed_at=now() WHERE id=$1", [first, one + 500]);
+  assert.equal(await monthlyTokensUsed(f.pool, "atlas"), 2 * one + 500);
+  // The second no longer fits: it fails once, without a retry or a provider call.
+  const { calls, transport } = fake([]);
+  assert.equal(await new AiWorker(f.pool, f.key, transport).runOnce(), true);
+  assert.equal(calls.length, 0);
+  const row = (await f.pool.query("SELECT status,error_code,attempts FROM ai_job WHERE id=$1", [second])).rows[0];
+  assert.deepEqual(row, { status: "failed", error_code: "budget_exceeded", attempts: 1 });
+  assert.equal(await monthlyTokensUsed(f.pool, "atlas"), one + 500);
+  // Retries are admitted against the same reservation rule.
+  await assert.rejects(f.app.ai.retry(f.admin, second, { site: "atlas" }), status(429));
+});
+
+test("P17 ordinary reservations cover the rendered request; spend and old reservations count", async () => {
+  // A long custom prompt and markup-heavy input are both part of what is sent.
+  await f.pool.query("DELETE FROM ai_prompt WHERE kind='generate' AND version=9");
+  await f.pool.query("INSERT INTO ai_prompt(kind,version,instructions) VALUES('generate',9,$1)", ["写".repeat(4000)]);
+  await f.pool.query(`UPDATE ai_config SET prompt_versions='{"generate":9}' WHERE site_id='atlas'`);
+  const markup = "<b>".repeat(66);
+  const created = await f.app.ai.create(f.admin, { site: "atlas", kind: "generate", locale: "zh", title: markup });
+  const reserved = (await f.pool.query("SELECT reserved_tokens FROM ai_job WHERE id=$1", [created.id])).rows[0]
+    .reserved_tokens as number;
+  const { calls, transport } = fake(() => ({ nonsense: true }));
+  await new AiWorker(f.pool, f.key, transport).runOnce();
+  const sent = calls[0].messages.reduce((n, m) => n + m.content.length, 0);
+  assert.ok(sent > 4000 + markup.length * 2, String(sent));
+  assert.ok(reserved >= sent + 900, `${reserved} < ${sent}+900`);
+  // Invalid output: the provider's charge is still recorded on the job.
+  const row = (await f.pool.query("SELECT status,tokens_in,tokens_out FROM ai_job WHERE id=$1", [created.id])).rows[0];
+  assert.deepEqual(row, { status: "pending", tokens_in: 100, tokens_out: 200 });
+  // A job queued last month still holds its unspent reservation this month.
+  await f.pool.query("UPDATE ai_job SET created_at=date_trunc('month',now())-interval '1 day' WHERE id=$1", [created.id]);
+  assert.equal(await monthlyTokensUsed(f.pool, "atlas"), reserved - 300);
+  await f.pool.query("UPDATE ai_job SET status='failed' WHERE id=$1", [created.id]);
+  assert.equal(await monthlyTokensUsed(f.pool, "atlas"), 0);
+  await f.pool.query("DELETE FROM ai_prompt WHERE kind='generate' AND version=9");
 });

@@ -175,13 +175,13 @@ test("P6 AI budget stays enforced after pruning", async () => {
     model: "m",
     key: "sk-test-12345678",
     enabled: true,
-    monthlyTokens: 1000,
+    monthlyTokens: 100000,
   });
   const job = { site: "atlas", kind: "generate", locale: "zh", title: "示例" };
-  const current = await insert({ monthsAgo: 0, tokensIn: 600, tokensOut: 500 });
+  const current = await insert({ monthsAgo: 0, tokensIn: 60000, tokensOut: 50000 });
   await insert({ monthsAgo: 3, tokensIn: 50000, tokensOut: 50000 });
   assert.deepEqual(await pruneAiJobs(f.pool, policy), { deletedJobs: 1, batches: 1 });
-  assert.equal(await monthlyTokensUsed(f.pool, "atlas"), 1100);
+  assert.equal(await monthlyTokensUsed(f.pool, "atlas"), 110000);
   await assert.rejects(f.app.ai.create(f.editor, job), { status: 429 });
   // The worker excludes the job it is running from the total.
   assert.equal(await monthlyTokensUsed(f.pool, "atlas", current), 0);
@@ -191,11 +191,16 @@ test("P6 AI budget stays enforced after pruning", async () => {
   assert.equal(created.status, "pending");
   // Usage rolled up for the current month (e.g. after a policy change) still counts.
   await f.pool.query(
-    "INSERT INTO ai_usage_month(site_id,month,jobs,tokens_in,tokens_out) VALUES('atlas',date_trunc('month',now())::date,1,900,100)",
+    "INSERT INTO ai_usage_month(site_id,month,jobs,tokens_in,tokens_out) VALUES('atlas',date_trunc('month',now())::date,1,90000,10000)",
   );
-  assert.equal(await monthlyTokensUsed(f.pool, "atlas", created.id), 1000);
+  assert.equal(await monthlyTokensUsed(f.pool, "atlas", created.id), 100000);
   await assert.rejects(f.app.ai.create(f.editor, job), { status: 429 });
-  assert.equal((await usage("atlas")).currentMonth.used, 1000);
+  // The pending job holds a reservation, which gates admission; reported usage stays real spend.
+  const reserved = (
+    await f.pool.query("SELECT reserved_tokens FROM ai_job WHERE id=$1", [created.id])
+  ).rows[0].reserved_tokens as number;
+  assert.ok(reserved > 0);
+  assert.equal((await usage("atlas")).currentMonth.used, 100000);
 });
 
 test("P6 AI usage endpoint enforces site read permission", async () => {

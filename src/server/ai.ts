@@ -440,45 +440,67 @@ export class AiService {
       return promptEntry({ ...rows[0], email: actor.email });
     });
   }
-  // Same admission rules for new jobs and retries: AI enabled and budget left this month.
-  // Returns the site's current prompt version for the kind, recorded on the new job.
-  private async admit(db: Pick<Pool, "query">, site: string, kind: AiKind) {
+  // Same admission rules for new jobs and retries: AI enabled and the job's reservation
+  // fits this month's budget. The ai_config row lock serializes admissions per site, so
+  // concurrent requests cannot all pass on the same remaining budget (the same rule the
+  // distribution layer uses). Returns the site's prompt version and the reservation.
+  private async admit(
+    db: Pick<Pool, "query">,
+    site: string,
+    kind: AiKind,
+    payload: unknown,
+  ) {
     const config = (
       await db.query(
-        "SELECT enabled,monthly_tokens,prompt_versions FROM ai_config WHERE site_id=$1",
+        "SELECT enabled,monthly_tokens,prompt_versions FROM ai_config WHERE site_id=$1 FOR UPDATE",
         [site],
       )
     ).rows[0];
     if (!config?.enabled) throw new HttpError(409, "本站未启用 AI");
+    const version = "v" + selection(config.prompt_versions)[kind];
+    // Reserve what the worker will actually send: the rendered messages with the
+    // selected prompt and escaped input, plus the output cap.
+    const task = await promptText(db, kind, version);
+    const reserved = reservationFor(
+      kind,
+      task === null ? null : prompt(task, payload as AiJobRow["payload"], kind),
+    );
     const used = await monthlyTokensUsed(db, site);
-    if (used >= config.monthly_tokens)
+    if (used + reserved > config.monthly_tokens)
       throw new HttpError(429, "本月 AI token 预算已用完");
-    return "v" + selection(config.prompt_versions)[kind];
+    return { version, reserved };
   }
   async create(actor: Operator, input: unknown) {
     const value = jobInput.parse(input);
-    await this.operators.require(actor, value.site, true);
-    if (value.kind === "enrich") await this.operators.require(actor);
     if (!value.title && !value.description)
       throw new HttpError(400, "至少提供标题或说明");
-    const version = await this.admit(this.pool, value.site, value.kind);
-    const { rows } = await this.pool.query(
-      `INSERT INTO ai_job(site_id,actor_id,kind,payload,prompt_version)
-       VALUES($1,$2,$3,$4,$5) RETURNING id,kind,status,prompt_version,created_at`,
-      [
+    const payload = {
+      locale: value.locale,
+      title: value.title,
+      description: value.description,
+      url: value.url,
+      brief: value.brief,
+    };
+    const rows = await transaction(this.pool, async (client) => {
+      // Checked inside the transaction so a grant revoked while waiting on the
+      // ai_config lock cannot still enqueue a job.
+      await this.operators.require(actor, value.site, true, client);
+      if (value.kind === "enrich")
+        await this.operators.require(actor, undefined, false, client);
+      const { version, reserved } = await this.admit(
+        client,
         value.site,
-        actor.id,
         value.kind,
-        {
-          locale: value.locale,
-          title: value.title,
-          description: value.description,
-          url: value.url,
-          brief: value.brief,
-        },
-        version,
-      ],
-    );
+        payload,
+      );
+      return (
+        await client.query(
+          `INSERT INTO ai_job(site_id,actor_id,kind,payload,prompt_version,reserved_tokens)
+       VALUES($1,$2,$3,$4,$5,$6) RETURNING id,kind,status,prompt_version,created_at`,
+          [value.site, actor.id, value.kind, payload, version, reserved],
+        )
+      ).rows;
+    });
     return rows[0];
   }
   // Newest first, 50 per page; payload and output stay in the detail endpoint.
@@ -578,11 +600,16 @@ export class AiService {
       ).rows[0];
       if (existing) throw new HttpError(409, "该任务已经重试过");
       // The retry uses the site's prompt selection at retry time, not the original's.
-      const version = await this.admit(client, site, job.kind);
+      const { version, reserved } = await this.admit(
+        client,
+        site,
+        job.kind,
+        job.payload,
+      );
       const { rows } = await client.query(
-        `INSERT INTO ai_job(site_id,actor_id,kind,payload,retry_of,prompt_version)
-         VALUES($1,$2,$3,$4,$5,$6) RETURNING id,kind,status,prompt_version,created_at,retry_of`,
-        [site, actor.id, job.kind, job.payload, id, version],
+        `INSERT INTO ai_job(site_id,actor_id,kind,payload,retry_of,prompt_version,reserved_tokens)
+         VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,kind,status,prompt_version,created_at,retry_of`,
+        [site, actor.id, job.kind, job.payload, id, version, reserved],
       );
       await client.query(
         "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'ai.job.retry',$3)",
@@ -681,9 +708,9 @@ export class AiWorker {
       await this.pool.query(
         `UPDATE ai_job SET status='processing',attempts=attempts+1,lease_token=gen_random_uuid(),lease_until=now()+interval '2 minutes'
          WHERE id=(SELECT id FROM ai_job WHERE status='pending' AND kind<>'distribute' AND available_at<=now() ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
-         RETURNING id,site_id,kind,prompt_version,payload,attempts,lease_token`,
+         RETURNING id,site_id,kind,prompt_version,payload,attempts,lease_token,reserved_tokens,tokens_in+tokens_out AS spent`,
       )
-    ).rows[0] as (AiJobRow & { lease_token: string }) | undefined;
+    ).rows[0] as (AiJobRow & { lease_token: string; reserved_tokens: number; spent: number }) | undefined;
     if (!row) return false;
     const lease = row.lease_token;
     // Every state change is conditional on still holding the lease: a cancelled job, or
@@ -699,18 +726,28 @@ export class AiWorker {
         )
       ).rows[0];
       if (!config?.enabled) throw new Error("disabled");
+      // Admission reserved room for this job; it is over budget only if spend since then
+      // (other jobs exceeding their reservations) left none.
       const used = await monthlyTokensUsed(this.pool, row.site_id, row.id);
-      if (used >= config.monthly_tokens) throw new Error("budget_exceeded");
+      if (used + row.spent + row.reserved_tokens > config.monthly_tokens)
+        throw new Error("budget_exceeded");
       const secret = unseal<{ key: string }>(config.sealed_key, this.key);
       const result = await this.transport({
         endpoint: config.endpoint,
         key: secret.key,
         model: config.model,
         messages: prompt(task, row.payload, row.kind),
-        maxTokens: row.kind === "enrich" || row.kind === "compare" ? 4000 : 900,
+        maxTokens: maxTokensFor(row.kind),
       });
       const parsed = outputFor(row.kind).safeParse(result.output);
-      if (!parsed.success) throw new Error("invalid_output");
+      if (!parsed.success) {
+        // The provider charged for the call even though the output is unusable.
+        await this.pool.query(
+          "UPDATE ai_job SET tokens_in=tokens_in+$2,tokens_out=tokens_out+$3,provider_model=coalesce(provider_model,$4) WHERE id=$1",
+          [row.id, result.tokensIn, result.tokensOut, result.model],
+        );
+        throw new Error("invalid_output");
+      }
       const output = parsed.data;
       // Tokens accumulate so spend from a lost lease (below) is never overwritten.
       const done = await this.pool.query(
@@ -729,8 +766,8 @@ export class AiWorker {
         error instanceof Error && /^[a-z0-9_]{1,64}$/.test(error.message)
           ? error.message
           : "provider_failed";
-      // A missing prompt version cannot recover by retrying.
-      if (row.attempts < 2 && code !== "prompt_missing")
+      // A missing prompt version or an exhausted budget cannot recover by retrying.
+      if (row.attempts < 2 && code !== "prompt_missing" && code !== "budget_exceeded")
         await this.pool.query(
           `UPDATE ai_job SET status='pending',available_at=now()+interval '30 seconds',error_code=$3,lease_token=NULL,lease_until=NULL WHERE ${owned}`,
           [row.id, lease, code],
@@ -744,18 +781,9 @@ export class AiWorker {
     return true;
   }
   private async instructions(kind: AiKind, recorded: string) {
-    const version = /^v([1-9][0-9]{0,6})$/.exec(recorded)?.[1];
-    if (version === "1") return BUILTIN_PROMPTS[kind];
-    const row = version
-      ? (
-          await this.pool.query(
-            "SELECT instructions FROM ai_prompt WHERE kind=$1 AND version=$2",
-            [kind, Number(version)],
-          )
-        ).rows[0]
-      : undefined;
-    if (!row) throw new Error("prompt_missing");
-    return row.instructions as string;
+    const text = await promptText(this.pool, kind, recorded);
+    if (text === null) throw new Error("prompt_missing");
+    return text;
   }
 }
 function promptEntry(row: {
@@ -774,6 +802,35 @@ function promptEntry(row: {
     createdAt: row.created_at as Date | null,
   };
 }
+const maxTokensFor = (kind: AiKind) =>
+  kind === "enrich" || kind === "compare" ? 4000 : 900;
+// Upper estimate of one call of an ordinary job: the rendered messages (1 token per
+// character, safe for Chinese) plus the output cap. A missing prompt version reserves
+// only the cap; the worker fails such a job before calling the provider. A retry
+// attempt is re-checked by the worker against what the first attempt already spent.
+export const reservationFor = (
+  kind: AiKind,
+  messages: { content: string }[] | null,
+) =>
+  (messages ?? []).reduce((n, m) => n + m.content.length, 0) +
+  maxTokensFor(kind);
+async function promptText(
+  db: Pick<Pool, "query">,
+  kind: AiKind,
+  recorded: string,
+): Promise<string | null> {
+  const version = /^v([1-9][0-9]{0,6})$/.exec(recorded)?.[1];
+  if (version === "1") return BUILTIN_PROMPTS[kind];
+  const row = version
+    ? (
+        await db.query(
+          "SELECT instructions FROM ai_prompt WHERE kind=$1 AND version=$2",
+          [kind, Number(version)],
+        )
+      ).rows[0]
+    : undefined;
+  return row ? (row.instructions as string) : null;
+}
 // Tokens charged to the site this month: live jobs plus anything already rolled up
 // into ai_usage_month (normally 0, since pruning never touches the current month).
 export async function monthlyTokensUsed(
@@ -783,9 +840,13 @@ export async function monthlyTokensUsed(
 ) {
   const row = (
     await db.query(
-      // A queued distribution job counts its reservation until it finishes.
+      // A queued job counts its reservation until it finishes, including one created
+      // before this month that will spend now.
       `SELECT (coalesce((SELECT sum(greatest(tokens_in+tokens_out,CASE WHEN status IN ('pending','processing') THEN reserved_tokens ELSE 0 END)) FROM ai_job
                  WHERE site_id=$1 AND created_at>=date_trunc('month',now())
+                   AND ($2::uuid IS NULL OR id<>$2::uuid)),0)
+             + coalesce((SELECT sum(greatest(reserved_tokens-(tokens_in+tokens_out),0)) FROM ai_job
+                 WHERE site_id=$1 AND created_at<date_trunc('month',now()) AND status IN ('pending','processing')
                    AND ($2::uuid IS NULL OR id<>$2::uuid)),0)
              + coalesce((SELECT tokens_in+tokens_out FROM ai_usage_month
                  WHERE site_id=$1 AND month=date_trunc('month',now())::date),0))::float8 AS used`,

@@ -345,7 +345,10 @@ test("P7 AI retry applies the enabled and budget checks", async () => {
     0,
   );
   assert.deepEqual(await audits(), []);
+  // The retry must fit its whole reservation (input + overhead + output cap), not just 1 token.
   await configure(true, 2000);
+  assert.equal((await post(`/ai/jobs/${failed}/retry`, { site: "atlas" })).status, 429);
+  await configure(true, 10000);
   assert.equal((await post(`/ai/jobs/${failed}/retry`, { site: "atlas" })).status, 201);
 });
 

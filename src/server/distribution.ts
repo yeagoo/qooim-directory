@@ -1295,6 +1295,7 @@ export class Distribution {
               operationId: item.operation_id,
             },
             { scheduled: true, scheduleId: item.id },
+            "scheduled publish",
           );
           // publishWith cancelled pending schedules for the pair; this one is done.
           await c.query(

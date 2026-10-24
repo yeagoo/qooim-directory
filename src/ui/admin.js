@@ -951,7 +951,7 @@ async function audit(scope) {
     events
       .map(
         (event) =>
-          `<tr><td>${escape(new Date(event.created_at).toLocaleString("zh-CN", { hour12: false }))}</td><td>${escape(event.actor_email ?? "—")}</td><td>${escape(event.site_id ?? "全局")}</td><td>${escape(auditLabels[event.action] ?? event.action)}<br><small>${escape(event.action)}</small></td><td><code>${escape(auditDetail(event.detail))}</code></td></tr>`,
+          `<tr><td>${escape(new Date(event.created_at).toLocaleString("zh-CN", { hour12: false }))}</td><td>${escape(event.actor_email ?? (event.detail?.system ? `系统（代 ${event.detail.onBehalfOf?.email ?? "—"}）` : "—"))}</td><td>${escape(event.site_id ?? "全局")}</td><td>${escape(auditLabels[event.action] ?? event.action)}<br><small>${escape(event.action)}</small></td><td><code>${escape(auditDetail(event.detail))}</code></td></tr>`,
       )
       .join("");
   const load = async (append = false) => {

@@ -935,6 +935,9 @@ export class Content {
     locale: string,
     value: { expected: Expected; operationId: string },
     detail: Record<string, unknown> = {},
+    // A worker publishing on someone's behalf: the grant is still checked against
+    // `actor`, but the audit entry belongs to the system and names the creator.
+    system?: string,
   ): Promise<number> {
     const fingerprint = createHash("sha256")
       .update(
@@ -1020,12 +1023,28 @@ export class Content {
         version,
       ]);
       await cancelSchedules(c, site, resource, locale);
-      await this.audit(c, actor, site, "publication.publish", {
-        resource,
-        locale,
-        version,
-        ...detail,
-      });
+      if (system)
+        await c.query(
+          "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES(NULL,$1,'publication.publish',$2)",
+          [
+            site,
+            {
+              resource,
+              locale,
+              version,
+              ...detail,
+              system,
+              onBehalfOf: { id: actor.id, email: actor.email },
+            },
+          ],
+        );
+      else
+        await this.audit(c, actor, site, "publication.publish", {
+          resource,
+          locale,
+          version,
+          ...detail,
+        });
       return version;
     }
   }
