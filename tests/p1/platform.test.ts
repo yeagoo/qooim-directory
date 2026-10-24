@@ -214,7 +214,7 @@ test("P1 browser operator workflow publishes, exports, restores and denies cross
       /草稿预览/,
     );
     await preview.close();
-    await page.locator("summary").click();
+    await page.locator("#workspace summary").click();
     const snapshot = await (
       await context.request.get(origins[3] + "/admin/api/sites/atlas/export")
     ).json();
@@ -1128,7 +1128,7 @@ test("admin configuration review: slow files cannot overwrite a newer selection 
     await page.goto(origins[3] + "/admin#site/atlas");
     await page.locator("#name").waitFor();
     await page.getByRole("heading", { name: "登录提供方" }).waitFor();
-    await page.locator("summary").click();
+    await page.locator("#workspace summary").click();
     await page.evaluate(() => {
       const original = File.prototype.text;
       File.prototype.text = function () {
@@ -3323,7 +3323,7 @@ test("config write review: read recovery preserves incomplete JSON and explicit 
       await route.fulfill({ json: f.response() });
     });
     await f.open();
-    await f.page.locator("summary").click();
+    await f.page.locator("#workspace summary").click();
     await f.page.locator("#config").fill('{"unfinished":');
     await f.page.locator("#refresh-config").click();
     await f.page.waitForFunction(() =>
@@ -3399,7 +3399,7 @@ test("config write review: late comparison cannot unlock controls held by a pend
     });
     await f.open();
     await f.prepare();
-    await f.page.locator("summary").click();
+    await f.page.locator("#workspace summary").click();
     await f.page.locator("#compare").click();
     await compared;
     await f.page.locator("#save").click();
@@ -3447,7 +3447,7 @@ test("config write review: status refresh preserves imported source versions ins
       return route.fulfill({ status: 409, json: { error: "FILE-BASE-STALE" } });
     });
     await f.open();
-    await f.page.locator("summary").click();
+    await f.page.locator("#workspace summary").click();
     await f.page.locator("#import").setInputFiles({
       name: "imported.json",
       mimeType: "application/json",

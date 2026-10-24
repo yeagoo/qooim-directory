@@ -24,6 +24,20 @@ const stateLabels = {
   skipped: "已跳过",
   cancelled: "已取消",
 };
+// Semantic status colors shared across the console (see .status in network.css).
+const stateTone = {
+  queued: "run",
+  generating: "run",
+  awaiting_input: "review",
+  review: "review",
+  scheduled: "",
+  published: "ok",
+  failed: "fail",
+  skipped: "",
+  cancelled: "",
+};
+const stateChip = (state) =>
+  `<span class="status ${stateTone[state] ?? ""}">${escape(stateLabels[state] || state)}</span>`;
 const reasonLabels = {
   new_url: "出现资料外网址",
   link: "含链接",
@@ -165,7 +179,7 @@ function taskRow(task, write) {
     if (["awaiting_input", "review", "failed"].includes(task.state))
       actions.push(`<button class="secondary task-manual" data-id="${task.id}">手动生成</button>`);
   }
-  return `<tr><td>${escape(task.site)}</td><td>${escape(task.locale)}</td><td>${escape(stateLabels[task.state] || task.state)}${task.error ? `<br><code>${escape(reason(task.error))}</code>` : ""}</td><td>${task.reasons.map(reason).map(escape).join("、") || "—"}</td><td>${task.similarity == null ? "—" : Math.round(task.similarity * 100) + "%"}</td><td>${escape(time(task.publishAt))}</td><td>${task.output ? `<details><summary>查看</summary><strong>${escape(task.output.title)}</strong><p>${escape(task.output.description)}</p>${task.output.content ? `<pre>${escape(task.output.content)}</pre>` : ""}</details>` : "—"}</td><td>${actions.join(" ") || "—"}</td></tr>`;
+  return `<tr><td>${escape(task.site)}</td><td>${escape(task.locale)}</td><td>${stateChip(task.state)}${task.error ? `<br><code>${escape(reason(task.error))}</code>` : ""}</td><td>${task.reasons.map(reason).map(escape).join("、") || "—"}</td><td>${task.similarity == null ? "—" : Math.round(task.similarity * 100) + "%"}</td><td>${escape(time(task.publishAt))}</td><td>${task.output ? `<details><summary>查看</summary><strong>${escape(task.output.title)}</strong><p>${escape(task.output.description)}</p>${task.output.content ? `<pre>${escape(task.output.content)}</pre>` : ""}</details>` : "—"}</td><td>${actions.join(" ") || "—"}</td></tr>`;
 }
 export async function renderDistribute(resource, workspace, api, notice, context) {
   const writable = new Set(

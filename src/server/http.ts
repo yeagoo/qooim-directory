@@ -385,11 +385,12 @@ export class Application {
         });
       if (path === "/assets/network.css")
         return new Response(css, { headers: { "content-type": "text/css" } });
+      // Geist (OFL) is shared by the toolso template and the admin console.
+      const font = path.match(/^\/assets\/fonts\/(Geist|GeistMono)-Variable\.woff2$/);
+      if (font) return this.asset(`fonts/${font[1]}-Variable.woff2`, "font/woff2");
       if (!admin) {
         if (path === "/assets/toolso.css")
           return this.asset("generated/toolso.css", "text/css");
-        const font = path.match(/^\/assets\/fonts\/(Geist|GeistMono)-Variable\.woff2$/);
-        if (font) return this.asset(`fonts/${font[1]}-Variable.woff2`, "font/woff2");
         const theme = path.match(/^\/assets\/theme\/([0-9a-f]{6})\.css$/);
         if (theme)
           return new Response(themeCss(theme[1]!), {

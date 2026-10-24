@@ -382,6 +382,20 @@ export class Content {
     const value = resourceInput.parse(input);
     return transaction(this.pool, (c) => this.writeResource(c, actor, value));
   }
+  // Per-site counts for the overview cards, limited to the sites the operator can read.
+  async siteStats(actor: Operator) {
+    return (
+      await this.pool.query(
+        `SELECT s.id,
+  (SELECT count(*)::int FROM publication p WHERE p.site_id=s.id AND p.status='published') AS published,
+  (SELECT count(*)::int FROM content_draft d WHERE d.site_id=s.id) AS drafts,
+  (SELECT count(*)::int FROM submission m WHERE m.site_id=s.id AND m.status='pending') AS submissions
+FROM site s JOIN operator_user u ON u.id=$1 AND NOT u.disabled
+WHERE u.global_admin OR EXISTS(SELECT 1 FROM operator_grant g WHERE g.user_id=u.id AND g.site_id=s.id) ORDER BY s.id`,
+        [actor.id],
+      )
+    ).rows as { id: string; published: number; drafts: number; submissions: number }[];
+  }
   async resources(actor: Operator, query = "", page = 1) {
     await this.operators.require(actor);
     return (

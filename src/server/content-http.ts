@@ -19,6 +19,8 @@ export async function contentHttp(
     .parse(new URL(request.url).searchParams.get("page") ?? 1);
   const get = request.method === "GET",
     json = Response.json;
+  if (path === "/content/site-stats" && get)
+    return json(await content.siteStats(actor));
   if (path === "/resources")
     return json(
       get
