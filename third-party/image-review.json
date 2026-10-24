@@ -11,8 +11,8 @@
   "scopes": [
     {
       "id": "node-base",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33 (linux/arm64). Observations are identical to the 2026-10-23 sign-off; only image identity and collectedAt changed. The previous decision and its reservations carry forward unchanged (see previousReview). Also accepted: the 179 added app runtime npm packages (MIT 169, ISC 7, Apache-2.0 2, OFL-1.1 1) and the Dockerfile HEALTHCHECK change.",
       "evidence": [
         {
           "file": "third-party/image-evidence/node-base.json",
@@ -30,12 +30,14 @@
             "sha256": "c982babc43c7e005ac5a0b8baeada4b4ccfd4853b71d802e5073cce9929aea0c"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "global-pnpm",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33 (linux/arm64). Observations are identical to the 2026-10-23 sign-off; only image identity and collectedAt changed. The previous decision and its reservations carry forward unchanged (see previousReview). Also accepted: the 179 added app runtime npm packages (MIT 169, ISC 7, Apache-2.0 2, OFL-1.1 1) and the Dockerfile HEALTHCHECK change.",
       "evidence": [
         {
           "file": "third-party/image-evidence/global-pnpm.json",
@@ -53,12 +55,14 @@
             "sha256": "bde1c3daeb8d2e3a07d4dfde5cff5c38e0c5be9d7f8adf3d53aa40f010cd7577"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "next-swc",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33 (linux/arm64). Observations are identical to the 2026-10-23 sign-off; only image identity and collectedAt changed. The previous decision and its reservations carry forward unchanged (see previousReview). Also accepted: the 179 added app runtime npm packages (MIT 169, ISC 7, Apache-2.0 2, OFL-1.1 1) and the Dockerfile HEALTHCHECK change.",
       "evidence": [
         {
           "file": "third-party/image-evidence/next-swc.json",
@@ -76,12 +80,14 @@
             "sha256": "473427cdc09f3d680c29e3d2eb7a071e981e52ea519cee7167886fbcbf218079"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "esbuild",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33 (linux/arm64). Observations are identical to the 2026-10-23 sign-off; only image identity and collectedAt changed. The previous decision and its reservations carry forward unchanged (see previousReview). Also accepted: the 179 added app runtime npm packages (MIT 169, ISC 7, Apache-2.0 2, OFL-1.1 1) and the Dockerfile HEALTHCHECK change.",
       "evidence": [
         {
           "file": "third-party/image-evidence/esbuild.json",
@@ -99,12 +105,14 @@
             "sha256": "8f7b0a97111f2586c6a7a643d131ec0b9360dd427afc9b28b86b246b8e1c9b8f"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "postgres-image",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33 (linux/arm64). Observations are identical to the 2026-10-23 sign-off; only image identity and collectedAt changed. The previous decision and its reservations carry forward unchanged (see previousReview). Also accepted: the 179 added app runtime npm packages (MIT 169, ISC 7, Apache-2.0 2, OFL-1.1 1) and the Dockerfile HEALTHCHECK change.",
       "evidence": [
         {
           "file": "third-party/image-evidence/postgres-image.json",
@@ -122,12 +130,14 @@
             "sha256": "809409c8e1c45bc90fe2b347637b594ac263500c77e695f1851186345a26cbb3"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     },
     {
       "id": "demo-proxy-image",
-      "status": "pending",
-      "detail": "2026-10-24: evidence regenerated for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33. Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md.",
+      "status": "complete",
+      "detail": "QooIM 2026-10-24: confirmed the review packet docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md for the M12–M15 freeze candidate image sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33 (linux/arm64). Observations are identical to the 2026-10-23 sign-off; only image identity and collectedAt changed. The previous decision and its reservations carry forward unchanged (see previousReview). Also accepted: the 179 added app runtime npm packages (MIT 169, ISC 7, Apache-2.0 2, OFL-1.1 1) and the Dockerfile HEALTHCHECK change.",
       "evidence": [
         {
           "file": "third-party/image-evidence/demo-proxy-image.json",
@@ -145,14 +155,21 @@
             "sha256": "8a311240ef4ce8480a9a46c92bafb077b21bb909090957f67d6d3c456447452f"
           }
         ]
-      }
+      },
+      "reviewer": "QooIM",
+      "reviewedAt": "2026-10-24"
     }
   ],
   "targetPlatform": "linux/arm64",
   "confirmation": {
-    "status": "pending",
-    "candidateImage": "sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33",
+    "status": "complete",
+    "reviewer": "QooIM",
+    "confirmedAt": "2026-10-24",
+    "targetTag": null,
+    "applicationImage": "sha256:75c881586d2f1310ca243f08cd15f6254edda250faaec1b054c2321c9c3bfb33",
     "basis": "docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261024.md",
+    "scope": "Item 1: previous decisions and reservations carry forward; item 2: 179 added runtime packages accepted; item 3: HEALTHCHECK change accepted.",
+    "legalAdvice": false,
     "previous": {
       "reviewer": "QooIM",
       "confirmedAt": "2026-10-23",
