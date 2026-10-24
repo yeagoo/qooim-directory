@@ -654,16 +654,27 @@ export class Content {
   saveTag(actor: Operator, site: string, input: unknown) {
     return this.saveTaxonomy("tag", actor, site, input);
   }
-  async publications(actor: Operator, site: string, page = 1) {
+  // `ids` (comma-separated resource ids, at most 20) narrows the listing so callers
+  // can look up records beyond the first page.
+  async publications(actor: Operator, site: string, page = 1, ids?: string) {
     await this.operators.require(actor, site);
+    const only =
+      ids === undefined
+        ? null
+        : z
+            .array(z.string().regex(/^[a-z][a-z0-9-]{0,63}$/))
+            .min(1)
+            .max(20)
+            .parse(ids.split(","));
     return (
       await this.pool.query(
         `SELECT r.id,r.version AS resource_version,r.data,a.locale,p.slug,p.title,p.status,p.version,p.source_version,p.category_id,p.category_ids,p.tag_ids,p.rank,p.overrides,d.version AS draft_version,d.candidate
  FROM resource r JOIN (SELECT resource_id,locale FROM publication WHERE site_id=$1 UNION SELECT resource_id,locale FROM content_draft WHERE site_id=$1) a ON a.resource_id=r.id
- LEFT JOIN publication p ON p.resource_id=a.resource_id AND p.locale=a.locale AND p.site_id=$1 LEFT JOIN content_draft d ON d.resource_id=a.resource_id AND d.locale=a.locale AND d.site_id=$1 ORDER BY r.id,a.locale LIMIT 100 OFFSET $2`,
+ LEFT JOIN publication p ON p.resource_id=a.resource_id AND p.locale=a.locale AND p.site_id=$1 LEFT JOIN content_draft d ON d.resource_id=a.resource_id AND d.locale=a.locale AND d.site_id=$1 WHERE $3::text[] IS NULL OR r.id=ANY($3) ORDER BY r.id,a.locale LIMIT 100 OFFSET $2`,
         [
           site,
           (z.coerce.number().int().min(1).max(100000).parse(page) - 1) * 100,
+          only,
         ],
       )
     ).rows;

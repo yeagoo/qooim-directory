@@ -1325,7 +1325,12 @@ export async function renderContent(
         field("locale").value === locale &&
         field("a").value.trim() === ids[0] &&
         field("b").value.trim() === ids[1];
-      const records = ids.map((id) => publications.find((p) => p.id === id && p.locale === locale) ?? publications.find((p) => p.id === id));
+      // Look the pair up on the server so resources beyond the loaded page work too.
+      const found = ids.every(Boolean)
+        ? await api(base + "/publications?ids=" + ids.map(encodeURIComponent).join(","))
+        : [];
+      if (!unchanged()) return;
+      const records = ids.map((id) => found.find((p) => p.id === id && p.locale === locale) ?? found.find((p) => p.id === id));
       if (records.some((r) => !r)) throw new Error("两个资源都需要先出现在本站发布记录中");
       const titles = records.map((r) => r.data?.translations?.[locale]?.title ?? r.id);
       drafting = true;

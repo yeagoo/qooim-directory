@@ -104,7 +104,14 @@ export async function contentHttp(
   if (match) {
     const [, site, kind] = match;
     if (kind === "publications" && get)
-      return json(await content.publications(actor, site, page));
+      return json(
+        await content.publications(
+          actor,
+          site,
+          page,
+          new URL(request.url).searchParams.get("ids") ?? undefined,
+        ),
+      );
     if (kind === "categories")
       return json(
         get
