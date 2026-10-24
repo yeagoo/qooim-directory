@@ -92,7 +92,7 @@ export function staticPage(
     .filter(Boolean)
     .map((paragraph) => `<p>${escape(paragraph).replace(/\n/g, "<br>")}</p>`)
     .join("");
-  const head = `<meta name="description" content="${escape(description)}"><link rel="canonical" href="${escape(canonical)}"><meta property="og:title" content="${escape(page.title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${escape(canonical)}">${alternates.map((alternate) => `<link rel="alternate" hreflang="${escape(alternate.locale)}" href="${escape(alternate.url)}">`).join("")}`;
+  const head = `<meta name="description" content="${escape(description)}"><link rel="canonical" href="${escape(canonical)}"><meta property="og:title" content="${escape(page.title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${escape(canonical)}">${alternates.map((alternate) => `<link rel="alternate" hreflang="${escape(alternate.locale)}" href="${escape(alternate.url)}">`).join("")}:where(:not(.actions,.row))>button+button{margin-left:8px}`;
   return document(
     page.title + " · " + siteName,
     `<main class="public"><header><a class="brand" href="/">${escape(siteName)}</a><nav><a href="/">返回目录</a></nav></header><article class="resource-detail"><h1>${escape(page.title)}</h1>${paragraphs}</article></main>`,
