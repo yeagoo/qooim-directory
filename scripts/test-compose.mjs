@@ -339,7 +339,7 @@ try {
       model: "test-model",
       key: "test-key-123456",
       enabled: true,
-      monthlyTokens: 1000,
+      monthlyTokens: 20000,
     },
     cookie,
   );
@@ -455,6 +455,10 @@ try {
       (await page.evaluate(() => fetch("/api/session").then((r) => r.json())))
         .email,
     );
+    // New sites default to the toolso template, which shows the favorite
+    // button on detail pages only.
+    if (!(await page.locator("button.favorite").count()))
+      await page.locator('a[href*="/tools/"]').first().click();
     await page.locator("button.favorite").first().click();
     await page.waitForFunction(
       () =>

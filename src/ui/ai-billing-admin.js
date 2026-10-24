@@ -9,7 +9,6 @@ const escape = (value) =>
 const number = (value) => Number(value ?? 0).toLocaleString("zh-CN");
 const signed = (value) => (value > 0 ? "+" : "") + number(value);
 const time = (value) => (value ? new Date(value).toLocaleString("zh-CN") : "—");
-const ALERT = "color:#a34c35;font-weight:600";
 const POLLS = 6,
   POLL_MS = 2000;
 const errorLabels = {
@@ -32,7 +31,7 @@ function reconcileRow(m) {
   const alert = m.diffPercent !== null && Math.abs(m.diffPercent) > 5;
   const percent =
     m.diffPercent === null ? "—" : (m.diffPercent > 0 ? "+" : "") + m.diffPercent + "%";
-  return `<tr data-month="${escape(m.month)}"${alert ? ' data-alert="true"' : ""}><td>${escape(m.month)}</td><td>${number(m.app.jobs)}</td><td>${number(m.app.tokensIn)} / ${number(m.app.tokensOut)}<br><strong>${number(m.app.total)}</strong></td><td>${p ? `${number(p.tokensIn)} / ${number(p.tokensOut)}<br><strong>${number(p.total)}</strong>` : '<span class="muted">未登记</span>'}</td><td class="diff-total">${m.diff ? signed(m.diff.total) : "—"}</td><td class="diff-percent"${alert ? ` style="${ALERT}"` : ""}>${escape(percent)}</td><td>${p ? `${escape(p.note || "—")}<br><span class="muted">${escape(p.reportedBy ?? "—")} · ${escape(time(p.reportedAt))}</span>` : "—"}</td></tr>`;
+  return `<tr data-month="${escape(m.month)}"${alert ? ' data-alert="true"' : ""}><td>${escape(m.month)}</td><td>${number(m.app.jobs)}</td><td>${number(m.app.tokensIn)} / ${number(m.app.tokensOut)}<br><strong>${number(m.app.total)}</strong></td><td>${p ? `${number(p.tokensIn)} / ${number(p.tokensOut)}<br><strong>${number(p.total)}</strong>` : '<span class="muted">未登记</span>'}</td><td class="diff-total">${m.diff ? signed(m.diff.total) : "—"}</td><td class="diff-percent${alert ? " alert" : ""}">${escape(percent)}</td><td>${p ? `${escape(p.note || "—")}<br><span class="muted">${escape(p.reportedBy ?? "—")} · ${escape(time(p.reportedAt))}</span>` : "—"}</td></tr>`;
 }
 function reconcileTable(data) {
   return `<div class="table-wrap"><table id="ai-reconcile"><thead><tr><th>月份</th><th>任务</th><th>本系统 输入 / 输出<br>合计</th><th>供应商 输入 / 输出<br>合计</th><th>差异（供应商 − 本系统）</th><th>差异比例</th><th>备注 / 登记</th></tr></thead><tbody>${data.months.map(reconcileRow).join("")}</tbody></table></div>`;

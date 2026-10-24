@@ -163,7 +163,7 @@ const request = (index: number, path: string) =>
 test("P2 upgrade preserves legacy publications, notes and original migration checksums", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "19",
+    "20",
   );
   const context = await app.catalog.resolve("legacy.test");
   assert.equal((await app.catalog.list(context, "zh"))[0].title, "Old content");
@@ -556,7 +556,7 @@ test("P2 AI config seals the key and worker output stays a manual suggestion", a
       model: "test-model",
       key: "test-key-123456",
       enabled: true,
-      monthlyTokens: 1000,
+      monthlyTokens: 100000,
     }),
   );
   const config = await app.ai.saveConfig(admin, {
@@ -565,7 +565,7 @@ test("P2 AI config seals the key and worker output stays a manual suggestion", a
     model: "test-model",
     key: "test-key-123456",
     enabled: true,
-    monthlyTokens: 1000,
+    monthlyTokens: 100000,
   });
   assert.equal(config.hasKey, true);
   assert.equal(JSON.stringify(config).includes("test-key-123456"), false);
@@ -606,7 +606,7 @@ test("P2 AI config seals the key and worker output stays a manual suggestion", a
     0,
   );
 
-  await pool.query("UPDATE ai_job SET tokens_in=1000 WHERE id=$1", [job.id]);
+  await pool.query("UPDATE ai_job SET tokens_in=100000 WHERE id=$1", [job.id]);
   await assert.rejects(
     app.ai.create(admin, {
       site: "atlas",
@@ -621,7 +621,7 @@ test("P2 AI config seals the key and worker output stays a manual suggestion", a
     endpoint: "https://provider.example.test/v1/chat/completions",
     model: "test-model",
     enabled: false,
-    monthlyTokens: 1000,
+    monthlyTokens: 100000,
   });
   await assert.rejects(
     app.ai.create(admin, {

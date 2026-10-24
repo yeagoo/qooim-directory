@@ -24,7 +24,7 @@
 | endpoint | 完整 HTTPS chat completions 地址，如 `https://api.openai.com/v1/chat/completions` |
 | model | 供应商模型名 |
 | API Key | 首次必填；更新时留空保留旧值，不回显 |
-| 月度 token 预算 | 1000–100000000，按自然月已记录 token 累计 |
+| 月度 token 预算 | 20000–100000000，按自然月已记录 token 累计；排队和运行中的任务按预留额计入，用量面板显示已用、进行中预留和可用 |
 | enabled | 关闭后拒绝新建任务 |
 
 Key 使用 `AUTH_ENCRYPTION_KEY` 经 AES-256-GCM 封装后存 `ai_config.sealed_key`；Worker 才解密，API 只返回 `hasKey`。

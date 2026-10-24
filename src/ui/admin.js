@@ -9,6 +9,7 @@ import {
   renderContent,
   cancelContentRender,
 } from "./content-admin.js";
+import { renderDistribute, renderPersona } from "./distribution-admin.js";
 const workspace = document.querySelector("#workspace"),
   message = document.querySelector("#message");
 const CONFIG_FILE_LIMIT = 1024 * 1024;
@@ -171,6 +172,22 @@ async function renderView(scope) {
   const route = location.hash.slice(1);
   if (route === "github") return renderGithub(workspace, api, notice, sites);
   if (route === "resources") return renderResources(workspace, api, notice);
+  if (route === "distribute" || route.startsWith("distribute/"))
+    return renderDistribute(
+      decodeURIComponent(route.slice(11)),
+      workspace,
+      api,
+      notice,
+      { globalAdmin: Boolean(me.global_admin), sites },
+    );
+  if (route.startsWith("persona/"))
+    return renderPersona(
+      decodeURIComponent(route.slice(8)),
+      workspace,
+      api,
+      notice,
+      accessFor(decodeURIComponent(route.slice(8))),
+    );
   if (route.startsWith("collectors/"))
     return renderCollectors(
       decodeURIComponent(route.slice(11)),
@@ -231,11 +248,15 @@ async function renderView(scope) {
 }
 async function overview(scope, draft) {
   const { api, notice } = scope;
-  workspace.innerHTML = `<span class="eyebrow">YOUR NETWORK / ${sites.length} SITES</span><h1>每个站点，都有自己的方向。</h1><p class="muted">在同一个工作台里，保持各站的品牌、配置与发布节奏。</p><button class="secondary" id="refresh-sites">刷新列表</button><div class="grid">${sites.map((site) => `<a class="site-card" href="#site/${encodeURIComponent(site.id)}"><span class="badge">${site.active ? "运行中" : "已停用"} · ${escape(site.state)}</span><h2>${escape(site.config.name)}</h2><p class="muted">${escape(site.host)}</p><small>修订 ${site.revision} · ${site.center_site ? "共享账号（legacy）" : "独立账号"}</small></a>`).join("")}</div>${
+  const cards = sites.length
+    ? `<div class="site-grid">${sites.map((site) => `<a class="site-card" href="#site/${encodeURIComponent(site.id)}" data-site="${escape(site.id)}"><span class="who"><span class="avatar" aria-hidden="true">${escape(Array.from(site.config.name || site.id)[0]?.toUpperCase())}</span><span><h2>${escape(site.config.name)}</h2><span class="host">${escape(site.host)}</span></span></span><span class="counts"><span><b class="stat-published">—</b>已发布</span><span><b class="stat-drafts">—</b>草稿</span><span><b class="stat-submissions">—</b>投稿待审</span></span><span class="last"><span class="status ${site.active ? "ok" : ""}">${site.active ? "运行中" : "已停用"}</span> <span class="muted">${escape(site.state)} · 修订 ${site.revision} · ${site.center_site ? "共享账号（legacy）" : "独立账号"}</span></span></a>`).join("")}</div>`
+    : `<div class="empty-state"><strong>还没有站点</strong>${me.global_admin ? "在下方创建第一个站点，账号服务会自动准备。" : "请联系管理员为你分配站点权限。"}</div>`;
+  workspace.innerHTML = `<div class="overview"><div><div class="overview-head"><h1>站点</h1><span class="muted">${sites.length} 个</span><div class="row"><button class="secondary" id="refresh-sites">刷新列表</button></div></div>${cards}${
     me.global_admin
-      ? `<section class="panel"><h2>创建新站点</h2><p class="muted">新站点使用独立账号空间；共享账号中心只保留给既有部署兼容，不再新增。</p><div class="split"><div><label for="site-id">站点标识</label><input id="site-id" placeholder="design-notes"><label for="site-name">站点名称</label><input id="site-name" placeholder="设计札记"></div><div><label for="site-origin">站点地址</label><input id="site-origin" placeholder="https://design.example.com"></div></div><div class="actions"><button id="create">创建站点</button></div></section>`
+      ? `<section class="panel"><h2>创建新站点</h2><p class="muted">新站点使用独立账号空间，默认使用 toolso 模板；共享账号中心只保留给既有部署兼容，不再新增。</p><div class="split"><div><label for="site-id">站点标识</label><input id="site-id" placeholder="design-notes"><label for="site-name">站点名称</label><input id="site-name" placeholder="设计札记"></div><div><label for="site-origin">站点地址</label><input id="site-origin" placeholder="https://design.example.com"></div></div><div class="actions"><button id="create">创建站点</button></div></section>`
       : ""
-  }`;
+  }</div><aside class="activity" aria-label="最近活动"><h2>最近活动</h2><ul id="recent-activity"><li><span class="skeleton"></span></li><li><span class="skeleton"></span></li><li><span class="skeleton"></span></li></ul></aside></div>`;
+  void fillOverview(scope);
   const refresh = workspace.querySelector("#refresh-sites");
   const create = workspace.querySelector("#create");
   const fields = Object.fromEntries(
@@ -321,6 +342,189 @@ async function overview(scope, draft) {
   }
   update();
 }
+// Fills the overview's counts and activity after the cards render; each part fails inline.
+function fillOverview(scope) {
+  void scope
+    .api("/content/site-stats")
+    .then((rows) => {
+      if (!scope.current()) return;
+      for (const row of rows) {
+        const card = workspace.querySelector(`.site-card[data-site="${CSS.escape(row.id)}"]`);
+        if (!card) continue;
+        card.querySelector(".stat-published").textContent = row.published.toLocaleString("zh-CN");
+        card.querySelector(".stat-drafts").textContent = row.drafts.toLocaleString("zh-CN");
+        card.querySelector(".stat-submissions").textContent = row.submissions.toLocaleString("zh-CN");
+      }
+    })
+    .catch(() => {});
+  void recentActivity(scope);
+}
+// Global admins read the network-wide log; others merge the logs of up to 5 granted sites.
+async function recentActivity(scope) {
+  const list = workspace.querySelector("#recent-activity");
+  const show = (html) => {
+    if (scope.current() && list.isConnected) list.innerHTML = html;
+  };
+  const scoped = me.global_admin ? [""] : sites.slice(0, 5).map((site) => site.id);
+  if (!scoped.length) return show('<li class="muted">没有可查看的站点记录。</li>');
+  try {
+    const pages = await Promise.all(
+      scoped.map((id) => scope.api("/audit?limit=8" + (id ? "&site=" + encodeURIComponent(id) : ""))),
+    );
+    const events = pages
+      .flatMap((page) => page.events)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 8);
+    show(
+      events.length
+        ? events
+            .map(
+              (event) =>
+                `<li><span class="dot" aria-hidden="true"></span><span class="text">${escape(auditLabels[event.action] ?? event.action)}${event.site_id ? ` · <span class="muted">${escape(event.site_id)}</span>` : ""}</span><time datetime="${escape(event.created_at)}">${escape(relativeTime(event.created_at))}</time></li>`,
+            )
+            .join("")
+        : '<li class="muted">还没有活动记录。</li>',
+    );
+  } catch (error) {
+    if (error !== staleView) show(`<li class="muted">活动暂时无法载入：${escape(error.message)}</li>`);
+  }
+}
+function relativeTime(value) {
+  const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60000);
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return minutes + " 分钟前";
+  if (minutes < 1440) return Math.round(minutes / 60) + " 小时前";
+  return new Date(value).toLocaleDateString("zh-CN");
+}
+// Theme: system by default; a manual choice is a per-browser convenience.
+function applyTheme(choice) {
+  if (choice === "light" || choice === "dark")
+    document.documentElement.dataset.theme = choice;
+  else delete document.documentElement.dataset.theme;
+}
+function storedTheme() {
+  try {
+    return localStorage.getItem("admin-theme") || "system";
+  } catch {
+    return "system";
+  }
+}
+applyTheme(storedTheme());
+for (const input of document.querySelectorAll('input[name="theme"]')) {
+  input.checked = input.value === storedTheme();
+  input.addEventListener("change", () => {
+    try {
+      localStorage.setItem("admin-theme", input.value);
+    } catch {}
+    applyTheme(input.value);
+  });
+}
+// Command palette (Ctrl/⌘+K): pages, sites, and resource lookup by identifier.
+const palette = document.querySelector("#cmdk");
+if (palette) {
+  const input = palette.querySelector("#cmdk-input"),
+    list = palette.querySelector("#cmdk-list");
+  const pages = [...document.querySelectorAll("#nav a")].map((a) => ({
+    label: a.textContent,
+    hint: "页面",
+    href: a.getAttribute("href"),
+  }));
+  let items = [],
+    index = 0,
+    lookup = 0;
+  const draw = () => {
+    list.innerHTML = items.length
+      ? items
+          .map(
+            (item, i) =>
+              `<li role="option" id="cmdk-option-${i}" data-index="${i}" aria-selected="${i === index}">${escape(item.label)}<small>${escape(item.hint)}</small></li>`,
+          )
+          .join("")
+      : '<li class="muted" role="presentation">没有匹配项</li>';
+    if (items.length) input.setAttribute("aria-activedescendant", "cmdk-option-" + index);
+    else input.removeAttribute("aria-activedescendant");
+    list.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+  };
+  const go = (item) => {
+    if (!item) return;
+    palette.close();
+    location.assign(item.href);
+  };
+  const search = async () => {
+    const q = input.value.trim().toLowerCase();
+    const local = [
+      ...pages,
+      ...sites.map((site) => ({
+        label: site.config.name,
+        hint: site.host,
+        href: "/admin#site/" + encodeURIComponent(site.id),
+      })),
+    ].filter((item) => !q || (item.label + " " + item.hint).toLowerCase().includes(q));
+    items = local;
+    index = 0;
+    draw();
+    const ticket = ++lookup;
+    if (q.length < 2 || !me?.global_admin) return;
+    try {
+      const found = await api("/resources?q=" + encodeURIComponent(q));
+      if (ticket !== lookup) return;
+      items = [
+        ...local,
+        ...found.slice(0, 8).map((r) => ({
+          label: r.data?.translations?.zh?.title || r.data?.translations?.en?.title || r.id,
+          hint: "资源 · " + r.id,
+          href: "/admin#distribute/" + encodeURIComponent(r.id),
+        })),
+      ];
+      draw();
+    } catch {}
+  };
+  const open = () => {
+    if (palette.open) return;
+    input.value = "";
+    palette.showModal();
+    void search();
+  };
+  document.querySelector("#cmdk-open")?.addEventListener("click", open);
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k" && workspace) {
+      event.preventDefault();
+      open();
+    }
+  });
+  input.addEventListener("input", () => void search());
+  input.addEventListener("keydown", (event) => {
+    if (event.isComposing || event.keyCode === 229) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!items.length) return;
+      index = (index + (event.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+      draw();
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      go(items[index]);
+    }
+  });
+  list.addEventListener("click", (event) => {
+    const li = event.target.closest("li[data-index]");
+    if (li) go(items[Number(li.dataset.index)]);
+  });
+  palette.addEventListener("click", (event) => {
+    if (event.target === palette) palette.close();
+  });
+}
+// Close the account menu after navigation or an outside click.
+document.addEventListener("click", (event) => {
+  const menu = document.querySelector("#account-menu");
+  if (menu?.open && !menu.contains(event.target)) menu.open = false;
+});
+document.addEventListener("keydown", (event) => {
+  const menu = document.querySelector("#account-menu");
+  if (event.key === "Escape" && menu?.open) {
+    menu.open = false;
+    menu.querySelector("summary").focus();
+  }
+});
 function providerPanel(data, id) {
   if (data.site.center_site)
     return `<section class="panel"><h2>登录提供方</h2><p class="muted">本站使用账号中心 <a href="#site/${encodeURIComponent(data.site.center_site)}">${escape(data.site.center_site)}</a> 的登录方式；提供方在账号中心配置。</p></section>`;
@@ -336,7 +540,7 @@ async function edit(id, scope, local) {
   const data = await api("/sites/" + encodeURIComponent(id));
   const config = data.state.draft ?? data.state.config;
   const templates = await api("/templates");
-  workspace.innerHTML = `<a href="#">← 站点总览</a> · <a href="#content/${encodeURIComponent(id)}">管理本站内容 →</a><h1>${escape(data.site.config.name)}</h1><p class="muted">${escape(data.site.origin)} · 线上修订 ${data.state.revision} · 草稿版本 ${data.state.draft_version}</p><div class="actions"><a class="button" href="${escape(data.site.origin)}" target="_blank" rel="noopener">访问站点 ↗</a><button class="secondary" id="toggle">${data.site.active ? "停用站点" : "启用站点"}</button><a class="button secondary" href="#media/${encodeURIComponent(id)}">媒体库</a><a class="button secondary" href="#ai/${encodeURIComponent(id)}">AI 设置</a><a class="button secondary" href="#collectors/${encodeURIComponent(id)}">采集器</a><a class="button secondary" href="#limits/${encodeURIComponent(id)}">配额</a><a class="button secondary" href="#ai-billing/${encodeURIComponent(id)}">AI 对账</a></div><section class="panel"><h2>站点配置</h2><div class="actions"><button class="secondary" id="refresh-config">刷新并保留编辑</button><button class="secondary" id="load-server-config">放弃本页编辑并载入服务器配置</button></div><p id="config-local-state" class="muted"></p><div class="split"><div><label for="name">名称</label><input id="name" value="${escape(config.name)}"><label for="tagline">介绍</label><input id="tagline" value="${escape(config.tagline)}"></div><div><label for="template">页面模板</label><select id="template">${templates.map((t) => `<option value="${escape(t.id)}">${escape(t.name)}</option>`).join("")}</select><label for="locales">语言</label><select id="locales"><option value="zh">中文</option><option value="en">English</option><option value="zh,en">中文 + English</option></select><label><input id="opensource" type="checkbox" ${config.modules?.includes("opensource") ? "checked" : ""}>启用开源项目模块</label><label for="module">导航模块</label><select id="module"><option value="on">启用</option><option value="off">停用并保留内容</option></select></div></div><details><summary>完整配置文件与导入</summary><label for="config">配置 JSON</label><textarea id="config" spellcheck="false">${escape(JSON.stringify(config, null, 2))}</textarea><label for="import">选择导入文件</label><input id="import" type="file" accept="application/json,.json"><button class="secondary" id="compare">校验并查看差异</button><pre id="diff"></pre></details><label><input type="checkbox" id="replace"> 我已查看差异，允许替换现有共享草稿</label><div class="actions"><button id="save">保存草稿</button><button id="publish">发布当前草稿</button><button class="secondary" id="preview">预览草稿</button><button class="secondary" id="export">导出线上配置</button></div><p class="muted">保存只更新草稿。发布后，各站进程在配置检查窗口内应用新修订；权限和停站状态立即检查。</p></section>${providerPanel(data, id)}<section class="panel"><h2>发布历史</h2><div class="table-wrap"><table><thead><tr><th>修订</th><th>名称</th><th>操作</th></tr></thead><tbody>${data.history.map((h) => `<tr><td>${h.revision}</td><td>${escape(h.config.name)}</td><td><button class="secondary rollback" data-revision="${h.revision}">恢复为草稿</button></td></tr>`).join("")}</tbody></table></div></section>`;
+  workspace.innerHTML = `<a href="#">← 站点总览</a> · <a href="#content/${encodeURIComponent(id)}">管理本站内容 →</a><h1>${escape(data.site.config.name)}</h1><p class="muted">${escape(data.site.origin)} · 线上修订 ${data.state.revision} · 草稿版本 ${data.state.draft_version}</p><div class="actions"><a class="button" href="${escape(data.site.origin)}" target="_blank" rel="noopener">访问站点 ↗</a><button class="secondary" id="toggle">${data.site.active ? "停用站点" : "启用站点"}</button><a class="button secondary" href="#media/${encodeURIComponent(id)}">媒体库</a><a class="button secondary" href="#ai/${encodeURIComponent(id)}">AI 设置</a><a class="button secondary" href="#persona/${encodeURIComponent(id)}">写作 persona</a><a class="button secondary" href="#collectors/${encodeURIComponent(id)}">采集器</a><a class="button secondary" href="#limits/${encodeURIComponent(id)}">配额</a><a class="button secondary" href="#ai-billing/${encodeURIComponent(id)}">AI 对账</a></div><section class="panel"><h2>站点配置</h2><div class="actions"><button class="secondary" id="refresh-config">刷新并保留编辑</button><button class="secondary" id="load-server-config">放弃本页编辑并载入服务器配置</button></div><p id="config-local-state" class="muted"></p><div class="split"><div><label for="name">名称</label><input id="name" value="${escape(config.name)}"><label for="tagline">介绍</label><input id="tagline" value="${escape(config.tagline)}"></div><div><label for="template">页面模板</label><select id="template">${templates.map((t) => `<option value="${escape(t.id)}">${escape(t.name)}</option>`).join("")}</select><label for="locales">语言</label><select id="locales"><option value="zh">中文</option><option value="en">English</option><option value="zh,en">中文 + English</option></select><label><input id="opensource" type="checkbox" ${config.modules?.includes("opensource") ? "checked" : ""}>启用开源项目模块</label><label for="module">导航模块</label><select id="module"><option value="on">启用</option><option value="off">停用并保留内容</option></select></div></div><details><summary>完整配置文件与导入</summary><label for="config">配置 JSON</label><textarea id="config" spellcheck="false">${escape(JSON.stringify(config, null, 2))}</textarea><label for="import">选择导入文件</label><input id="import" type="file" accept="application/json,.json"><button class="secondary" id="compare">校验并查看差异</button><pre id="diff"></pre></details><label><input type="checkbox" id="replace"> 我已查看差异，允许替换现有共享草稿</label><div class="actions"><button id="save">保存草稿</button><button id="publish">发布当前草稿</button><button class="secondary" id="preview">预览草稿</button><button class="secondary" id="export">导出线上配置</button></div><p class="muted">保存只更新草稿。发布后，各站进程在配置检查窗口内应用新修订；权限和停站状态立即检查。</p></section>${providerPanel(data, id)}<section class="panel"><h2>发布历史</h2><div class="table-wrap"><table><thead><tr><th>修订</th><th>名称</th><th>操作</th></tr></thead><tbody>${data.history.map((h) => `<tr><td>${h.revision}</td><td>${escape(h.config.name)}</td><td><button class="secondary rollback" data-revision="${h.revision}">恢复为草稿</button></td></tr>`).join("")}</tbody></table></div></section>`;
   document.querySelector("#template").value = config.template;
   document.querySelector("#locales").value = config.locales.join(",");
   document.querySelector("#module").value = (config.modules ?? ["directory"])
@@ -934,7 +1138,7 @@ async function audit(scope) {
     events
       .map(
         (event) =>
-          `<tr><td>${escape(new Date(event.created_at).toLocaleString("zh-CN", { hour12: false }))}</td><td>${escape(event.actor_email ?? "—")}</td><td>${escape(event.site_id ?? "全局")}</td><td>${escape(auditLabels[event.action] ?? event.action)}<br><small>${escape(event.action)}</small></td><td><code>${escape(auditDetail(event.detail))}</code></td></tr>`,
+          `<tr><td>${escape(new Date(event.created_at).toLocaleString("zh-CN", { hour12: false }))}</td><td>${escape(event.actor_email ?? (event.detail?.system ? `系统（代 ${event.detail.onBehalfOf?.email ?? "—"}）` : "—"))}</td><td>${escape(event.site_id ?? "全局")}</td><td>${escape(auditLabels[event.action] ?? event.action)}<br><small>${escape(event.action)}</small></td><td><code>${escape(auditDetail(event.detail))}</code></td></tr>`,
       )
       .join("");
   const load = async (append = false) => {
