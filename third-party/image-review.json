@@ -12,11 +12,11 @@
     {
       "id": "node-base",
       "status": "pending",
-      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
+      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
       "evidence": [
         {
           "file": "third-party/image-evidence/node-base.json",
-          "sha256": "7a0f16fe931932889af88b6e053966bf7cd6351d923e6677501612c7bf14a295"
+          "sha256": "4295ad4a815d7bcae86b23d29e243e7df7b2d5942813d858026c084bd8be40ae"
         }
       ],
       "previousReview": {
@@ -29,11 +29,11 @@
     {
       "id": "global-pnpm",
       "status": "pending",
-      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
+      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
       "evidence": [
         {
           "file": "third-party/image-evidence/global-pnpm.json",
-          "sha256": "48255fca1fc14ce66258d5433e310b9edf4e5980142f75aa628caf6823c0f4e6"
+          "sha256": "46c45fafdf50bf0a81aa33493389c1d1699cf65b541cfef34153dd10531578fd"
         }
       ],
       "previousReview": {
@@ -46,11 +46,11 @@
     {
       "id": "next-swc",
       "status": "pending",
-      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
+      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
       "evidence": [
         {
           "file": "third-party/image-evidence/next-swc.json",
-          "sha256": "a04bf1a6cdbf129b06017debda35e64905631bdd536f37f425fef4386b860390"
+          "sha256": "d89ef412bc155bb233f360dfaa84f5140842b6581a480fb4c6ae0b53d41b23fb"
         }
       ],
       "previousReview": {
@@ -63,11 +63,11 @@
     {
       "id": "esbuild",
       "status": "pending",
-      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
+      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
       "evidence": [
         {
           "file": "third-party/image-evidence/esbuild.json",
-          "sha256": "5ba8d7df348da1f09505356ab1e1e27dd14fee6bd0dc81e59bb8b70ce29a2801"
+          "sha256": "24c4dad926950416f37fa1e8d062fcc3990ab5c1f4a7b37ab1e24588db7f4b61"
         }
       ],
       "previousReview": {
@@ -80,11 +80,11 @@
     {
       "id": "postgres-image",
       "status": "pending",
-      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
+      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
       "evidence": [
         {
           "file": "third-party/image-evidence/postgres-image.json",
-          "sha256": "de311a0ed977732c25d175738fc3ee1a30c5700db2fabfccb6dbf70ee0a5d7e6"
+          "sha256": "a3708c0868c38d7112b9ccb12dca3184af19f1f7f6142610ea9db883f03179a9"
         }
       ],
       "previousReview": {
@@ -97,11 +97,11 @@
     {
       "id": "demo-proxy-image",
       "status": "pending",
-      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
+      "detail": "2026-10-25: evidence regenerated for the proposed v0.2.0-rc.3 candidate image sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944 (M17 toolso default, M18 distribution, M19 admin redesign). Awaiting QooIM confirmation; see docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md.",
       "evidence": [
         {
           "file": "third-party/image-evidence/demo-proxy-image.json",
-          "sha256": "e35918cc1b541874e903bd2365d1424e7f4f6cc930dd9e775a872d09a2e20571"
+          "sha256": "1f7d5c83a304a6816b9f9e9cad9258d4868a55fa92b95fe19025cc0d053a7a1f"
         }
       ],
       "previousReview": {
@@ -115,7 +115,7 @@
   "targetPlatform": "linux/arm64",
   "confirmation": {
     "status": "pending",
-    "candidateImage": "sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62",
+    "candidateImage": "sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944",
     "targetTag": "v0.2.0-rc.3",
     "basis": "docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md",
     "previous": {

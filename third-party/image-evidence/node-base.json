@@ -1,20 +1,20 @@
 {
   "format": 1,
   "scope": "node-base",
-  "collectedAt": "2026-10-24T18:19:10.771Z",
+  "collectedAt": "2026-10-24T18:42:56.991Z",
   "collectorSha256": "3dddccb155f34bad6cdc203737fab04d6ce8cfffc152fddc581d59ef7b3bbb37",
   "image": {
     "reference": "navigation-network:rc3-candidate",
-    "id": "sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62",
+    "id": "sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944",
     "repoDigests": [
-      "navigation-network@sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62"
+      "navigation-network@sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944"
     ],
     "architecture": "arm64",
     "os": "linux"
   },
   "basis": {
     "inventory": ".local/license-evidence/app-inventory.json",
-    "inventorySha256": "4a3bd70a771805bc3b79f7e202d9df6b9e08afc54b50d5670213ff84dc8eaab9",
+    "inventorySha256": "645d28b62f6b51b6db602b6a9130df1085524369a4b539a260fbf593a97b9d4f",
     "collector": "scripts/distribution.mjs inventoryImage (format 2)"
   },
   "observations": {

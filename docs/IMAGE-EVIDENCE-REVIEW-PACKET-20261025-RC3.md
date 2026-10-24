@@ -4,7 +4,7 @@
 
 ## 候选镜像
 
-- 镜像：`navigation-network:rc3-candidate`，`sha256:afecaa2015572188125831cdc54cca2cc4e01e91341e0d9b6d5087fdf2a5af62`，linux/arm64，构建自 `main` c54f9f9。拟定 tag：`v0.2.0-rc.3`。
+- 镜像：`navigation-network:rc3-candidate`，`sha256:aa13093e286aab2cc7d662de63ec248963905fd442518853f8a3b82e8676a944`，linux/arm64，构建自 `main` 42390d8（含 M17–M19 文档）。拟定 tag：`v0.2.0-rc.3`。
 - 和上次确认的 rc.2 镜像 `sha256:83d35168…` 相比，只有应用代码变了：
   - M17：新站点默认使用 toolso 模板；
   - M18：站点 persona、统一分发、查重和自动发布检查、定时发布、AI 额度预扣、手动粘贴模式；

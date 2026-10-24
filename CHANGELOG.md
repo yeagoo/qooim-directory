@@ -2,7 +2,7 @@
 
 ## v0.2.0-rc.3（候选，等待 QooIM 确认镜像证据）— M17 默认模板、M18 统一分发、M19 后台改版
 
-候选镜像 `sha256:afecaa20…`，复核材料见 [rc.3](docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md)。镜像证据确认之前不打 tag。
+候选镜像 `sha256:aa13093e…`，复核材料见 [rc.3](docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md)。镜像证据确认之前不打 tag。
 
 ### Added（M18）
 
