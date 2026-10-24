@@ -87,7 +87,7 @@ body.console{background:var(--paper);font:14px/1.6 Geist,ui-sans-serif,-apple-sy
 .topbar .brand{display:flex;align-items:center;gap:12px;font:inherit;color:var(--ink);padding:0;text-decoration:none;white-space:nowrap}.topbar .brand b{font-weight:600}.topbar .sep{color:var(--line-strong);font-size:20px}
 .pill{font:12px/1.5 var(--mono);border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--muted)}
 .topbar-tools{margin-left:auto;display:flex;align-items:center;gap:10px}
-.search-entry{display:flex;align-items:center;gap:12px;width:280px;height:34px;background:var(--surface);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 10px;font-weight:400;text-align:left}.search-entry:hover{border-color:var(--line-strong);opacity:1}
+.console .search-entry{display:flex;align-items:center;gap:12px;width:280px;height:34px;background:var(--surface);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 10px;font-weight:400;text-align:left}.console .search-entry:hover{border-color:var(--line-strong);opacity:1}
 kbd{margin-left:auto;font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--muted)}
 .topbar-tools .button{height:34px;display:inline-flex;align-items:center}
 .menu{position:relative}.menu summary{list-style:none;cursor:pointer;height:34px;display:flex;align-items:center;padding:0 10px;border:1px solid var(--line);border-radius:6px;color:var(--ink);font-weight:400}.menu summary::-webkit-details-marker{display:none}.menu summary::after{content:"▾";margin-left:8px;color:var(--muted)}
