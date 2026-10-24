@@ -18,7 +18,7 @@ import {
   publishedCandidate,
   resourceData,
 } from "./content.js";
-import { monthlyTokensUsed, providerRequest, type AiTransport } from "./ai.js";
+import { budgetMessage, monthlyTokensUsed, providerRequest, type AiTransport } from "./ai.js";
 import { unseal } from "./crypto.js";
 
 const siteId = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
@@ -765,8 +765,9 @@ export class Distribution {
             distributeMessages(row.locale, factsOf(data, row.locale), persona.data),
             persona.data,
           );
-        if ((await monthlyTokensUsed(c, row.site_id)) + reserved > config.monthly_tokens)
-          throw new HttpError(429, "本月 AI token 预算不足");
+        const used = await monthlyTokensUsed(c, row.site_id);
+        if (used + reserved > config.monthly_tokens)
+          throw new HttpError(429, budgetMessage(config.monthly_tokens, used, reserved));
         jobId = (
           await c.query(
             `INSERT INTO ai_job(site_id,actor_id,kind,payload,prompt_version,reserved_tokens)

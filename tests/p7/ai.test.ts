@@ -327,15 +327,29 @@ test("P7 AI concurrent retries of the same job create exactly one", async () => 
   assert.equal((await audits()).length, 1);
 });
 
+test("P7 AI budget below the minimum is rejected with a clear message", async () => {
+  await assert.rejects(configure(true, 19999), /月度 token 预算至少 20000/);
+  // A legacy config stored below the minimum is reported, and admission explains it.
+  await f.pool.query("UPDATE ai_config SET monthly_tokens=1000 WHERE site_id='atlas'");
+  const config = await f.app.ai.config(f.admin, "atlas");
+  assert.equal(config.monthlyTokens, 1000);
+  assert.equal(config.minMonthlyTokens, 20000);
+  await assert.rejects(f.app.ai.create(f.editor, input), (error: { status: number; message: string }) => {
+    assert.equal(error.status, 429);
+    assert.match(error.message, /本月可用 1000（预算 1000）；预算低于单个任务所需，请调高月度预算/);
+    return true;
+  });
+});
+
 test("P7 AI retry applies the enabled and budget checks", async () => {
   const failed = await insert("failed", 10);
   await configure(false);
   const disabled = await post(`/ai/jobs/${failed}/retry`, { site: "atlas" });
   assert.equal(disabled.status, 409);
   assert.match((await disabled.json()).error, /未启用/);
-  await configure(true, 1000);
+  await configure(true, 20000);
   await f.pool.query(
-    "INSERT INTO ai_job(site_id,kind,payload,status,tokens_in,tokens_out) VALUES('atlas','generate','{}','done',600,400)",
+    "INSERT INTO ai_job(site_id,kind,payload,status,tokens_in,tokens_out) VALUES('atlas','generate','{}','done',15000,5000)",
   );
   const over = await post(`/ai/jobs/${failed}/retry`, { site: "atlas" });
   assert.equal(over.status, 429);
@@ -346,9 +360,12 @@ test("P7 AI retry applies the enabled and budget checks", async () => {
   );
   assert.deepEqual(await audits(), []);
   // The retry must fit its whole reservation (input + overhead + output cap), not just 1 token.
-  await configure(true, 2000);
-  assert.equal((await post(`/ai/jobs/${failed}/retry`, { site: "atlas" })).status, 429);
-  await configure(true, 10000);
+  await configure(true, 21000);
+  const short = await post(`/ai/jobs/${failed}/retry`, { site: "atlas" });
+  assert.equal(short.status, 429);
+  // The message states what the job needs against what is left.
+  assert.match((await short.json()).error, /需预留 \d+，本月可用 (?:99\d|1000)（预算 21000）/);
+  await configure(true, 30000);
   assert.equal((await post(`/ai/jobs/${failed}/retry`, { site: "atlas" })).status, 201);
 });
 

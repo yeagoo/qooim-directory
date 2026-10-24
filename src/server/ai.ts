@@ -9,6 +9,14 @@ import { HttpError, Operators, type Operator } from "./operators.js";
 import { privateAddress } from "./outbound.js";
 import type { RetentionPolicy } from "./retention.js";
 
+// A month's budget must at least hold one typical job's reservation (an enrich call
+// with a long custom prompt is about 10k tokens); smaller values could never run.
+export const MIN_MONTHLY_TOKENS = 20000;
+// 429 text shared by ordinary and distribution admission, so the operator sees what the
+// job needs against what is left (the usage panel shows the same "available").
+export const budgetMessage = (budget: number, used: number, reserved: number) =>
+  `本月 AI token 预算不足：本任务需预留 ${reserved}，本月可用 ${Math.max(0, budget - used)}（预算 ${budget}）` +
+  (reserved > budget ? "；预算低于单个任务所需，请调高月度预算" : "");
 const MAX_INPUT = 4000,
   MAX_BRIEF = 500,
   MAX_RESPONSE = 256 * 1024;
@@ -76,7 +84,11 @@ const configSchema = z.strictObject({
   model: z.string().trim().min(1).max(100).regex(/^[A-Za-z0-9._:/-]+$/),
   key: z.string().trim().min(8).max(500).optional(),
   enabled: z.boolean(),
-  monthlyTokens: z.number().int().min(1000).max(100000000),
+  monthlyTokens: z
+    .number()
+    .int()
+    .min(MIN_MONTHLY_TOKENS, `月度 token 预算至少 ${MIN_MONTHLY_TOKENS}`)
+    .max(100000000),
   promptVersions: promptVersionsSchema.optional(),
 });
 const JOB_PAGE = 50;
@@ -310,6 +322,7 @@ export class AiService {
           model: row.model,
           enabled: row.enabled,
           monthlyTokens: row.monthly_tokens,
+          minMonthlyTokens: MIN_MONTHLY_TOKENS,
           hasKey: true,
           promptVersions: selection(row.prompt_versions),
           updatedAt: row.updated_at,
@@ -320,6 +333,7 @@ export class AiService {
           model: "",
           enabled: false,
           monthlyTokens: 100000,
+          minMonthlyTokens: MIN_MONTHLY_TOKENS,
           hasKey: false,
           promptVersions: selection({}),
           updatedAt: null,
@@ -467,7 +481,7 @@ export class AiService {
     );
     const used = await monthlyTokensUsed(db, site);
     if (used + reserved > config.monthly_tokens)
-      throw new HttpError(429, "本月 AI token 预算已用完");
+      throw new HttpError(429, budgetMessage(config.monthly_tokens, used, reserved));
     return { version, reserved };
   }
   async create(actor: Operator, input: unknown) {
@@ -677,7 +691,12 @@ export class AiService {
       tokensIn: Number(row.tokens_in),
       tokensOut: Number(row.tokens_out),
     }));
-    const current = months[0]!;
+    const current = months[0]!,
+      used = current.tokensIn + current.tokensOut,
+      // Admission counts queued jobs at their reservation (monthlyTokensUsed); the gap
+      // to real spend is what in-flight jobs still hold.
+      committed = await monthlyTokensUsed(this.pool, site),
+      budget = (exists.monthly_tokens as number | null) ?? null;
     return {
       site,
       monthlyTokens: (exists.monthly_tokens as number | null) ?? null,
@@ -685,7 +704,9 @@ export class AiService {
         jobs: current.jobs,
         tokensIn: current.tokensIn,
         tokensOut: current.tokensOut,
-        used: current.tokensIn + current.tokensOut,
+        used,
+        reserved: Math.max(0, committed - used),
+        available: budget === null ? null : Math.max(0, budget - committed),
       },
       months,
     };

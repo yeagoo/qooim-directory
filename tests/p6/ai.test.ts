@@ -129,7 +129,14 @@ test("P6 AI usage reports 12 months, current month and budget", async () => {
   assert.equal(data.months.length, 12);
   assert.equal(data.months[0].month, await monthKey(0));
   assert.equal(data.months[11].month, await monthKey(11));
-  assert.deepEqual(data.currentMonth, { jobs: 2, tokensIn: 40, tokensOut: 2, used: 42 });
+  assert.deepEqual(data.currentMonth, {
+    jobs: 2,
+    tokensIn: 40,
+    tokensOut: 2,
+    used: 42,
+    reserved: 0,
+    available: null,
+  });
   assert.deepEqual(data.months[5], { month: await monthKey(5), jobs: 1, tokensIn: 9, tokensOut: 1 });
   assert.equal(
     data.months.reduce((n: number, m: { jobs: number }) => n + m.jobs, 0),
@@ -142,9 +149,10 @@ test("P6 AI usage reports 12 months, current month and budget", async () => {
     model: "m",
     key: "sk-test-12345678",
     enabled: true,
-    monthlyTokens: 5000,
+    monthlyTokens: 20000,
   });
-  assert.equal((await usage("atlas")).monthlyTokens, 5000);
+  assert.equal((await usage("atlas")).monthlyTokens, 20000);
+  assert.equal((await usage("atlas")).currentMonth.available, 20000 - 42);
 });
 
 test("P6 AI prune batches stop at maxBatches and continue on the next run", async () => {
@@ -234,9 +242,9 @@ test("P6 AI settings page shows usage against budget and monthly history", async
     model: "m",
     key: "sk-test-12345678",
     enabled: true,
-    monthlyTokens: 1000,
+    monthlyTokens: 20000,
   });
-  await insert({ monthsAgo: 0, tokensIn: 300, tokensOut: 200 });
+  await insert({ monthsAgo: 0, tokensIn: 6000, tokensOut: 4000 });
   await insert({ monthsAgo: 3, tokensIn: 70, tokensOut: 7 });
   assert.equal((await pruneAiJobs(f.pool, policy)).deletedJobs, 1);
   const reader = await f.browse(f.viewer, "#ai/atlas");
@@ -245,7 +253,7 @@ test("P6 AI settings page shows usage against budget and monthly history", async
     await page.waitForSelector("#ai-usage-months");
     const summary = (await page.textContent("#ai-usage")) ?? "";
     assert.match(summary, /1 个任务/);
-    assert.match(summary, /已用 500 \/ 1,000 token（50%）/);
+    assert.match(summary, /已用 10,000 · 进行中预留 0 · 可用 10,000 \/ 20,000 token（50%）/);
     assert.equal(await page.getAttribute("#ai-usage-bar", "value"), "50");
     assert.equal(await page.locator("#ai-usage-months tbody tr").count(), 12);
     const rolled = page.locator("#ai-usage-months tbody tr").nth(3);

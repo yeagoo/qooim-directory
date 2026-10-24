@@ -83,3 +83,19 @@ test("P17 admin distributes manually: copy the prompt, paste a reply, save a dra
     await close();
   }
 });
+
+test("P17 audit page renders a system entry without an operator", async () => {
+  await f.pool.query(
+    `INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES(NULL,'atlas','publication.publish',$1)`,
+    [{ system: "scheduled publish", onBehalfOf: { id: f.editor.id, email: "editor@example.test" }, scheduled: true }],
+  );
+  const session = await f.browse(f.admin, "#audit");
+  try {
+    const { page } = session;
+    const cell = page.locator("td", { hasText: "系统（代 editor@example.test）" }).first();
+    await cell.waitFor();
+    assert.equal(await cell.textContent(), "系统（代 editor@example.test）");
+  } finally {
+    await session.close();
+  }
+});

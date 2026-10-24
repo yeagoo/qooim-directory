@@ -693,3 +693,46 @@ test("P17 ordinary reservations cover the rendered request; spend and old reserv
   assert.equal(await monthlyTokensUsed(f.pool, "atlas"), 0);
   await f.pool.query("DELETE FROM ai_prompt WHERE kind='generate' AND version=9");
 });
+
+test("P17 distribution and ordinary jobs compete for one budget; usage shows reservations", async () => {
+  await resource("share-a");
+  await publishOn("atlas", "share-a");
+  await resource("share-b");
+  await publishOn("atlas", "share-b");
+  const job = { site: "atlas", kind: "generate", locale: "zh", title: "共用" };
+  const probe = await f.app.ai.create(f.admin, job);
+  const one = (await f.pool.query("SELECT reserved_tokens FROM ai_job WHERE id=$1", [probe.id])).rows[0]
+    .reserved_tokens as number;
+  await f.pool.query("DELETE FROM ai_job WHERE id=$1", [probe.id]);
+  const first = await f.app.distribution.create(f.admin, {
+    resourceId: "share-a",
+    targets: [{ site: "atlas", locale: "zh" }],
+  });
+  assert.equal(first.tasks[0].state, "queued");
+  const dist = (await f.pool.query("SELECT reserved_tokens FROM ai_job WHERE kind='distribute'")).rows[0]
+    .reserved_tokens as number;
+  // One token short of also holding an ordinary job.
+  await f.pool.query("UPDATE ai_config SET monthly_tokens=$1 WHERE site_id='atlas'", [dist + one - 1]);
+  const usage = await f.app.ai.usage(f.admin, "atlas");
+  assert.equal(usage.currentMonth.used, 0);
+  assert.equal(usage.currentMonth.reserved, dist);
+  assert.equal(usage.currentMonth.available, one - 1);
+  await assert.rejects(f.app.ai.create(f.admin, job), (error: HttpError) => {
+    assert.equal(error.status, 429);
+    assert.match(error.message, new RegExp(`需预留 ${one}，本月可用 ${one - 1}`));
+    return true;
+  });
+  // Concurrent: room for exactly one of the two, whichever takes the site lock first.
+  await f.pool.query("UPDATE ai_config SET monthly_tokens=$1 WHERE site_id='atlas'", [dist + Math.max(dist, one)]);
+  const [ordinary, second] = await Promise.allSettled([
+    f.app.ai.create(f.admin, job),
+    f.app.distribution.create(f.admin, { resourceId: "share-b", targets: [{ site: "atlas", locale: "zh" }] }),
+  ]);
+  const ordinaryOk = ordinary.status === "fulfilled";
+  const distOk = second.status === "fulfilled" && second.value.tasks[0].state === "queued";
+  assert.equal(Number(ordinaryOk) + Number(distOk), 1, `${ordinary.status} ${JSON.stringify(second)}`);
+  if (!distOk) assert.equal((second as PromiseFulfilledResult<{ tasks: { error: string }[] }>).value.tasks[0].error, "budget");
+  const after = await f.app.ai.usage(f.admin, "atlas");
+  assert.equal(after.currentMonth.reserved, dist + (ordinaryOk ? one : dist));
+  assert.ok(after.currentMonth.available! >= 0);
+});

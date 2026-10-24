@@ -339,7 +339,7 @@ try {
       model: "test-model",
       key: "test-key-123456",
       enabled: true,
-      monthlyTokens: 1000,
+      monthlyTokens: 20000,
     },
     cookie,
   );
