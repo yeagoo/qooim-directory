@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/yeagoo/qooim-directory/actions/workflows/ci.yml/badge.svg)
 
-Qoo.IM Directory 用一套应用管理多个独立导航站：一个后台管理多个品牌站点，共享资源主档，各站独立发布。当前版本为 `v0.2.0-rc.3`（预发布，可自托管试运行）。已实现：多站点与后台权限、版本化主档与各站发布、多语言目录与搜索、投稿审核与附图、收藏、媒体库、toolso/basic/editorial 模板、程序化 SEO、AI 生成/翻译/富字段补全、站点 persona 与统一分发、GitHub/RSS/npm/JSON 采集、Passkey、备份恢复和源码归档。稳定版 `v0.2.0` 仍需真实 OAuth、AI 提供方、RSS/npm 源和 Passkey 设备的外部验收。项目历史与当前状态见[项目历史总览](docs/PROJECT-HISTORY.md)。
+Qoo.IM Directory 用一套应用管理多个独立导航站：一个后台管理多个品牌站点，共享资源主档，各站独立发布。当前版本为 `v0.2.0-rc.4`（预发布，可自托管试运行）。已实现：多站点与后台权限、版本化主档与各站发布、多语言目录与搜索、投稿审核与附图、收藏、媒体库、toolso/basic/editorial 模板、程序化 SEO、AI 生成/翻译/富字段补全、站点 persona 与统一分发、GitHub/RSS/npm/JSON 采集、Passkey、备份恢复和源码归档。稳定版 `v0.2.0` 仍需真实 OAuth、AI 提供方、RSS/npm 源和 Passkey 设备的外部验收。项目历史与当前状态见[项目历史总览](docs/PROJECT-HISTORY.md)。
 
 - [发行边界与依赖 Review](docs/history/RELEASE-REVIEW.md)
 - [P5 运行与发行准备](docs/history/P5-FINAL.md) · [备份恢复与源码操作](docs/P5-OPERATIONS.md)
