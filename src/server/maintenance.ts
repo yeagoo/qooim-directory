@@ -1,7 +1,8 @@
 import type { Pool } from "pg";
 import { pruneAiJobs } from "./ai.js";
 import { pruneCollectors } from "./collectors.js";
-import { pruneSubmissionImages } from "./content.js";
+import { pruneContentOperations, pruneSubmissionImages } from "./content.js";
+import { pruneConfigHistory } from "../domain/config.js";
 import { pruneDistributions } from "./distribution.js";
 import { Media } from "./media.js";
 import { pruneMetadataFetches } from "./metadata.js";
@@ -42,6 +43,16 @@ export async function runMaintenance(
   await step("metadata", () => pruneMetadataFetches(pool));
   await step("submissionImages", () => pruneSubmissionImages(pool));
   await step("distribution", () => pruneDistributions(pool));
+  await step("history", async () => ({
+    contentOperations: await pruneContentOperations(
+      pool,
+      policy.operationDays,
+      policy.batchSize,
+      policy.maxBatches,
+    ),
+    ...(await pruneConfigHistory(pool, policy)),
+    ...(policy.auditDays ? { audit: await pruneAudit(pool, policy) } : {}),
+  }));
   if (options.mediaRoot)
     await step("media", () =>
       new Media(pool, options.mediaRoot!).cleanupOrphans(policy),
@@ -52,4 +63,22 @@ export async function runMaintenance(
   );
   if (errors.length) throw new AggregateError(errors, "Retention failed");
   return result;
+}
+
+// Opt-in (RETENTION_AUDIT_DAYS, at least a year): export first with `cli audit-export`.
+async function pruneAudit(pool: Pool, policy: RetentionPolicy) {
+  let deleted = 0;
+  for (let i = 0; i < policy.maxBatches; i++) {
+    const n =
+      (
+        await pool.query(
+          `DELETE FROM audit_event WHERE id IN (
+             SELECT id FROM audit_event WHERE created_at<now()-$1::int*interval '1 day' ORDER BY id LIMIT $2)`,
+          [policy.auditDays, policy.batchSize],
+        )
+      ).rowCount ?? 0;
+    deleted += n;
+    if (n < policy.batchSize) break;
+  }
+  return deleted;
 }

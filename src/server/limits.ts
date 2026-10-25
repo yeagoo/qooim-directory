@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { HttpError, Operators, type Operator } from "./operators.js";
+import { transaction } from "../domain/transaction.js";
 
 // Defaults apply while a site has no override row (or the column is NULL).
 export const DEFAULT_LIMITS = {
@@ -49,38 +50,42 @@ export class Limits {
   // Quotas constrain site editors, so only global administrators may change them.
   async save(actor: Operator, input: unknown) {
     const value = limitInput.parse(input);
-    await this.operators.require(actor);
-    const exists = (
-      await this.pool.query("SELECT 1 FROM site WHERE id=$1", [value.site])
-    ).rowCount;
-    if (!exists) throw new HttpError(404, "站点不存在");
-    await this.pool.query(
-      `INSERT INTO site_limit(site_id,media_bytes,media_files,collector_sources,collector_runs_per_hour,updated_at)
-       VALUES($1,$2,$3,$4,$5,now())
-       ON CONFLICT(site_id) DO UPDATE SET
-         media_bytes=CASE WHEN $6 THEN EXCLUDED.media_bytes ELSE site_limit.media_bytes END,
-         media_files=CASE WHEN $7 THEN EXCLUDED.media_files ELSE site_limit.media_files END,
-         collector_sources=CASE WHEN $8 THEN EXCLUDED.collector_sources ELSE site_limit.collector_sources END,
-         collector_runs_per_hour=CASE WHEN $9 THEN EXCLUDED.collector_runs_per_hour ELSE site_limit.collector_runs_per_hour END,
-         updated_at=now()`,
-      [
-        value.site,
-        value.mediaBytes ?? null,
-        value.mediaFiles ?? null,
-        value.collectorSources ?? null,
-        value.collectorRunsPerHour ?? null,
-        value.mediaBytes !== undefined,
-        value.mediaFiles !== undefined,
-        value.collectorSources !== undefined,
-        value.collectorRunsPerHour !== undefined,
-      ],
-    );
-    const result = await this.get(actor, value.site);
-    await this.pool.query(
-      "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'site.limit.save',$3)",
-      [actor.id, value.site, result],
-    );
-    return result;
+    // One transaction: the authority check, the existence check, the upsert and the
+    // audit row commit together (a concurrent demotion or site delete cannot interleave).
+    return transaction(this.pool, async (c) => {
+      await this.operators.require(actor, undefined, false, c);
+      const exists = (
+        await c.query("SELECT 1 FROM site WHERE id=$1 FOR SHARE", [value.site])
+      ).rowCount;
+      if (!exists) throw new HttpError(404, "站点不存在");
+      await c.query(
+        `INSERT INTO site_limit(site_id,media_bytes,media_files,collector_sources,collector_runs_per_hour,updated_at)
+         VALUES($1,$2,$3,$4,$5,now())
+         ON CONFLICT(site_id) DO UPDATE SET
+           media_bytes=CASE WHEN $6 THEN EXCLUDED.media_bytes ELSE site_limit.media_bytes END,
+           media_files=CASE WHEN $7 THEN EXCLUDED.media_files ELSE site_limit.media_files END,
+           collector_sources=CASE WHEN $8 THEN EXCLUDED.collector_sources ELSE site_limit.collector_sources END,
+           collector_runs_per_hour=CASE WHEN $9 THEN EXCLUDED.collector_runs_per_hour ELSE site_limit.collector_runs_per_hour END,
+           updated_at=now()`,
+        [
+          value.site,
+          value.mediaBytes ?? null,
+          value.mediaFiles ?? null,
+          value.collectorSources ?? null,
+          value.collectorRunsPerHour ?? null,
+          value.mediaBytes !== undefined,
+          value.mediaFiles !== undefined,
+          value.collectorSources !== undefined,
+          value.collectorRunsPerHour !== undefined,
+        ],
+      );
+      const result = { site: value.site, ...(await siteLimits(c, value.site)) };
+      await c.query(
+        "INSERT INTO audit_event(actor_id,site_id,action,detail) VALUES($1,$2,'site.limit.save',$3)",
+        [actor.id, value.site, result],
+      );
+      return result;
+    });
   }
 }
 export async function limitsHttp(

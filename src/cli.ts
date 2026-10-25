@@ -5,6 +5,7 @@ import { settings } from "./server/settings.js";
 import { migrate } from "./server/migrate.js";
 import { Application } from "./server/http.js";
 import { runMaintenance } from "./server/maintenance.js";
+import { reseal } from "./server/reseal.js";
 const pool = database(),
   config = settings();
 const app = new Application(pool, config);
@@ -177,6 +178,46 @@ try {
           }),
         ),
       );
+    } else if (command === "re-seal") {
+      // Key rotation: run with the new AUTH_ENCRYPTION_KEY and the old one listed in
+      // AUTH_ENCRYPTION_KEY_PREVIOUS; repeat until "failed" is 0 everywhere.
+      await app.sites.operators.require(actor);
+      console.log(JSON.stringify(await reseal(pool, config.key), null, 2));
+    } else if (command === "visitor-list") {
+      console.log(
+        JSON.stringify(
+          await app.visitors.list(actor, { site: args[0], q: args[1] ?? "" }),
+          null,
+          2,
+        ),
+      );
+    } else if (command === "visitor-ban") {
+      if (!["true", "false", undefined].includes(args[2]))
+        throw new Error("Usage: visitor-ban SITE USER_ID [true|false]");
+      console.log(
+        JSON.stringify(await app.visitors.ban(actor, args[0], args[1], args[2] !== "false")),
+      );
+    } else if (command === "visitor-anonymize") {
+      console.log(JSON.stringify(await app.visitors.anonymize(actor, args[0], args[1])));
+    } else if (command === "audit-export") {
+      // JSON lines of every audit event before the given date (oldest first),
+      // for archiving before RETENTION_AUDIT_DAYS pruning.
+      await app.sites.operators.require(actor);
+      const before = new Date(args[0] ?? "");
+      if (Number.isNaN(before.getTime()))
+        throw new Error("Usage: audit-export YYYY-MM-DD");
+      let after = 0;
+      for (;;) {
+        const { rows } = await pool.query(
+          `SELECT e.id,e.actor_id,u.email AS actor_email,e.site_id,e.action,e.detail,e.created_at
+             FROM audit_event e LEFT JOIN operator_user u ON u.id=e.actor_id
+            WHERE e.created_at<$1 AND e.id>$2 ORDER BY e.id LIMIT 1000`,
+          [before, after],
+        );
+        for (const row of rows) process.stdout.write(JSON.stringify(row) + "\n");
+        if (rows.length < 1000) break;
+        after = Number(rows[rows.length - 1].id);
+      }
     } else if (command === "auth-provider-set") {
       console.log(
         JSON.stringify(
@@ -303,7 +344,7 @@ try {
       );
     } else
       throw new Error(
-        "Commands: migrate, bootstrap, seed, export, compare, import, publish, rollback, auth-upgrade, site-limit, site-limit-set, retention-run",
+        "Commands: migrate, bootstrap, seed, export, compare, import, publish, rollback, auth-upgrade, site-limit, site-limit-set, retention-run, audit-export, visitor-list, visitor-ban, visitor-anonymize, re-seal",
       );
   }
 } catch (error) {

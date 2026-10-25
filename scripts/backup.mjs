@@ -217,8 +217,10 @@ export async function backup(options) {
     );
     try {
       for (const secret of secrets) {
+        // "v1.<key id>.nonce.tag.data" or the older "nonce.tag.data".
         const [nonce, tag, payload] = secret
           .split(".")
+          .slice(-3)
           .map((v) => Buffer.from(v, "base64url"));
         const check = createDecipheriv(
           "aes-256-gcm",

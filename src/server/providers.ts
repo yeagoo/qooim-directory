@@ -3,6 +3,7 @@ import type { Pool } from "pg";
 import { transaction } from "../domain/transaction.js";
 import { seal, unseal } from "./crypto.js";
 import { Operators, HttpError, type Operator } from "./operators.js";
+import { assertPublicHost, UnsafePublicTarget } from "./outbound.js";
 const inputSchema = z
   .strictObject({
     id: z.string().regex(/^(github|google|oidc-[a-z][a-z0-9-]{0,25})$/),
@@ -47,10 +48,24 @@ export class Providers {
   constructor(
     private pool: Pool,
     private key: string,
+    private allowPrivate = false,
   ) {}
   async set(actor: Operator, site: string, input: unknown) {
     await new Operators(this.pool).require(actor);
     const value = parseConfig(input);
+    // Better Auth fetches discovery and tokens itself, so the issuer host is checked
+    // here (and again for each sign-in in auth.ts) rather than pinned per request.
+    if (value.issuer && value.enabled && !this.allowPrivate)
+      try {
+        await assertPublicHost(new URL(value.issuer));
+      } catch (error) {
+        throw new HttpError(
+          400,
+          error instanceof UnsafePublicTarget
+            ? "OIDC issuer 必须是公开网络上的 HTTPS 地址"
+            : "无法解析 OIDC issuer 的域名",
+        );
+      }
     return transaction(this.pool, async (c) => {
       const instance = (
         await c.query(

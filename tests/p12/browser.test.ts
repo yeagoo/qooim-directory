@@ -77,9 +77,15 @@ async function open(path: string, options: { clipboard?: boolean } = {}): Promis
   // Not "networkidle": directory.js never reads its /api/auth/get-session body, and with request
   // interception Chromium then never reports that request as finished.
   await page.waitForLoadState("load");
-  await page.waitForTimeout(300);
+  await settle(page);
   return { context, page, errors, statuses, close: () => context.close() };
 }
+// Waits until scripts have run their load-time work: two animation frames after
+// "load" (polling conditions below replace the former fixed delays).
+const settle = (page: Page) =>
+  page.evaluate(
+    () => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))),
+  );
 const message = (page: Page) => page.locator("#message");
 
 test("P12 SEO helpers work before <Document> installs the render context", () => {
@@ -428,17 +434,31 @@ test("P12 navbar scroll state, card spotlight and reveal-on-scroll", async () =>
     // Walk down the page so every reveal enters the viewport.
     for (let y = 0; ; y += 400) {
       await s.page.evaluate((top) => scrollTo(0, top), y);
-      await s.page.waitForTimeout(60);
+      await settle(s.page);
       if (await s.page.evaluate((top) => top + innerHeight >= document.documentElement.scrollHeight, y)) break;
     }
-    await s.page.waitForTimeout(100);
+    await s.page
+      .waitForFunction(
+        () =>
+          document.querySelector("[data-navbar]")?.hasAttribute("data-scrolled") &&
+          [...document.querySelectorAll(".site-reveal")].every((el) =>
+            el.classList.contains("site-reveal-visible"),
+          ),
+        undefined,
+        { timeout: 5000 },
+      )
+      .catch(() => {});
     assert.notEqual(await navbar.getAttribute("data-scrolled"), null);
     const hidden = await reveals.evaluateAll((els) =>
       els.filter((el) => !el.classList.contains("site-reveal-visible")).map((el) => el.outerHTML.slice(0, 80)),
     );
     assert.deepEqual(hidden, []);
     await s.page.evaluate(() => scrollTo(0, 0));
-    await s.page.waitForTimeout(100);
+    await s.page
+      .waitForFunction(() => !document.querySelector("[data-navbar]")?.hasAttribute("data-scrolled"), undefined, {
+        timeout: 5000,
+      })
+      .catch(() => {});
     assert.equal(await navbar.getAttribute("data-scrolled"), null);
 
     const card = s.page.locator("[data-spotlight] .surface-card:visible").first();
@@ -478,7 +498,8 @@ async function openDetail() {
     delete (Navigator.prototype as { share?: unknown }).share;
   });
   await s.page.reload();
-  await s.page.waitForTimeout(300);
+  await s.page.waitForLoadState("load");
+  await settle(s.page);
   return s;
 }
 const clearMessage = (page: Page) =>
@@ -533,10 +554,17 @@ test("P12 detail: reading progress and the current section in [data-section-nav]
     const progress = async () =>
       Number(await bar.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--progress")));
     await s.page.evaluate(() => scrollTo(0, 0));
-    await s.page.waitForTimeout(100);
+    await settle(s.page);
     const start = await progress();
     await s.page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-    await s.page.waitForTimeout(150);
+    await s.page
+      .waitForFunction((from) => {
+        const now = Number(
+          (document.querySelector("[data-reading-progress]") as HTMLElement).style.getPropertyValue("--progress"),
+        );
+        return now > from;
+      }, start, { timeout: 5000 })
+      .catch(() => {});
     const end = await progress();
     assert.ok(start >= 0 && start < 0.5, `progress at top ${start}`);
     assert.ok(end > start && end <= 1, `progress at bottom ${end}`);

@@ -70,6 +70,8 @@ before(async () => {
     updateSeconds: 86400,
     absoluteSeconds: 2592000,
     historyDays: 30,
+    // The lab identity provider runs on this machine.
+    oidcAllowPrivate: true,
   };
   key = randomBytes(32).toString("hex");
   server = createServer(

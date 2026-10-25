@@ -1,3 +1,4 @@
+import { registerPreviousKeys } from "./crypto.js";
 import { z } from "zod";
 import { authPolicy } from "./auth-policy.js";
 import { retentionPolicy } from "./retention.js";
@@ -19,6 +20,12 @@ export function settings() {
     .string()
     .regex(/^[a-f0-9]{64}$/)
     .parse(process.env.AUTH_ENCRYPTION_KEY);
+  registerPreviousKeys(
+    (process.env.AUTH_ENCRYPTION_KEY_PREVIOUS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
   return {
     auth: authPolicy(),
     databaseUrl: z.string().min(1).parse(process.env.DATABASE_URL),
@@ -27,5 +34,8 @@ export function settings() {
     development,
     mediaRoot: process.env.MEDIA_ROOT || ".local/media",
     retention: retentionPolicy(process.env),
+    requestLog: process.env.REQUEST_LOG !== "off",
+    // Load tests only; public reads are rate limited by default.
+    ...(process.env.READ_RATE_LIMIT === "off" ? { readLimits: false as const } : {}),
   };
 }

@@ -1,5 +1,6 @@
-import { readFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
+import { access, mkdir, readFile, readdir } from "node:fs/promises";
+import { constants } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { sourceDownload } from "./source-download.js";
 import type { Pool } from "pg";
@@ -52,11 +53,13 @@ import { aiHttp } from "./ai-http.js";
 import { Media } from "./media.js";
 import { mediaHttp } from "./media-http.js";
 import { Limits, limitsHttp } from "./limits.js";
+import { Visitors, visitorsHttp } from "./visitors.js";
 import { AiBilling, aiBillingHttp } from "./ai-billing.js";
 import { DEFAULT_RETENTION, type RetentionPolicy } from "./retention.js";
 import { Personal } from "./personal.js";
 import { MetadataService } from "./metadata.js";
 import { badgeSvg } from "./badge.js";
+import { ReadLimiter, type ReadBucket } from "./read-limit.js";
 import { AuditLog } from "./audit.js";
 import {
   personalPage,
@@ -96,8 +99,14 @@ export class Application {
   readonly ai: AiService;
   readonly collectors: Collectors;
   readonly limits: Limits;
+  readonly visitors: Visitors;
   readonly aiBilling: AiBilling;
   private assets = new Map<string, { body: Buffer; etag: string }>();
+  private reads = new ReadLimiter();
+  private limitRead(bucket: ReadBucket, site: string, request: Request) {
+    if (this.config.readLimits === false) return;
+    this.reads.consume(bucket, site, clientIp(request.headers, this.auth.policy.proxyToken));
+  }
   constructor(
     readonly pool: Pool,
     readonly config: {
@@ -111,6 +120,10 @@ export class Application {
       metadataFetcher?: typeof import("./outbound.js").fetchPublicText;
       // Template for newly created sites; toolso unless a caller (tests) asks otherwise.
       defaultTemplate?: string;
+      // Public read rate limits; false turns them off (load tests).
+      readLimits?: false;
+      // Structured request log lines on stdout (settings() turns it on).
+      requestLog?: boolean;
     },
   ) {
     this.sites = new Sites(
@@ -137,6 +150,7 @@ export class Application {
     this.ai = new AiService(pool, config.key);
     this.collectors = new Collectors(pool);
     this.limits = new Limits(pool);
+    this.visitors = new Visitors(pool);
     this.aiBilling = new AiBilling(pool);
   }
   async close() {
@@ -149,6 +163,41 @@ export class Application {
     return new Response(value, {
       headers: { "content-type": "text/html; charset=utf-8" },
     });
+  }
+  // 503 when this process cannot serve (database, schema, media volume); a stale
+  // worker heartbeat only reports "degraded", since the web keeps working without it.
+  private async health() {
+    const expected = (await readdir(resolve("migrations"))).filter((n) =>
+      /^\d{3}-[a-z-]+\.sql$/.test(n),
+    ).length;
+    const db = await this.pool
+      .query(
+        `SELECT (SELECT count(*)::int FROM schema_migration) AS applied,
+                (SELECT completed_at FROM maintenance_status WHERE name='worker') AS worker`,
+      )
+      .then((r) => r.rows[0] as { applied: number; worker: Date | null })
+      .catch(() => null);
+    let mediaWritable = true;
+    try {
+      const root = this.config.mediaRoot ?? ".local/media";
+      await mkdir(root, { recursive: true });
+      await access(root, constants.W_OK);
+    } catch {
+      mediaWritable = false;
+    }
+    const age = db?.worker ? Math.round((Date.now() - db.worker.getTime()) / 1000) : null;
+    const workerOk = age !== null && age < 300;
+    const ready = !!db && db.applied === expected && mediaWritable;
+    return Response.json(
+      {
+        status: !ready ? "fail" : workerOk ? "ok" : "degraded",
+        db: !!db,
+        migrations: { applied: db?.applied ?? null, expected },
+        workerHeartbeat: { ageSeconds: age, ok: workerOk },
+        mediaWritable,
+      },
+      { status: ready ? 200 : 503 },
+    );
   }
   private async asset(file: string, type = "text/javascript") {
     let cached = this.assets.get(file);
@@ -164,7 +213,39 @@ export class Application {
       headers: { "content-type": type, etag: cached.etag },
     });
   }
+  // One JSON line per request on stdout when enabled (REQUEST_LOG, on in production):
+  // requestId (incoming x-request-id if sane, else new), method, path, status,
+  // duration in ms and host. Query strings are not logged.
   async respond(request: Request) {
+    if (!this.config.requestLog) return this.handle(request);
+    const started = performance.now();
+    const supplied = request.headers.get("x-request-id") ?? "";
+    const requestId = /^[A-Za-z0-9._-]{8,128}$/.test(supplied) ? supplied : randomUUID();
+    let status = 500;
+    try {
+      const response = await this.handle(request);
+      status = response.status;
+      try {
+        response.headers.set("x-request-id", requestId);
+      } catch {
+        // Immutable headers (a redirect built by Response.redirect): log only.
+      }
+      return response;
+    } finally {
+      console.log(
+        JSON.stringify({
+          time: new Date().toISOString(),
+          requestId,
+          method: request.method,
+          path: new URL(request.url).pathname,
+          status,
+          duration: Math.round(performance.now() - started),
+          site: request.headers.get("host"),
+        }),
+      );
+    }
+  }
+  private async handle(request: Request) {
     let response: Response;
     try {
       response = await this.route(request);
@@ -459,10 +540,7 @@ export class Application {
         request.headers.get("origin") !== this.config.adminOrigin
       )
         throw new HttpError(403, "来源验证失败");
-      if (path === "/health" && request.method === "GET") {
-        await this.pool.query("SELECT 1 FROM schema_migration LIMIT 1");
-        return this.json({ status: "ok" });
-      }
+      if (path === "/health" && request.method === "GET") return this.health();
       // The admin origin's root goes to the console, which sends signed-out visitors to login.
       if (path === "/" && request.method === "GET")
         return Response.redirect(this.config.adminOrigin + "/admin", 303);
@@ -621,6 +699,14 @@ export class Application {
         () => this.body(request),
       );
       if (limitsResponse) return limitsResponse;
+      const visitorsResponse = await visitorsHttp(
+        this.visitors,
+        operator,
+        action,
+        request,
+        () => this.body(request),
+      );
+      if (visitorsResponse) return visitorsResponse;
       const match = action.match(
         /^\/sites\/([a-z][a-z0-9-]{0,47})(?:\/([a-z-]+))?$/,
       );
@@ -942,6 +1028,7 @@ export class Application {
       /^\/badge\/(zh|en)\/([a-z][a-z0-9-]{0,63})\.svg$/,
     );
     if (badge) {
+      this.limitRead("badge", site.id, request);
       if (request.method !== "GET") throw new HttpError(405, "Method not allowed");
       if (!config.locales.includes(badge[1] as "zh" | "en")) throw new NotFound();
       const theme = z.enum(["light", "dark"]).parse(
@@ -1075,10 +1162,16 @@ export class Application {
       collection: url.searchParams.get("collection") || undefined,
       page: url.searchParams.get("page") ?? 1,
     };
-    if (path === "/api/catalog")
+    if (path === "/api/catalog") {
+      this.limitRead("list", site.id, request);
       return this.json(await this.catalog.list(ctx, locale));
-    if (path === "/api/search")
+    }
+    if (path === "/api/search") {
+      this.limitRead("search", site.id, request);
       return this.json(await this.catalog.browse(ctx, options));
+    }
+    if (["/api/categories", "/api/tags", "/api/collections"].includes(path))
+      this.limitRead("list", site.id, request);
     if (path === "/api/categories")
       return this.json(await this.catalog.categories(ctx, locale));
     if (path === "/api/tags")
@@ -1096,6 +1189,7 @@ export class Application {
       );
     const sitemapPart = path.match(/^\/sitemap-([1-9][0-9]{0,4})\.xml$/);
     if (path === "/sitemap.xml" || sitemapPart) {
+      this.limitRead("sitemap", site.id, request);
       const xml = (body: string) =>
         new Response(body, { headers: { "content-type": "application/xml; charset=utf-8" } });
       const pages = await this.sitemapPageUrls(ctx, site.origin, config);

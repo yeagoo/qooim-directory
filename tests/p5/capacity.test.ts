@@ -86,6 +86,7 @@ test(
     );
     const app = new Application(pool, {
       defaultTemplate: "basic",
+      readLimits: false,
       key,
       adminOrigin,
       databaseUrl: process.env.P0_DATABASE_URL!,
@@ -109,6 +110,7 @@ test(
       GITHUB_SYNC_TOKEN: "",
       NODE_ENV: "production",
       NEXT_TELEMETRY_DISABLED: "1",
+      READ_RATE_LIMIT: "off",
     };
     try {
       const id = await app.sites.operators.create(

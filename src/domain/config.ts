@@ -255,3 +255,30 @@ export class ConfigStore {
     );
   }
 }
+// Retention for configuration idempotency keys and delivered outbox rows.
+export async function pruneConfigHistory(
+  pool: Pool,
+  policy: { operationDays: number; outboxDays: number; batchSize: number; maxBatches: number },
+) {
+  const run = async (sql: string, days: number) => {
+    let deleted = 0;
+    for (let i = 0; i < policy.maxBatches; i++) {
+      const n = (await pool.query(sql, [days, policy.batchSize])).rowCount ?? 0;
+      deleted += n;
+      if (n < policy.batchSize) break;
+    }
+    return deleted;
+  };
+  return {
+    configOperations: await run(
+      `DELETE FROM config_operation WHERE id IN (
+         SELECT id FROM config_operation WHERE created_at<now()-$1::int*interval '1 day' LIMIT $2)`,
+      policy.operationDays,
+    ),
+    outbox: await run(
+      `DELETE FROM outbox WHERE id IN (
+         SELECT id FROM outbox WHERE status='done' AND created_at<now()-$1::int*interval '1 day' LIMIT $2)`,
+      policy.outboxDays,
+    ),
+  };
+}

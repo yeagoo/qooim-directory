@@ -5,7 +5,7 @@ import { HttpError, type Operator } from "./operators.js";
 
 // /media/<id>[/file|/replace|/versions[/<v>[/file|/restore]]]
 const idPattern =
-  /^\/media\/([0-9a-f-]{36})(?:\/(file|replace|versions)(?:\/([0-9]{1,9})(?:\/(file|restore))?)?)?$/;
+  /^\/media\/([0-9a-f-]{36})(?:\/(file|replace|versions|release)(?:\/([0-9]{1,9})(?:\/(file|restore))?)?)?$/;
 const fileHeaders = (mime: string, length: number) => ({
   "content-type": mime,
   "content-length": String(length),
@@ -91,6 +91,13 @@ export async function mediaHttp(
       return Response.json({ ok: true });
     }
     return null;
+  }
+  // Unpublished (taken-down) entries keep pointing at their image so a republish
+  // shows it again; releasing drops those references so the media can be deleted.
+  if (operation === "release" && version === undefined && method === "POST") {
+    z.strictObject({}).parse(await readBody());
+    const item = await media.get(actor, id, true);
+    return Response.json(await content.releaseMedia(actor, item.siteId, id));
   }
   if (operation !== "versions") return null;
   if (version < 1) throw new HttpError(404, "媒体版本不存在");

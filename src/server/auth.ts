@@ -17,6 +17,7 @@ import {
   type AuthPolicy,
 } from "./auth-policy.js";
 import { MailQueue } from "./mail.js";
+import { publicUrl, requestText } from "./outbound.js";
 import { Providers, oidcDiscovery } from "./providers.js";
 import { HttpError } from "./operators.js";
 export type AuthInstance = {
@@ -57,6 +58,26 @@ export class AuthRegistry {
   private cache = new Map<string, Promise<Runtime>>();
   private locks: Pool;
   private identities: IdentityStore;
+  // OIDC discovery and user info: public, DNS-pinned and size-capped like every
+  // other outbound request, unless the policy allows private identity providers.
+  private async oidcGet(url: string, headers: Record<string, string> = {}) {
+    if (this.policy.oidcAllowPrivate) {
+      const response = await fetch(url, {
+        headers,
+        redirect: "error",
+        signal: AbortSignal.timeout(5000),
+      });
+      return { ok: response.ok, json: response.ok ? await response.json() : null };
+    }
+    const response = await requestText(
+      publicUrl(url),
+      { accept: "application/json", ...headers },
+      5000,
+      1024 * 1024,
+    );
+    const ok = response.status >= 200 && response.status < 300;
+    return { ok, json: ok ? JSON.parse(response.text) : null };
+  }
   constructor(
     private pool: Pool,
     private key: string,
@@ -64,7 +85,7 @@ export class AuthRegistry {
     readonly policy: AuthPolicy = authPolicy(),
   ) {
     this.mail = new MailQueue(pool, key, policy.smtp);
-    this.providers = new Providers(pool, key);
+    this.providers = new Providers(pool, key, policy.oidcAllowPrivate ?? false);
     this.limiter = new AuthLimiter(pool);
     this.identities = new IdentityStore(pool);
     this.locks = new Pool({
@@ -141,23 +162,18 @@ export class AuthRegistry {
                 ).toString(),
               ),
             );
-          const discovery = await fetch(oidcDiscovery(provider.issuer!), {
-            redirect: "error",
-            signal: AbortSignal.timeout(5000),
-          });
+          const discovery = await this.oidcGet(oidcDiscovery(provider.issuer!));
           if (!discovery.ok) throw new Error("Discovery unavailable");
           const metadata = z
             .object({
               issuer: z.literal(provider.issuer!),
               userinfo_endpoint: z.url(),
             })
-            .parse(await discovery.json());
+            .parse(discovery.json);
           const endpoint = new URL(metadata.userinfo_endpoint);
           if (endpoint.protocol !== "https:") throw new Error("HTTPS required");
-          const response = await fetch(endpoint, {
-            headers: { authorization: "Bearer " + tokens.accessToken },
-            redirect: "error",
-            signal: AbortSignal.timeout(5000),
+          const response = await this.oidcGet(endpoint.toString(), {
+            authorization: "Bearer " + tokens.accessToken,
           });
           if (!response.ok) throw new Error("User info unavailable");
           const profile = z
@@ -167,7 +183,7 @@ export class AuthRegistry {
               email_verified: z.literal(true),
               name: z.string().optional(),
             })
-            .parse(await response.json());
+            .parse(response.json);
           const state = context.getStore();
           if (!state) throw new Error("Missing request context");
           state.lock = await this.locks.connect();

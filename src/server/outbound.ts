@@ -52,6 +52,18 @@ export function publicUrl(value: string) {
     throw new UnsafePublicTarget("地址不是公开网络");
   return url;
 }
+// Resolves a host and rejects it when any address is private (used where a
+// library makes the request itself, so the address cannot be pinned).
+export async function assertPublicHost(
+  url: URL,
+  resolver: typeof lookup = lookup,
+) {
+  publicUrl(url.toString());
+  const host = url.hostname.replace(/^\[|\]$/g, "");
+  const addresses = await resolver(host, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some((item) => privateAddress(item.address)))
+    throw new UnsafePublicTarget("地址解析到私网");
+}
 export async function requestText(
   url: URL,
   headers: Record<string, string>,

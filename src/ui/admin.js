@@ -241,6 +241,8 @@ async function renderView(scope) {
     );
   if (route.startsWith("site/"))
     return edit(decodeURIComponent(route.slice(5)), scope);
+  if (route.startsWith("visitors/"))
+    return visitors(decodeURIComponent(route.slice(9)), scope);
   if (route === "team") return team(scope);
   if (route === "tasks") return tasks(scope);
   if (route === "audit") return audit(scope);
@@ -360,6 +362,12 @@ function fillOverview(scope) {
   void recentActivity(scope);
 }
 // Global admins read the network-wide log; others merge the logs of up to 5 granted sites.
+const activityLabel = (event) =>
+  event.action === "site.status" && typeof event.detail?.active === "boolean"
+    ? event.detail.active
+      ? "启用站点"
+      : "停用站点"
+    : (auditLabels[event.action] ?? event.action);
 async function recentActivity(scope) {
   const list = workspace.querySelector("#recent-activity");
   const show = (html) => {
@@ -380,7 +388,7 @@ async function recentActivity(scope) {
         ? events
             .map(
               (event) =>
-                `<li><span class="dot" aria-hidden="true"></span><span class="text">${escape(auditLabels[event.action] ?? event.action)}${event.site_id ? ` · <span class="muted">${escape(event.site_id)}</span>` : ""}</span><time datetime="${escape(event.created_at)}">${escape(relativeTime(event.created_at))}</time></li>`,
+                `<li><span class="dot" aria-hidden="true"></span><span class="text">${escape(activityLabel(event))}${event.site_id ? ` · <span class="muted">${escape(event.site_id)}</span>` : ""}<br><span class="muted actor">${escape(event.actor_email ?? "系统")}</span></span><time datetime="${escape(event.created_at)}">${escape(relativeTime(event.created_at))}</time></li>`,
             )
             .join("")
         : '<li class="muted">还没有活动记录。</li>',
@@ -540,7 +548,7 @@ async function edit(id, scope, local) {
   const data = await api("/sites/" + encodeURIComponent(id));
   const config = data.state.draft ?? data.state.config;
   const templates = await api("/templates");
-  workspace.innerHTML = `<a href="#">← 站点总览</a> · <a href="#content/${encodeURIComponent(id)}">管理本站内容 →</a><h1>${escape(data.site.config.name)}</h1><p class="muted">${escape(data.site.origin)} · 线上修订 ${data.state.revision} · 草稿版本 ${data.state.draft_version}</p><div class="actions"><a class="button" href="${escape(data.site.origin)}" target="_blank" rel="noopener">访问站点 ↗</a><button class="secondary" id="toggle">${data.site.active ? "停用站点" : "启用站点"}</button><a class="button secondary" href="#media/${encodeURIComponent(id)}">媒体库</a><a class="button secondary" href="#ai/${encodeURIComponent(id)}">AI 设置</a><a class="button secondary" href="#persona/${encodeURIComponent(id)}">写作 persona</a><a class="button secondary" href="#collectors/${encodeURIComponent(id)}">采集器</a><a class="button secondary" href="#limits/${encodeURIComponent(id)}">配额</a><a class="button secondary" href="#ai-billing/${encodeURIComponent(id)}">AI 对账</a></div><section class="panel"><h2>站点配置</h2><div class="actions"><button class="secondary" id="refresh-config">刷新并保留编辑</button><button class="secondary" id="load-server-config">放弃本页编辑并载入服务器配置</button></div><p id="config-local-state" class="muted"></p><div class="split"><div><label for="name">名称</label><input id="name" value="${escape(config.name)}"><label for="tagline">介绍</label><input id="tagline" value="${escape(config.tagline)}"></div><div><label for="template">页面模板</label><select id="template">${templates.map((t) => `<option value="${escape(t.id)}">${escape(t.name)}</option>`).join("")}</select><label for="locales">语言</label><select id="locales"><option value="zh">中文</option><option value="en">English</option><option value="zh,en">中文 + English</option></select><label><input id="opensource" type="checkbox" ${config.modules?.includes("opensource") ? "checked" : ""}>启用开源项目模块</label><label for="module">导航模块</label><select id="module"><option value="on">启用</option><option value="off">停用并保留内容</option></select></div></div><details><summary>完整配置文件与导入</summary><label for="config">配置 JSON</label><textarea id="config" spellcheck="false">${escape(JSON.stringify(config, null, 2))}</textarea><label for="import">选择导入文件</label><input id="import" type="file" accept="application/json,.json"><button class="secondary" id="compare">校验并查看差异</button><pre id="diff"></pre></details><label><input type="checkbox" id="replace"> 我已查看差异，允许替换现有共享草稿</label><div class="actions"><button id="save">保存草稿</button><button id="publish">发布当前草稿</button><button class="secondary" id="preview">预览草稿</button><button class="secondary" id="export">导出线上配置</button></div><p class="muted">保存只更新草稿。发布后，各站进程在配置检查窗口内应用新修订；权限和停站状态立即检查。</p></section>${providerPanel(data, id)}<section class="panel"><h2>发布历史</h2><div class="table-wrap"><table><thead><tr><th>修订</th><th>名称</th><th>操作</th></tr></thead><tbody>${data.history.map((h) => `<tr><td>${h.revision}</td><td>${escape(h.config.name)}</td><td><button class="secondary rollback" data-revision="${h.revision}">恢复为草稿</button></td></tr>`).join("")}</tbody></table></div></section>`;
+  workspace.innerHTML = `<a href="#">← 站点总览</a> · <a href="#content/${encodeURIComponent(id)}">管理本站内容 →</a><h1>${escape(data.site.config.name)}</h1><p class="muted">${escape(data.site.origin)} · 线上修订 ${data.state.revision} · 草稿版本 ${data.state.draft_version}</p><div class="actions"><a class="button" href="${escape(data.site.origin)}" target="_blank" rel="noopener">访问站点 ↗</a><button class="secondary" id="toggle">${data.site.active ? "停用站点" : "启用站点"}</button><a class="button secondary" href="#media/${encodeURIComponent(id)}">媒体库</a><a class="button secondary" href="#ai/${encodeURIComponent(id)}">AI 设置</a><a class="button secondary" href="#persona/${encodeURIComponent(id)}">写作 persona</a><a class="button secondary" href="#collectors/${encodeURIComponent(id)}">采集器</a><a class="button secondary" href="#limits/${encodeURIComponent(id)}">配额</a><a class="button secondary" href="#visitors/${encodeURIComponent(id)}">访客账号</a><a class="button secondary" href="#ai-billing/${encodeURIComponent(id)}">AI 对账</a></div><section class="panel"><h2>站点配置</h2><div class="actions"><button class="secondary" id="refresh-config">刷新并保留编辑</button><button class="secondary" id="load-server-config">放弃本页编辑并载入服务器配置</button></div><p id="config-local-state" class="muted"></p><div class="split"><div><label for="name">名称</label><input id="name" value="${escape(config.name)}"><label for="tagline">介绍</label><input id="tagline" value="${escape(config.tagline)}"></div><div><label for="template">页面模板</label><select id="template">${templates.map((t) => `<option value="${escape(t.id)}">${escape(t.name)}</option>`).join("")}</select><label for="locales">语言</label><select id="locales"><option value="zh">中文</option><option value="en">English</option><option value="zh,en">中文 + English</option></select><label><input id="opensource" type="checkbox" ${config.modules?.includes("opensource") ? "checked" : ""}>启用开源项目模块</label><label for="module">导航模块</label><select id="module"><option value="on">启用</option><option value="off">停用并保留内容</option></select></div></div><details><summary>完整配置文件与导入</summary><label for="config">配置 JSON</label><textarea id="config" spellcheck="false">${escape(JSON.stringify(config, null, 2))}</textarea><label for="import">选择导入文件</label><input id="import" type="file" accept="application/json,.json"><button class="secondary" id="compare">校验并查看差异</button><pre id="diff"></pre></details><label><input type="checkbox" id="replace"> 我已查看差异，允许替换现有共享草稿</label><div class="actions"><button id="save">保存草稿</button><button id="publish">发布当前草稿</button><button class="secondary" id="preview">预览草稿</button><button class="secondary" id="export">导出线上配置</button></div><p class="muted">保存只更新草稿。发布后，各站进程在配置检查窗口内应用新修订；权限和停站状态立即检查。</p></section>${providerPanel(data, id)}<section class="panel"><h2>发布历史</h2><div class="table-wrap"><table><thead><tr><th>修订</th><th>名称</th><th>操作</th></tr></thead><tbody>${data.history.map((h) => `<tr><td>${h.revision}</td><td>${escape(h.config.name)}</td><td><button class="secondary rollback" data-revision="${h.revision}">恢复为草稿</button></td></tr>`).join("")}</tbody></table></div></section>`;
   document.querySelector("#template").value = config.template;
   document.querySelector("#locales").value = config.locales.join(",");
   document.querySelector("#module").value = (config.modules ?? ["directory"])
@@ -899,7 +907,24 @@ async function edit(id, scope, local) {
   bind("preview", async () => {
     window.open("/admin/api/sites/" + id + "/preview", "_blank", "noopener");
   });
-  workspace.querySelector("#toggle").addEventListener("click", () =>
+  // Deactivating takes the public site offline, so it needs a second click
+  // within a few seconds (a single stray click once took a preview site down).
+  const toggle = workspace.querySelector("#toggle");
+  let armed = 0;
+  toggle.addEventListener("click", () => {
+    if (data.site.active && Date.now() - armed > 5000) {
+      armed = Date.now();
+      toggle.textContent = "再次点击确认停用";
+      toggle.classList.add("danger");
+      setTimeout(() => {
+        if (toggle.isConnected && Date.now() - armed >= 5000) {
+          toggle.textContent = "停用站点";
+          toggle.classList.remove("danger");
+        }
+      }, 5000);
+      return;
+    }
+    armed = 0;
     change(
       "status",
       () => ({
@@ -907,8 +932,8 @@ async function edit(id, scope, local) {
       }),
       "站点状态已更新。",
       true,
-    ),
-  );
+    );
+  });
   for (const button of workspace.querySelectorAll(".rollback"))
     button.addEventListener("click", () =>
       change(
@@ -1110,6 +1135,10 @@ const auditLabels = {
   "auth.provider.set": "配置登录提供方",
   "auth.retry": "重试账号准备",
   "task.retry": "重试运行任务",
+  "visitor.ban": "封禁访客",
+  "visitor.unban": "解封访客",
+  "visitor.anonymize": "匿名化访客",
+  "media.release": "解除媒体下架引用",
 };
 function auditDetail(detail) {
   if (!detail || typeof detail !== "object" || !Object.keys(detail).length)
@@ -1205,13 +1234,71 @@ function retentionPanel(data) {
     : "";
   return `<section class="panel" id="retention"><h2>AI 与采集任务</h2><p>AI：${counts(data.ai)}</p><p>采集：${counts(data.collectors)}</p>${
     policy
-      ? `<h2>数据保留</h2><div class="table-wrap"><table><tr><th>项目</th><th>保留</th></tr><tr><td>已结束 AI 任务（汇总后删除，当月不删）</td><td>${policy.aiJobDays} 天</td></tr><tr><td>已结束采集任务</td><td>${policy.collectorTaskDays} 天</td></tr><tr><td>已作废采集候选</td><td>${policy.collectorSupersededDays} 天</td></tr><tr><td>已审核采集候选（压缩内容）</td><td>${policy.collectorReviewedDays} 天</td></tr><tr><td>孤儿媒体文件宽限</td><td>${policy.mediaOrphanGraceMinutes} 分钟</td></tr></table></div><p class="muted">每 ${policy.intervalMinutes} 分钟最多执行一次；每类每次最多处理 ${policy.batchSize * policy.maxBatches} 行。</p>`
+      ? `<h2>数据保留</h2><div class="table-wrap"><table><tr><th>项目</th><th>保留</th></tr><tr><td>已结束 AI 任务（汇总后删除，当月不删）</td><td>${policy.aiJobDays} 天</td></tr><tr><td>已结束采集任务</td><td>${policy.collectorTaskDays} 天</td></tr><tr><td>已作废采集候选</td><td>${policy.collectorSupersededDays} 天</td></tr><tr><td>已审核采集候选（压缩内容）</td><td>${policy.collectorReviewedDays} 天</td></tr><tr><td>孤儿媒体文件宽限</td><td>${policy.mediaOrphanGraceMinutes} 分钟</td></tr><tr><td>内容与配置的幂等记录</td><td>${policy.operationDays} 天</td></tr><tr><td>已投递的发布事件</td><td>${policy.outboxDays} 天</td></tr><tr><td>审计日志</td><td>${policy.auditDays ? policy.auditDays + " 天" : "永久保留"}</td></tr></table></div><p class="muted">每 ${policy.intervalMinutes} 分钟最多执行一次；每类每次最多处理 ${policy.batchSize * policy.maxBatches} 行。</p>`
       : ""
   }<h2>最近一次清理</h2>${
     last
       ? `<p>${last.detail?.state === "failed" ? "失败" : last.detail?.state === "running" ? "运行中" : "完成"} · ${escape(last.completed_at)}</p><div class="table-wrap"><table><tr><th>部分</th><th>结果</th></tr>${parts}</table></div>`
       : `<p class="muted">尚未运行。</p>`
   }</section>`;
+}
+// Reader accounts of one site: search, ban/unban and anonymize (the server checks
+// write access, and global admin for a legacy shared account space).
+async function visitors(siteId, scope, query = "", page = 1) {
+  const { api, notice } = scope;
+  const write = accessFor(siteId).write;
+  const data = await api(
+    `/visitors?site=${encodeURIComponent(siteId)}&q=${encodeURIComponent(query)}&page=${page}`,
+  );
+  const rows = data.visitors
+    .map(
+      (v) =>
+        `<tr><td>${escape(v.email)}</td><td>${v.banned ? '<span class="status fail">已封禁</span>' : '<span class="status ok">正常</span>'}</td><td class="num">${v.favorites}</td><td class="num">${v.submissions}</td><td>${write ? `<div class="row"><button class="secondary visitor-ban" data-id="${escape(v.id)}" data-banned="${v.banned ? "false" : "true"}">${v.banned ? "解封" : "封禁"}</button>${v.email.endsWith("@anonymized.invalid") ? "" : `<button class="secondary visitor-anonymize" data-id="${escape(v.id)}">匿名化</button>`}</div>` : "—"}</td></tr>`,
+    )
+    .join("");
+  workspace.innerHTML = `<a href="#site/${encodeURIComponent(siteId)}">← 站点配置</a><h1>访客账号 · ${escape(siteId)}</h1><p class="muted">封禁会立即结束该账号的所有登录会话。匿名化会清除邮箱、昵称、头像和登录方式，并封禁账号；收藏和投稿保留，但不再关联到个人信息。两项操作都会写入审计日志，匿名化不可撤销。</p><form class="row" id="visitor-search"><label class="visually-hidden" for="visitor-q">搜索邮箱</label><input id="visitor-q" placeholder="按邮箱搜索" value="${escape(query)}"><button class="secondary">搜索</button></form><section class="panel"><div class="table-wrap"><table><thead><tr><th>邮箱</th><th>状态</th><th>收藏</th><th>投稿</th><th>操作</th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">没有找到访客账号。</td></tr>'}</tbody></table></div><div class="actions">${page > 1 ? '<button class="secondary" id="visitor-prev">上一页</button>' : ""}${data.more ? '<button class="secondary" id="visitor-next">下一页</button>' : ""}</div></section>`;
+  const reload = (q = query, p = page) =>
+    visitors(siteId, scope, q, p).catch((error) => notice(error.message, true));
+  workspace.querySelector("#visitor-search").addEventListener("submit", (event) => {
+    event.preventDefault();
+    void reload(workspace.querySelector("#visitor-q").value, 1);
+  });
+  workspace.querySelector("#visitor-prev")?.addEventListener("click", () => reload(query, page - 1));
+  workspace.querySelector("#visitor-next")?.addEventListener("click", () => reload(query, page + 1));
+  const act = async (button, path, body, confirmText, done) => {
+    if (confirmText && !confirm(confirmText)) return;
+    for (const b of workspace.querySelectorAll(".visitor-ban, .visitor-anonymize")) b.disabled = true;
+    try {
+      await api(path, body);
+      await visitors(siteId, scope, query, page);
+      notice(done);
+    } catch (error) {
+      notice(error.message, true);
+      for (const b of workspace.querySelectorAll(".visitor-ban, .visitor-anonymize")) b.disabled = false;
+    }
+  };
+  const base = (id) => `/visitors/${encodeURIComponent(siteId)}/${encodeURIComponent(id)}`;
+  for (const button of workspace.querySelectorAll(".visitor-ban"))
+    button.addEventListener("click", () => {
+      const banned = button.dataset.banned === "true";
+      void act(
+        button,
+        base(button.dataset.id) + "/ban",
+        { banned },
+        banned ? "封禁这个账号并结束它的所有登录会话？" : "",
+        banned ? "账号已封禁。" : "账号已解封。",
+      );
+    });
+  for (const button of workspace.querySelectorAll(".visitor-anonymize"))
+    button.addEventListener("click", () =>
+      act(
+        button,
+        base(button.dataset.id) + "/anonymize",
+        {},
+        "匿名化后无法恢复：邮箱、昵称、头像和登录方式会被清除，账号会被封禁。继续？",
+        "账号已匿名化。",
+      ),
+    );
 }
 async function tasks(scope) {
   const { api, notice } = scope;
