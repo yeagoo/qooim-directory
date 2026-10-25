@@ -56,6 +56,7 @@
 | [M18 开发方案](PLAN-M18-DISTRIBUTION.md) | persona 与统一分发的决策和 Codex 修订 |
 | [M18 验收记录](ACCEPTANCE-M18-20261025.md) | 站点 persona、统一分发、定时发布、AI 额度预扣、手动模式 |
 | [M19 验收记录](ACCEPTANCE-M19-20261025.md) | 后台方案 3 改版 |
+| [项目历史总览](PROJECT-HISTORY.md) | 背景、各阶段、版本、协作规则和未完成事项的汇总 |
 | [rc.3 镜像复核材料](IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md) | v0.2.0-rc.3 候选镜像证据，待 QooIM 确认 |
 | [M11 验收记录](ACCEPTANCE-M11-20261023.md) | 按角色显示操作、媒体提交后删除、单条候选审核修复 |
 | [M2 验收记录](ACCEPTANCE-M2-20261021.md) | 站点级 Passkey、虚拟认证器测试、升级与安全边界 |
