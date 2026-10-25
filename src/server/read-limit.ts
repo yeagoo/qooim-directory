@@ -1,13 +1,14 @@
 import { HttpError } from "./operators.js";
 
-// Per-process fixed-window limits for anonymous public reads (search, catalog,
-// sitemaps, badges). Kept in memory on purpose: a database row per page view
+// Per-process fixed-window limits for anonymous public reads (pages, search,
+// catalog, sitemaps, badges). Kept in memory on purpose: a database row per page view
 // would add the very load the limit is meant to bound. With several web
 // processes each enforces its own window, which only loosens the limit.
-export type ReadBucket = "search" | "list" | "sitemap" | "badge";
+export type ReadBucket = "search" | "list" | "page" | "sitemap" | "badge";
 export const READ_LIMITS: Record<ReadBucket, number> = {
   search: 120,
   list: 240,
+  page: 600,
   sitemap: 60,
   badge: 600,
 };
@@ -34,7 +35,14 @@ export class ReadLimiter {
   private prune(now: number) {
     for (const [key, window] of this.windows)
       if (window.reset <= now) this.windows.delete(key);
-    // Still full (a burst of distinct clients): start over rather than grow unbounded.
-    if (this.windows.size >= MAX_KEYS) this.windows.clear();
+    // Still full (a burst of distinct clients): drop the oldest tenth. Clearing
+    // everything would let a flood of new keys reset every active window.
+    if (this.windows.size >= MAX_KEYS) {
+      let drop = Math.ceil(MAX_KEYS / 10);
+      for (const key of this.windows.keys()) {
+        if (drop-- <= 0) break;
+        this.windows.delete(key);
+      }
+    }
   }
 }

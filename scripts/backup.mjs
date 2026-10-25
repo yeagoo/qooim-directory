@@ -212,12 +212,26 @@ export async function backup(options) {
         "-d",
         options.database,
         "-c",
-        "SELECT coalesce(json_agg(sealed_secret),'[]') FROM auth_instance",
+        // Every column sealed with AUTH_ENCRYPTION_KEY (see src/server/reseal.ts).
+        `SELECT coalesce(json_agg(v),'[]') FROM (
+           SELECT sealed_secret AS v FROM auth_instance
+           UNION ALL SELECT sealed_config FROM auth_provider
+           UNION ALL SELECT sealed_key FROM ai_config
+           UNION ALL SELECT payload FROM mail_queue WHERE payload IS NOT NULL) s`,
       ]),
     );
+    // "v1.<key id>.nonce.tag.data" or the older "nonce.tag.data". Values sealed
+    // with another key id mean a key rotation is unfinished (run cli re-seal).
+    const id = createHash("sha256")
+      .update(Buffer.from(authKey, "hex"))
+      .digest("hex")
+      .slice(0, 8);
+    if (secrets.some((secret) => secret.startsWith("v1.") && secret.split(".")[1] !== id))
+      throw new Error(
+        "Application encryption key cannot decrypt stored secrets sealed with another key; if a key rotation is in progress, finish it with cli re-seal before backing up",
+      );
     try {
       for (const secret of secrets) {
-        // "v1.<key id>.nonce.tag.data" or the older "nonce.tag.data".
         const [nonce, tag, payload] = secret
           .split(".")
           .slice(-3)

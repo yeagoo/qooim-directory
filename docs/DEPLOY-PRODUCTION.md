@@ -22,6 +22,12 @@ M20 起提供。本文说明如何在一台自己的服务器上用 Docker Compo
 
 `BACKUP_ENCRYPTION_KEY` 不放在 `.env` 里，见第 4 节。
 
+**OIDC 出站检查**：
+- 保存 OIDC 提供方时，系统会解析 issuer 的域名，并读取它的 discovery 文档，要求其中列出的授权、令牌、JWKS 和用户信息地址都在公开网络上。
+- 每次登录时，读取用户信息的请求会再次检查地址，并固定到检查过的地址上。
+- 令牌和 JWKS 请求由 Better Auth 自己发出，不经过这层检查。保存之后，如果对方把域名改指到内网地址，就拦不住。
+- 对出站要求严格的部署，请在主机或网络层限制 Web 容器访问内网。
+
 ## 2. 反向代理
 
 示例配置在 [`deploy/Caddyfile.production`](../deploy/Caddyfile.production)。
@@ -31,14 +37,30 @@ M20 起提供。本文说明如何在一台自己的服务器上用 Docker Compo
   - 注入 `PROXY_TRUST_TOKEN` 和真实客户端 IP（`{client_ip}`）。应用只在令牌一致时才信任这个 IP，所以限流按访客区分，而不是所有人共用一个桶。
   - 设置 `X-Forwarded-Proto https`，应用据此返回 HSTS。
 - **CDN**：如果前面还有 CDN，把 CDN 的地址段写进 `trusted_proxies`，否则 `{client_ip}` 会是 CDN 的地址。
-- **限流**：应用自己对公开搜索、目录、sitemap 和徽章按访客、按站点限流，每分钟分别为 120、240、60、600 次，超出返回 429。需要更严格的边缘限流时，可以给 Caddy 编译 `caddy-ratelimit` 模块，示例在配置末尾。
+- **限流**：应用自己对公开页面和接口按访客、按站点限流，超出返回 429。每分钟上限：搜索 120 次，目录类接口 240 次，页面 600 次，sitemap 60 次，徽章 600 次。需要更严格的边缘限流时，可以给 Caddy 编译 `caddy-ratelimit` 模块，示例在配置末尾。
 - **端口**：Web 容器只监听 `127.0.0.1:3000`，不要直接对外开放。
+
+**代理令牌**：Caddy 从自己的环境变量读取 `{$PROXY_TRUST_TOKEN}`，不会读部署目录里的 `.env`。使用系统自带的 systemd 服务时，按以下步骤配置：
+
+1. 把 `PROXY_TRUST_TOKEN=<与 .env 相同的值>` 写进 `/etc/caddy/qooim.env`，权限设为 0600；
+2. 运行 `sudo systemctl edit caddy`，加入：
+
+   ```ini
+   [Service]
+   EnvironmentFile=/etc/caddy/qooim.env
+   ```
+
+3. 运行 `sudo systemctl restart caddy`。
+
+令牌为空时，应用会把所有访客当成同一个客户端，限流和登录保护就失去了按访客区分的作用。
+
+**访问日志**：示例配置没有开启 Caddy 访问日志，因为密码重置链接和邮箱验证链接里带有一次性令牌。请求记录由应用输出，见第 3 节。
 
 启动：
 
 ```bash
 docker compose up -d --build
-sudo caddy reload --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
 ```
 
 新增站点后，把它的域名加进 Caddyfile 再重新加载。
@@ -46,7 +68,7 @@ sudo caddy reload --config /etc/caddy/Caddyfile
 ## 3. 健康检查与日志
 
 - `GET https://<后台域名>/health` 返回 `{status, db, migrations, workerHeartbeat, mediaWritable}`。
-  - 返回 503：数据库不可用、迁移数量不一致，或媒体目录不可写。
+  - 返回 503：数据库不可用、已应用的迁移与本版本的迁移文件不一致，或媒体目录不可写。
   - `status: "degraded"`：worker 超过 5 分钟没有心跳。Web 仍能服务，但发布事件、邮件、AI、采集和定时发布会停下。
   - 适合接到外部可用性监控。
 - **请求日志**：Web 进程对每个请求输出一行 JSON，字段为 `time, requestId, method, path, status, duration, site`，不含查询参数。
@@ -90,9 +112,9 @@ M20 起，密文带有密钥标识（`v1.<key id>.…`）；更早的密文没�
 
 1. 生成新密钥：`node -e 'console.log(require("node:crypto").randomBytes(32).toString("hex"))'`。
 2. 在 `.env` 中把旧密钥移到 `AUTH_ENCRYPTION_KEY_PREVIOUS`，新密钥写入 `AUTH_ENCRYPTION_KEY`，然后重启：`docker compose up -d`。这时新写入的密文用新密钥，旧密文仍然能读。
-3. 运行 `docker compose run --rm init pnpm cli re-seal`。它逐行用新密钥重写，可以重复运行，已经是新密钥的行会跳过。确认输出中每张表的 `failed` 都是 0。
+3. 运行 `docker compose run --rm init pnpm cli re-seal`。它逐行用新密钥重写，然后逐行检查。可以重复运行，已经是新密钥的行不会重写。确认所有应用进程都已使用新密钥后，再运行一次，直到输出中每张表的 `remaining` 和 `unreadable` 都是 0。
 4. 从 `AUTH_ENCRYPTION_KEY_PREVIOUS` 删除旧密钥，再重启。
-5. 做一次备份并验证：备份前的密文检查会用新密钥。
+5. 做一次备份并验证。备份前会检查每类密文都由当前密钥加密，并且能够解开；如果还有用旧密钥加密的密文，备份会被拒绝。
 
 先在恢复出来的副本上演练一遍，再在生产上执行。
 

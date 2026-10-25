@@ -4,7 +4,26 @@ import type { ClientRequest } from "node:http";
 import { isIP } from "node:net";
 /** The target itself is not a public HTTPS origin (or resolved to a private one). */
 export class UnsafePublicTarget extends Error {}
-export function privateAddress(address: string) {
+// Eight 16-bit words of an IPv6 address (handles "::" and a trailing dotted IPv4).
+function ipv6Words(address: string): number[] | null {
+  let value = address.toLowerCase().split("%")[0];
+  const dotted = value.match(/(\d+\.\d+\.\d+\.\d+)$/);
+  if (dotted) {
+    const o = dotted[1].split(".").map(Number);
+    value =
+      value.slice(0, -dotted[1].length) +
+      ((o[0] << 8) | o[1]).toString(16) +
+      ":" +
+      ((o[2] << 8) | o[3]).toString(16);
+  }
+  const [head, tail] = value.split("::");
+  const left = head ? head.split(":") : [],
+    right = tail ? tail.split(":") : [];
+  const fill = value.includes("::") ? 8 - left.length - right.length : 0;
+  const words = [...left, ...Array(fill).fill("0"), ...right].map((w) => parseInt(w, 16));
+  return words.length === 8 && words.every((w) => w >= 0 && w <= 0xffff) ? words : null;
+}
+export function privateAddress(address: string): boolean {
   if (isIP(address) === 4) {
     const octets = address.split(".").map(Number);
     const [a, b, c] = octets;
@@ -22,17 +41,26 @@ export function privateAddress(address: string) {
     );
   }
   if (isIP(address) === 6) {
-    const value = address.toLowerCase();
-    if (value === "::1" || value === "::") return true;
-    if (value.startsWith("::ffff:")) return privateAddress(value.slice(7));
+    const words = ipv6Words(address);
+    if (!words) return true;
+    const v4 = (high: number, low: number) =>
+      `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+    const zero = (n: number) => words.slice(0, n).every((w) => w === 0);
+    // ::/96 (unspecified, loopback, IPv4-compatible) and ::ffff:0:0/96 (mapped).
+    if (zero(6)) return true;
+    if (zero(5) && words[5] === 0xffff) return privateAddress(v4(words[6], words[7]));
+    // NAT64 (64:ff9b::/96, 64:ff9b:1::/48) and 6to4 (2002::/16) embed IPv4.
+    if (words[0] === 0x64 && words[1] === 0xff9b)
+      return words[2] === 1 || privateAddress(v4(words[6], words[7]));
+    if (words[0] === 0x2002) return privateAddress(v4(words[1], words[2]));
     return (
-      value.startsWith("fc") ||
-      value.startsWith("fd") ||
-      value.startsWith("fe8") ||
-      value.startsWith("fe9") ||
-      value.startsWith("fea") ||
-      value.startsWith("feb") ||
-      value.startsWith("ff")
+      (words[0] === 0x2001 && words[1] < 0x200) || // Teredo, ORCHID, benchmarking, etc.
+      (words[0] === 0x2001 && words[1] === 0xdb8) || // documentation
+      (words[0] === 0x100 && zero(4)) || // discard-only
+      (words[0] & 0xfe00) === 0xfc00 || // unique local
+      (words[0] & 0xffc0) === 0xfe80 || // link local
+      (words[0] & 0xffc0) === 0xfec0 || // site local (deprecated)
+      (words[0] & 0xff00) === 0xff00 // multicast
     );
   }
   return true;
@@ -107,7 +135,7 @@ export async function requestText(
         servername: isIP(host) ? undefined : host,
         lookup: (_hostname, _options, callback) =>
           callback(null, selected.address, selected.family),
-        headers: { host, ...headers },
+        headers: { host: url.host, ...headers },
         timeout: timeoutMs,
       },
       (res) => {

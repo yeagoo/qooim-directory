@@ -68,6 +68,10 @@ import {
   sitemapXml,
   type SitemapUrl,
 } from "../ui/directory.js";
+// Auth routes can carry one-time tokens in the path (password reset links), so only
+// the route name is logged for them.
+const loggedPath = (path: string) =>
+  path.startsWith("/api/auth/") ? path.split("/").slice(0, 4).join("/") + (path.split("/").length > 4 ? "/…" : "") : path;
 // A sitemap file holds at most 50,000 URLs; stay well below it.
 const SITEMAP_CHUNK = 45000;
 const BODY_LIMIT = 256 * 1024;
@@ -167,15 +171,19 @@ export class Application {
   // 503 when this process cannot serve (database, schema, media volume); a stale
   // worker heartbeat only reports "degraded", since the web keeps working without it.
   private async health() {
-    const expected = (await readdir(resolve("migrations"))).filter((n) =>
-      /^\d{3}-[a-z-]+\.sql$/.test(n),
-    ).length;
+    const files = (await readdir(resolve("migrations")))
+      .filter((n) => /^\d{3}-[a-z-]+\.sql$/.test(n))
+      .sort();
+    const expected = files.length;
     const db = await this.pool
       .query(
-        `SELECT (SELECT count(*)::int FROM schema_migration) AS applied,
+        `SELECT coalesce((SELECT array_agg(name ORDER BY name) FROM schema_migration),'{}') AS names,
                 (SELECT completed_at FROM maintenance_status WHERE name='worker') AS worker`,
       )
-      .then((r) => r.rows[0] as { applied: number; worker: Date | null })
+      .then((r) => {
+        const row = r.rows[0] as { names: string[]; worker: Date | null };
+        return { applied: row.names.length, names: row.names, worker: row.worker };
+      })
       .catch(() => null);
     let mediaWritable = true;
     try {
@@ -187,12 +195,14 @@ export class Application {
     }
     const age = db?.worker ? Math.round((Date.now() - db.worker.getTime()) / 1000) : null;
     const workerOk = age !== null && age < 300;
-    const ready = !!db && db.applied === expected && mediaWritable;
+    // Same names as this release's migration files (migrate() also checks checksums).
+    const schema = !!db && db.names.length === files.length && db.names.every((n, i) => n === files[i]);
+    const ready = schema && mediaWritable;
     return Response.json(
       {
         status: !ready ? "fail" : workerOk ? "ok" : "degraded",
         db: !!db,
-        migrations: { applied: db?.applied ?? null, expected },
+        migrations: { applied: db?.applied ?? null, expected, match: schema },
         workerHeartbeat: { ageSeconds: age, ok: workerOk },
         mediaWritable,
       },
@@ -237,7 +247,7 @@ export class Application {
           time: new Date().toISOString(),
           requestId,
           method: request.method,
-          path: new URL(request.url).pathname,
+          path: loggedPath(new URL(request.url).pathname),
           status,
           duration: Math.round(performance.now() - started),
           site: request.headers.get("host"),
@@ -1254,6 +1264,8 @@ export class Application {
     }
     if (path === "/me")
       return this.html(personalPage(config.name, config.locales));
+    // Everything below renders catalog pages or item data.
+    this.limitRead(url.searchParams.get("q") ? "search" : "page", site.id, request);
     const item = path.match(/^\/api\/items\/(zh|en)\/([a-z][a-z0-9-]{0,63})$/);
     if (item)
       return this.json(await this.catalog.detail(ctx, item[1], item[2]));

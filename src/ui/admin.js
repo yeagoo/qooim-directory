@@ -1246,7 +1246,9 @@ function retentionPanel(data) {
 // write access, and global admin for a legacy shared account space).
 async function visitors(siteId, scope, query = "", page = 1) {
   const { api, notice } = scope;
-  const write = accessFor(siteId).write;
+  // A legacy shared account space spans several sites: only global admins change it.
+  const shared = Boolean(sites.find((site) => site.id === siteId)?.center_site);
+  const write = accessFor(siteId).write && (Boolean(me.global_admin) || !shared);
   const data = await api(
     `/visitors?site=${encodeURIComponent(siteId)}&q=${encodeURIComponent(query)}&page=${page}`,
   );
@@ -1256,7 +1258,7 @@ async function visitors(siteId, scope, query = "", page = 1) {
         `<tr><td>${escape(v.email)}</td><td>${v.banned ? '<span class="status fail">已封禁</span>' : '<span class="status ok">正常</span>'}</td><td class="num">${v.favorites}</td><td class="num">${v.submissions}</td><td>${write ? `<div class="row"><button class="secondary visitor-ban" data-id="${escape(v.id)}" data-banned="${v.banned ? "false" : "true"}">${v.banned ? "解封" : "封禁"}</button>${v.email.endsWith("@anonymized.invalid") ? "" : `<button class="secondary visitor-anonymize" data-id="${escape(v.id)}">匿名化</button>`}</div>` : "—"}</td></tr>`,
     )
     .join("");
-  workspace.innerHTML = `<a href="#site/${encodeURIComponent(siteId)}">← 站点配置</a><h1>访客账号 · ${escape(siteId)}</h1><p class="muted">封禁会立即结束该账号的所有登录会话。匿名化会清除邮箱、昵称、头像和登录方式，并封禁账号；收藏和投稿保留，但不再关联到个人信息。两项操作都会写入审计日志，匿名化不可撤销。</p><form class="row" id="visitor-search"><label class="visually-hidden" for="visitor-q">搜索邮箱</label><input id="visitor-q" placeholder="按邮箱搜索" value="${escape(query)}"><button class="secondary">搜索</button></form><section class="panel"><div class="table-wrap"><table><thead><tr><th>邮箱</th><th>状态</th><th>收藏</th><th>投稿</th><th>操作</th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">没有找到访客账号。</td></tr>'}</tbody></table></div><div class="actions">${page > 1 ? '<button class="secondary" id="visitor-prev">上一页</button>' : ""}${data.more ? '<button class="secondary" id="visitor-next">下一页</button>' : ""}</div></section>`;
+  workspace.innerHTML = `<a href="#site/${encodeURIComponent(siteId)}">← 站点配置</a><h1>访客账号 · ${escape(siteId)}</h1><p class="muted">封禁会立即结束该账号的所有登录会话。匿名化会清除邮箱、昵称、头像和登录方式，并封禁账号；收藏和投稿保留，但不再关联到个人信息。两项操作都会写入审计日志，匿名化不可撤销。</p>${shared && !me.global_admin ? '<p class="muted">本站使用共享账号空间（legacy），账号同时属于多个站点，只有全局管理员可以封禁或匿名化。</p>' : ""}<form class="row" id="visitor-search"><label class="visually-hidden" for="visitor-q">搜索邮箱</label><input id="visitor-q" placeholder="按邮箱搜索" value="${escape(query)}"><button class="secondary">搜索</button></form><section class="panel"><div class="table-wrap"><table><thead><tr><th>邮箱</th><th>状态</th><th>收藏</th><th>投稿</th><th>操作</th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">没有找到访客账号。</td></tr>'}</tbody></table></div><div class="actions">${page > 1 ? '<button class="secondary" id="visitor-prev">上一页</button>' : ""}${data.more ? '<button class="secondary" id="visitor-next">下一页</button>' : ""}</div></section>`;
   const reload = (q = query, p = page) =>
     visitors(siteId, scope, q, p).catch((error) => notice(error.message, true));
   workspace.querySelector("#visitor-search").addEventListener("submit", (event) => {

@@ -67,18 +67,23 @@ export class Visitors {
         email,
       ]);
       await this.endSessions(c, member, userId);
-      const table = await this.localTable(c, site);
-      const locals = await this.localUsers(c, member.space_id, userId);
-      if (table && locals.length) {
+      // Every Better Auth user row of this person: the account's own instance (the
+      // center for a legacy shared space) and any satellite instance it signed in to.
+      for (const { instance, users } of await this.localUsers(c, member.space_id, userId)) {
+        const table = prefix({ id: instance } as AuthInstance);
+        const emails = (
+          await c.query(`SELECT email FROM ${table}user WHERE id=ANY($1)`, [users])
+        ).rows.map((row) => row.email as string);
         await c.query(
           `UPDATE ${table}user SET email='anonymized-'||id||'@anonymized.invalid',name='已注销用户',image=NULL WHERE id=ANY($1)`,
-          [locals],
+          [users],
         );
-        await c.query(`DELETE FROM ${table}account WHERE "userId"=ANY($1)`, [locals]);
-        if (
-          (await c.query("SELECT to_regclass($1) AS t", [table + "passkey"])).rows[0].t
-        )
-          await c.query(`DELETE FROM ${table}passkey WHERE "userId"=ANY($1)`, [locals]);
+        await c.query(`DELETE FROM ${table}session WHERE "userId"=ANY($1)`, [users]);
+        await c.query(`DELETE FROM ${table}account WHERE "userId"=ANY($1)`, [users]);
+        if ((await c.query("SELECT to_regclass($1) AS t", [table + "passkey"])).rows[0].t)
+          await c.query(`DELETE FROM ${table}passkey WHERE "userId"=ANY($1)`, [users]);
+        if (emails.length)
+          await c.query(`DELETE FROM ${table}verification WHERE identifier=ANY($1)`, [emails]);
       }
       await this.audit(c, actor, site, "visitor.anonymize", { userId });
       return { userId, anonymized: true };
@@ -116,26 +121,27 @@ export class Visitors {
         bridge.local_session,
       ]);
   }
-  // Better Auth tables that hold this space's local users (the center's for a legacy
-  // shared space).
-  private async localTable(c: PoolClient, site: string) {
-    const instance = (
-      await c.query(
-        `SELECT coalesce(center.id,own.id)::text AS id FROM auth_instance own
-           LEFT JOIN auth_instance center ON center.site_id=own.center_site
-          WHERE own.site_id=$1 AND coalesce(center.state,own.state)='ready'`,
-        [site],
-      )
-    ).rows[0];
-    return instance ? prefix({ id: instance.id } as AuthInstance) : null;
-  }
+  // Local (Better Auth) user ids per auth instance: identity subjects of the space's
+  // own instance, plus the satellite users recorded on this person's session bridges.
   private async localUsers(c: PoolClient, space: string, userId: string) {
-    return (
-      await c.query(
-        "SELECT subject FROM identity_subject WHERE space_id=$1 AND user_id=$2",
-        [space, userId],
-      )
-    ).rows.map((row) => row.subject as string);
+    const { rows } = await c.query(
+      `SELECT a.id::text AS instance,array_agg(DISTINCT sub.subject) AS users
+         FROM identity_subject sub JOIN auth_instance a ON sub.issuer=a.origin||'/api/auth'
+        WHERE sub.space_id=$1 AND sub.user_id=$2 AND a.state='ready'
+        GROUP BY a.id
+       UNION
+       SELECT b.instance_id::text,array_agg(DISTINCT b.local_user)
+         FROM session_bridge b JOIN identity_session ss ON ss.id=b.canonical_session
+         JOIN auth_instance a ON a.id=b.instance_id
+        WHERE ss.space_id=$1 AND ss.user_id=$2 AND a.state='ready'
+        GROUP BY b.instance_id`,
+      [space, userId],
+    );
+    const merged = new Map<string, Set<string>>();
+    for (const row of rows)
+      for (const user of row.users as string[])
+        merged.set(row.instance, (merged.get(row.instance) ?? new Set()).add(user));
+    return [...merged].map(([instance, users]) => ({ instance, users: [...users] }));
   }
   private async audit(c: PoolClient, actor: Operator, site: string, action: string, detail: unknown) {
     await c.query(

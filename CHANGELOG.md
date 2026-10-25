@@ -2,7 +2,39 @@
 
 ## Unreleased — M20 稳定版加固
 
-UNRELEASED_PLACEHOLDER
+审查依据见 [全项目 Review](docs/CODE-REVIEW-20261025.md)，验收见 [M20](docs/ACCEPTANCE-M20-20261025.md)，部署见 [生产部署](docs/DEPLOY-PRODUCTION.md)。
+
+### Added
+
+- 生产部署材料：`deploy/Caddyfile.production`（TLS、HSTS、真实 IP、代理令牌注入）、`deploy/backup-cron.example`、`docs/DEPLOY-PRODUCTION.md`。
+- `/health` 返回 `db`、`migrations`、`workerHeartbeat`、`mediaWritable`。数据库、迁移或媒体目录有问题时返回 503；worker 超过 5 分钟没有心跳时返回 `degraded`。
+- 每个请求输出一行 JSON 日志（`REQUEST_LOG`，默认开启；`/api/auth/` 路径会截断，避免记录令牌），响应头带 `x-request-id`。
+- 公开读限流：页面、搜索、目录接口、sitemap、徽章按访客和站点限流，超出返回 429。
+- 访客账号：后台“访客账号”页和 CLI，支持搜索、封禁（同时结束会话）、匿名化，操作写入审计。
+- 加密密钥轮换：密文带密钥标识，`AUTH_ENCRYPTION_KEY_PREVIOUS` 中的旧密钥仍可解密，`cli re-seal` 可中断后继续执行。
+- 数据保留：幂等记录保留 90 天，已投递的发布事件保留 30 天；审计日志默认永久保留，可选择开启清理；新增 `cli audit-export`；媒体库新增“解除下架引用”，用于回收配额。
+- 迁移 021（跨站和媒体引用索引）、022（保留期时间戳）；测试 `tests/p20/` 和脚本 `test:p20`。
+- favicon；后台在样式加载前同步应用主题，并提供 `<noscript>` 提示。
+
+### Changed
+
+- 版本号改为 `0.2.0-rc.3`；`release:check` 在打 tag 的提交上会检查 tag 与版本号是否一致。
+- CI：同仓库 PR 跑 P1、P2、P17；推送到 main 跑 P0–P17 和 P20；手动触发时额外跑 Docker 验收。
+- OIDC 的 discovery 和 userinfo 请求也要通过公网检查；保存 issuer 时会校验 discovery 中列出的所有端点；IPv6 特殊地址段按内网处理。内网身份提供方需设置 `OIDC_ALLOW_PRIVATE_NETWORK=true`。
+- 安全响应头：新增 `Permissions-Policy`；HTTPS 下返回 HSTS；CSP 增加 `object-src 'none'`。
+- 停用站点需要连续点两次；“最近活动”显示操作人。
+- 配额保存放进一个事务。
+- 分发检查不再把 `Node.js`、`config.json` 这类技术名当作新链接；文档注明“检查通过不等于内容正确”。
+
+### Fixed
+
+- 采集器遇到超出范围的字符实体时，不再让整个任务失败。
+- 清理未使用的代码，并开启 `noUnusedLocals`；修正 README、`.env.example` 和 CHANGELOG 中的过时内容。
+
+### Upgrade
+
+- 迁移 021 和 022 会在 publication、content_draft 上建索引，大库升级请安排维护窗口。
+- 生产环境若使用内网 OIDC 提供方，需要设置 `OIDC_ALLOW_PRIVATE_NETWORK=true`，否则登录时会被拒绝。
 
 ## v0.2.0-rc.3 — 2026-10-25 — M17 默认模板、M18 统一分发、M19 后台改版
 

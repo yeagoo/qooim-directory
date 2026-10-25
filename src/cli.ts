@@ -180,7 +180,7 @@ try {
       );
     } else if (command === "re-seal") {
       // Key rotation: run with the new AUTH_ENCRYPTION_KEY and the old one listed in
-      // AUTH_ENCRYPTION_KEY_PREVIOUS; repeat until "failed" is 0 everywhere.
+      // AUTH_ENCRYPTION_KEY_PREVIOUS; repeat until "remaining" and "unreadable" are 0.
       await app.sites.operators.require(actor);
       console.log(JSON.stringify(await reseal(pool, config.key), null, 2));
     } else if (command === "visitor-list") {

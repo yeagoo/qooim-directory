@@ -527,4 +527,21 @@ test("P8 media end-to-end: replace keeps published version until republish", asy
   // Media nobody publishes can still be deleted with all of its versions.
   assert.equal((await as(f.editor, `/media/${other.id}`, { method: "DELETE" })).status, 200);
   assert.equal(await exists(fileOf(3)), false);
+  // M20: releasing the taken-down references (image and overrides) unblocks deletion.
+  assert.equal(
+    (await as(f.viewer, `/media/${item.id}/release`, { method: "POST", body: {} })).status,
+    403,
+  );
+  const released = await as(f.editor, `/media/${item.id}/release`, { method: "POST", body: {} });
+  assert.equal(released.status, 200);
+  assert.ok((await released.json()).images >= 1);
+  const row = (
+    await f.pool.query(
+      "SELECT image,overrides FROM publication WHERE site_id='atlas' AND resource_id='versioned' AND locale=$1",
+      [locale],
+    )
+  ).rows[0];
+  assert.equal(row.image, null);
+  assert.equal(row.overrides.image, undefined);
+  assert.equal((await as(f.editor, `/media/${item.id}`, { method: "DELETE" })).status, 200);
 });

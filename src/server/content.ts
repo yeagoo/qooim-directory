@@ -822,12 +822,17 @@ WHERE u.global_admin OR EXISTS(SELECT 1 FROM operator_grant g WHERE g.user_id=u.
     z.uuid().parse(mediaId);
     return transaction(this.pool, async (c) => {
       await this.operators.require(actor, site, true, c);
+      // The reference is also kept in overrides (reused when the row is restaged).
       const image = await c.query(
-        `UPDATE publication SET image=NULL WHERE site_id=$1 AND status<>'published' AND image->>'mediaId'=$2`,
+        `UPDATE publication SET image=CASE WHEN image->>'mediaId'=$2 THEN NULL ELSE image END,
+              overrides=CASE WHEN overrides->'image'->>'mediaId'=$2 THEN overrides-'image' ELSE overrides END
+          WHERE site_id=$1 AND status<>'published' AND (image->>'mediaId'=$2 OR overrides->'image'->>'mediaId'=$2)`,
         [site, mediaId],
       );
       const logo = await c.query(
-        `UPDATE publication SET logo=NULL WHERE site_id=$1 AND status<>'published' AND logo->>'mediaId'=$2`,
+        `UPDATE publication SET logo=CASE WHEN logo->>'mediaId'=$2 THEN NULL ELSE logo END,
+              overrides=CASE WHEN overrides->'logo'->>'mediaId'=$2 THEN overrides-'logo' ELSE overrides END
+          WHERE site_id=$1 AND status<>'published' AND (logo->>'mediaId'=$2 OR overrides->'logo'->>'mediaId'=$2)`,
         [site, mediaId],
       );
       const result = { images: image.rowCount ?? 0, logos: logo.rowCount ?? 0 };

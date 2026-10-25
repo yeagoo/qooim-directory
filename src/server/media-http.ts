@@ -45,6 +45,13 @@ export async function mediaHttp(
     sub = match[4];
   const method = request.method;
   if (version === undefined) {
+    // Unpublished (taken-down) entries keep pointing at their image so a republish
+    // shows it again; releasing drops those references so the media can be deleted.
+    if (operation === "release" && method === "POST") {
+      z.strictObject({}).parse(await readBody());
+      const item = await media.get(actor, id, true);
+      return Response.json(await content.releaseMedia(actor, item.siteId, id));
+    }
     if (operation === "file" && method === "GET") {
       const { row, data } = await media.adminFile(actor, id);
       return new Response(data, { headers: fileHeaders(row.mime, data.length) });
@@ -91,13 +98,6 @@ export async function mediaHttp(
       return Response.json({ ok: true });
     }
     return null;
-  }
-  // Unpublished (taken-down) entries keep pointing at their image so a republish
-  // shows it again; releasing drops those references so the media can be deleted.
-  if (operation === "release" && version === undefined && method === "POST") {
-    z.strictObject({}).parse(await readBody());
-    const item = await media.get(actor, id, true);
-    return Response.json(await content.releaseMedia(actor, item.siteId, id));
   }
   if (operation !== "versions") return null;
   if (version < 1) throw new HttpError(404, "媒体版本不存在");

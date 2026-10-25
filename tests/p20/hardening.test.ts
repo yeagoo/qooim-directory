@@ -82,7 +82,7 @@ test("P20 H4 migration 021 adds the resource and media-reference indexes", async
 
 test("P20 H1 read limiter: per bucket, site and client; 429 in Chinese", () => {
   let now = 0;
-  const limiter = new ReadLimiter({ search: 2, list: 1, sitemap: 1, badge: 1 }, () => now);
+  const limiter = new ReadLimiter({ search: 2, list: 1, page: 1, sitemap: 1, badge: 1 }, () => now);
   limiter.consume("search", "atlas", "1.2.3.4");
   limiter.consume("search", "atlas", "1.2.3.4");
   assert.throws(() => limiter.consume("search", "atlas", "1.2.3.4"), (e: Error & { status?: number }) =>
@@ -141,11 +141,14 @@ test("P20 H5 versioned sealing reads legacy and previous-key values; re-seal is 
     [legacy],
   );
   const first = await reseal(f.pool, newKey);
-  assert.deepEqual(first.ai_config, { resealed: 1, failed: 0 });
+  assert.deepEqual(first.ai_config, { resealed: 1, remaining: 0, unreadable: 0 });
   const stored = (await f.pool.query("SELECT sealed_key FROM ai_config WHERE site_id='notes'")).rows[0].sealed_key;
   assert.ok(sealedWith(stored, newKey));
   assert.deepEqual(unseal(stored, newKey), { key: "sk-old" });
-  assert.deepEqual((await reseal(f.pool, newKey)).ai_config, { resealed: 0, failed: 0 });
+  assert.deepEqual((await reseal(f.pool, newKey)).ai_config, { resealed: 0, remaining: 0, unreadable: 0 });
+  // A corrupt value that carries the current key id is still reported.
+  await f.pool.query("UPDATE ai_config SET sealed_key=$1 WHERE site_id='notes'", [stored.slice(0, -4) + "AAAA"]);
+  assert.deepEqual((await reseal(f.pool, newKey)).ai_config, { resealed: 0, remaining: 0, unreadable: 1 });
 });
 
 test("P20 H2 retention prunes old idempotency keys and delivered events, keeps audit by default", async () => {

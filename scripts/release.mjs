@@ -398,7 +398,10 @@ export async function checkRelease({ image = false } = {}) {
       );
     if (image) blockers.push(...(await distributionBlockers()));
     const tag = await exactTag();
-    if (!tag)
+    // A tag build (GitHub Actions) must resolve its tag; elsewhere a missing tag skips.
+    if (!tag && process.env.GITHUB_REF_TYPE === "tag")
+      blockers.push("tag build without an exact tag (fetch tags with fetch-depth: 0)");
+    else if (!tag)
       console.error("Not on an exact tag: skipping the version/tag check.");
     const mismatch = versionTagBlocker(
       JSON.parse(await readFile("package.json", "utf8")).version,
