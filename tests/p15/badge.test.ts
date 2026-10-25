@@ -5,7 +5,6 @@ import { setup, type Fixture } from "../p6/helpers.js";
 import { XSS, get, seedToolso } from "../p12/helpers.js";
 import { badgeSvg } from "../../src/server/badge.js";
 
-const ORIGIN = "https://atlas.p6.test";
 let f: Fixture;
 
 before(async () => {

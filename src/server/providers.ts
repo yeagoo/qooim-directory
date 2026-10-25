@@ -3,6 +3,7 @@ import type { Pool } from "pg";
 import { transaction } from "../domain/transaction.js";
 import { seal, unseal } from "./crypto.js";
 import { Operators, HttpError, type Operator } from "./operators.js";
+import { assertPublicHost, publicUrl, requestText, UnsafePublicTarget } from "./outbound.js";
 const inputSchema = z
   .strictObject({
     id: z.string().regex(/^(github|google|oidc-[a-z][a-z0-9-]{0,25})$/),
@@ -47,10 +48,50 @@ export class Providers {
   constructor(
     private pool: Pool,
     private key: string,
+    private allowPrivate = false,
   ) {}
   async set(actor: Operator, site: string, input: unknown) {
     await new Operators(this.pool).require(actor);
     const value = parseConfig(input);
+    // Better Auth fetches discovery, tokens and keys itself, so the issuer and every
+    // endpoint it advertises are checked here; user info is pinned per sign-in in
+    // auth.ts. A host that later re-points its DNS is not caught (see deploy docs).
+    if (value.issuer && value.enabled && !this.allowPrivate)
+      try {
+        await assertPublicHost(new URL(value.issuer));
+        // Discovery must answer directly (no redirect) and name only public
+        // endpoints, since Better Auth calls the token and JWKS endpoints itself.
+        const discovery = await requestText(
+          publicUrl(oidcDiscovery(value.issuer)),
+          { accept: "application/json" },
+          5000,
+          256 * 1024,
+        );
+        if (discovery.status !== 200) throw new Error("discovery");
+        const metadata = z
+          .object({
+            issuer: z.literal(value.issuer),
+            authorization_endpoint: z.url(),
+            token_endpoint: z.url(),
+            jwks_uri: z.url(),
+            userinfo_endpoint: z.url().optional(),
+          })
+          .parse(JSON.parse(discovery.text));
+        for (const endpoint of [
+          metadata.authorization_endpoint,
+          metadata.token_endpoint,
+          metadata.jwks_uri,
+          ...(metadata.userinfo_endpoint ? [metadata.userinfo_endpoint] : []),
+        ])
+          await assertPublicHost(new URL(endpoint));
+      } catch (error) {
+        throw new HttpError(
+          400,
+          error instanceof UnsafePublicTarget
+            ? "OIDC issuer 及其端点必须是公开网络上的 HTTPS 地址"
+            : "无法读取或校验 OIDC issuer 的 discovery 文档",
+        );
+      }
     return transaction(this.pool, async (c) => {
       const instance = (
         await c.query(

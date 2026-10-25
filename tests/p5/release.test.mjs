@@ -29,6 +29,7 @@ import {
   checkText,
   exportSource,
   sourceFiles,
+  versionTagBlocker,
 } from "../../scripts/release.mjs";
 const hash = (b) => createHash("sha256").update(b).digest("hex");
 let temp;
@@ -2091,4 +2092,13 @@ test("environment collection is offline and refuses to overwrite existing output
     /EEXIST/,
   );
   assert.equal(await readFile(join(destination, "keep"), "utf8"), "keep");
+});
+
+test("a tagged commit must match package.json version; untagged commits skip", () => {
+  assert.equal(versionTagBlocker("0.2.0-rc.3", null), null);
+  assert.equal(versionTagBlocker("0.2.0-rc.3", "v0.2.0-rc.3"), null);
+  assert.match(
+    versionTagBlocker("0.2.0-rc.1", "v0.2.0-rc.3"),
+    /does not match tag v0.2.0-rc.3/,
+  );
 });

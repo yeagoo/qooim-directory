@@ -114,6 +114,14 @@ const textOf = (o: Partial<DistributeOutput>) =>
 // Any host-like token (letters-only last label) or link destination counts as a URL.
 const domains =
   /(https?:\/\/\S+|\/\/[^\s)]+|www\.\S+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,24}\b)/gi;
+// Bare dot-names such as Node.js, Vue.js or config.json are product or file names,
+// not hosts; explicit links (scheme, //, www.) are always checked.
+const TECH_SUFFIX = new Set(["js", "ts", "jsx", "tsx", "mjs", "cjs", "json", "py", "rb", "go", "css", "html", "yml", "yaml", "toml", "txt"]);
+function techName(token: string) {
+  if (/^(https?:|\/\/|www\.)/i.test(token)) return false;
+  const labels = token.toLowerCase().split(".");
+  return TECH_SUFFIX.has(labels[labels.length - 1]);
+}
 const firstHand =
   /(我们?|笔者|小编)(亲自|实际|已经)?(测试|试用|体验|实测|用)(过|了)|亲测|实测|实际体验|体验(过|后)|上手后发现|用了\s*\S{0,3}\s*(天|周|个月|年)|\bwe(?:'ve| have)? (tested|tried|used)\b|\bi(?:'ve| have)? (tested|tried|used)\b|\bin our (tests?|testing|experience)\b|\bhands-on\b|\bafter using\b/i;
 const numbersIn = (value: string) =>
@@ -126,7 +134,7 @@ export function gate(output: DistributeOutput, facts: Facts, persona: Persona) {
     known = JSON.stringify(facts).toLowerCase(),
     reasons = new Set<string>();
   for (const match of all.match(domains) ?? [])
-    if (!known.includes(match.toLowerCase())) reasons.add("new_url");
+    if (!known.includes(match.toLowerCase()) && !techName(match)) reasons.add("new_url");
   if (/\]\s*\(/.test(all)) reasons.add("link");
   if (/[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/i.test(all)) reasons.add("email");
   // Exact numeric tokens: 200 is not "in" a fact of 1200.

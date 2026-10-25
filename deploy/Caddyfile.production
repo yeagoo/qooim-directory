@@ -1,0 +1,61 @@
+# Production reverse proxy example (Caddy 2 installed on the host).
+# Replace the host names with your admin and site domains; Caddy obtains and renews
+# public certificates automatically. {$PROXY_TRUST_TOKEN} comes from Caddy's own
+# environment and must equal the value in .env: with the packaged systemd service,
+# put PROXY_TRUST_TOKEN=... in /etc/caddy/qooim.env (mode 0600) and add
+# EnvironmentFile=/etc/caddy/qooim.env via `systemctl edit caddy`. If it is empty,
+# every visitor shares one rate-limit bucket.
+#
+# If Caddy sits behind a CDN or load balancer, list its address ranges in
+# `trusted_proxies` so {client_ip} is the visitor, not the CDN.
+{
+	email ops@example.com
+	servers {
+		protocols h1 h2 h3
+		# trusted_proxies static 173.245.48.0/20 103.21.244.0/22
+	}
+}
+
+(qooim) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy 127.0.0.1:3000 {
+		# Never trust client-supplied copies of the proxy headers.
+		header_up -X-Network-Proxy-Key
+		header_up -X-Network-Client-IP
+		header_up X-Network-Proxy-Key "{$PROXY_TRUST_TOKEN}"
+		header_up X-Network-Client-IP {client_ip}
+		header_up X-Forwarded-Proto https
+	}
+	# No Caddy access log: reset and verification links carry one-time tokens in the
+	# path and query. The application logs every request with those parts removed
+	# (docker compose logs web).
+}
+
+admin.example.com {
+	import qooim
+}
+
+atlas.example.com, notes.example.com {
+	import qooim
+}
+
+# Optional edge rate limiting needs the third-party caddy-ratelimit module
+# (xcaddy build --with github.com/mholt/caddy-ratelimit). The application already
+# limits public search, catalog, sitemap and badge reads per client per site.
+# atlas.example.com {
+# 	rate_limit {
+# 		zone reads {
+# 			key {client_ip}
+# 			events 300
+# 			window 1m
+# 		}
+# 	}
+# 	import qooim
+# }

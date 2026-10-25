@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import type { Media } from "./media.js";
@@ -816,6 +816,30 @@ WHERE u.global_admin OR EXISTS(SELECT 1 FROM operator_grant g WHERE g.user_id=u.
     );
     return rows.map((row) => Number(row.version));
   }
+  // Clears image/logo references to one media item from this site's unpublished
+  // publication rows (live rows are untouched), so the media can be deleted.
+  async releaseMedia(actor: Operator, site: string, mediaId: string) {
+    z.uuid().parse(mediaId);
+    return transaction(this.pool, async (c) => {
+      await this.operators.require(actor, site, true, c);
+      // The reference is also kept in overrides (reused when the row is restaged).
+      const image = await c.query(
+        `UPDATE publication SET image=CASE WHEN image->>'mediaId'=$2 THEN NULL ELSE image END,
+              overrides=CASE WHEN overrides->'image'->>'mediaId'=$2 THEN overrides-'image' ELSE overrides END
+          WHERE site_id=$1 AND status<>'published' AND (image->>'mediaId'=$2 OR overrides->'image'->>'mediaId'=$2)`,
+        [site, mediaId],
+      );
+      const logo = await c.query(
+        `UPDATE publication SET logo=CASE WHEN logo->>'mediaId'=$2 THEN NULL ELSE logo END,
+              overrides=CASE WHEN overrides->'logo'->>'mediaId'=$2 THEN overrides-'logo' ELSE overrides END
+          WHERE site_id=$1 AND status<>'published' AND (logo->>'mediaId'=$2 OR overrides->'logo'->>'mediaId'=$2)`,
+        [site, mediaId],
+      );
+      const result = { images: image.rowCount ?? 0, logos: logo.rowCount ?? 0 };
+      await this.audit(c, actor, site, "media.release", { mediaId, ...result });
+      return result;
+    });
+  }
   // A version is pinned by any publication row (any status) so republish/unpublish
   // history never points at a deleted file.
   async mediaVersionPinned(
@@ -1501,4 +1525,23 @@ export async function pruneSubmissionImages(pool: Pool) {
        AND s.created_at<clock_timestamp()-interval '30 days'`,
   );
   return { deleted: result.rowCount ?? 0 };
+}
+
+// Idempotency records: a replayed operation id older than the window is treated as new,
+// which is safe because every write also checks versions.
+export async function pruneContentOperations(pool: Pool, days: number, batch: number, maxBatches: number) {
+  let deleted = 0;
+  for (let i = 0; i < maxBatches; i++) {
+    const n =
+      (
+        await pool.query(
+          `DELETE FROM content_operation WHERE id IN (
+             SELECT id FROM content_operation WHERE created_at<now()-$1::int*interval '1 day' LIMIT $2)`,
+          [days, batch],
+        )
+      ).rowCount ?? 0;
+    deleted += n;
+    if (n < batch) break;
+  }
+  return deleted;
 }

@@ -115,7 +115,7 @@ export async function renderMedia(site, workspace, api, notice, access) {
     }
   };
   const itemCard = (item) =>
-    `<article class="site-card media-item" data-id="${escape(item.id)}"><img src="${escape(item.adminUrl)}" alt="${escape(item.alt)}" class="media-thumb"><h2>${escape(item.filename)} <span class="badge media-version" title="当前版本">v${Number(item.version) || 1}</span></h2><p class="muted">${escape(item.mime)} · ${item.width}×${item.height} · ${size(item.bytes)}</p><p>${escape(item.alt)}</p><div class="actions"><button class="secondary copy-media" data-id="${escape(item.id)}" data-alt="${escape(item.alt)}">复制引用 JSON</button>${write ? `<button class="secondary replace-media" data-id="${escape(item.id)}">替换图片</button>` : ""}<button class="secondary history-media" data-id="${escape(item.id)}">历史版本</button>${write ? `<button class="secondary delete-media" data-id="${escape(item.id)}">删除</button>` : ""}</div></article>`;
+    `<article class="site-card media-item" data-id="${escape(item.id)}"><img src="${escape(item.adminUrl)}" alt="${escape(item.alt)}" class="media-thumb"><h2>${escape(item.filename)} <span class="badge media-version" title="当前版本">v${Number(item.version) || 1}</span></h2><p class="muted">${escape(item.mime)} · ${item.width}×${item.height} · ${size(item.bytes)}</p><p>${escape(item.alt)}</p><div class="actions"><button class="secondary copy-media" data-id="${escape(item.id)}" data-alt="${escape(item.alt)}">复制引用 JSON</button>${write ? `<button class="secondary replace-media" data-id="${escape(item.id)}">替换图片</button>` : ""}<button class="secondary history-media" data-id="${escape(item.id)}">历史版本</button>${write ? `<button class="secondary release-media" data-id="${escape(item.id)}" title="清除已下架内容对这张图片的引用，之后才能删除">解除下架引用</button><button class="secondary delete-media" data-id="${escape(item.id)}">删除</button>` : ""}</div></article>`;
   const draw = () => {
     workspace.innerHTML = `<a href="#site/${encodeURIComponent(site)}">← 站点配置</a><span class="eyebrow"> / 媒体库</span><h1>媒体库 · ${escape(site)}</h1><p class="muted">只支持 JPEG、PNG、WebP；单文件不超过 10 MiB。图片按内容哈希存储，删除前会检查线上/草稿引用。${escape(FREEZE_NOTE)}</p>${write ? "" : `<p class="muted access-note" id="access-note">${escape(READ_ONLY_NOTE)}</p>`}${quota(usage)}${
       write
@@ -126,6 +126,8 @@ export async function renderMedia(site, workspace, api, notice, access) {
     $("#upload-media")?.addEventListener("click", upload);
     for (const button of workspace.querySelectorAll(".delete-media"))
       button.addEventListener("click", () => remove(button.dataset.id));
+    for (const button of workspace.querySelectorAll(".release-media"))
+      button.addEventListener("click", () => release(button.dataset.id));
     for (const button of workspace.querySelectorAll(".replace-media"))
       button.addEventListener("click", () => {
         replaceId = button.dataset.id;
@@ -418,6 +420,18 @@ export async function renderMedia(site, workspace, api, notice, access) {
       });
       await refresh();
       notice("图片已上传。");
+    });
+  const release = (id) =>
+    guarded(async () => {
+      if (
+        !confirm(
+          "清除已下架内容对这张图片的引用？这些内容以后重新发布时将不再显示这张图片；线上内容不受影响。",
+        )
+      )
+        return;
+      const result = await request("POST", `${media(id)}/release`, {});
+      await refresh();
+      notice(`已解除 ${result.images + result.logos} 处下架内容引用。`);
     });
   const remove = (id) =>
     guarded(async () => {

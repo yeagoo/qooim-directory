@@ -1,0 +1,5 @@
+# /etc/cron.d/qooim-backup — nightly encrypted backup at 03:17 (example).
+# Run as a user that can call Docker. /etc/qooim/backup.env holds only
+# BACKUP_ENCRYPTION_KEY (mode 0600); the deployment directory holds .env.
+# Each run writes a new dated directory; copy it off the host afterwards.
+17 3 * * * qooim cd /srv/qooim-directory && node --env-file=.env --env-file=/etc/qooim/backup.env scripts/backup.mjs create navigation-network-db-1 network network /srv/qooim-backups/$(date +\%F) ./data/media >> /var/log/qooim-backup.log 2>&1

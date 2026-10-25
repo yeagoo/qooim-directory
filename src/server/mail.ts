@@ -1,4 +1,3 @@
-import {randomUUID} from 'node:crypto';
 import nodemailer from 'nodemailer';
 import {z} from 'zod';
 import type {Pool} from 'pg';

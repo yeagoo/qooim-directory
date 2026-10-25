@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/yeagoo/qooim-directory/actions/workflows/ci.yml/badge.svg)
 
-Qoo.IM Directory 用一套应用管理多个独立导航站。P0、P1 已完成；P2 已实现版本化主档、各站独立发布、多语言目录、分类搜索、投稿审核、收藏和站点媒体库，P3 已加入模板 SDK、内置 AI 生成/翻译、邮件认证、会话策略、账号绑定/解绑、Passkey（不做 MFA），以及 GitHub/Google/通用 OIDC 接入；真实 GitHub/Google 账号联调待应用凭据。P4 已实现 GitHub 项目来源同步，以及 RSS/npm/通用 JSON 采集、候选审核和独立发布，P5 已加入数据库+媒体备份恢复、源码归档与容量验收工具，公开发行前的剩余条件见发行记录。
+Qoo.IM Directory 用一套应用管理多个独立导航站：一个后台管理多个品牌站点，共享资源主档，各站独立发布。当前版本为 `v0.2.0-rc.3`（预发布，可自托管试运行）。已实现：多站点与后台权限、版本化主档与各站发布、多语言目录与搜索、投稿审核与附图、收藏、媒体库、toolso/basic/editorial 模板、程序化 SEO、AI 生成/翻译/富字段补全、站点 persona 与统一分发、GitHub/RSS/npm/JSON 采集、Passkey、备份恢复和源码归档。稳定版 `v0.2.0` 仍需真实 OAuth、AI 提供方、RSS/npm 源和 Passkey 设备的外部验收。项目历史与当前状态见[项目历史总览](docs/PROJECT-HISTORY.md)。
 
 - [发行边界与依赖 Review](docs/history/RELEASE-REVIEW.md)
 - [P5 运行与发行准备](docs/history/P5-FINAL.md) · [备份恢复与源码操作](docs/P5-OPERATIONS.md)
@@ -11,9 +11,9 @@ Qoo.IM Directory 用一套应用管理多个独立导航站。P0、P1 已完成�
 - [P2 交付与 Review](docs/history/P2-FINAL.md) · [内容操作](docs/P2-CONTENT.md)
 - [P1 交付与 Review](docs/history/P1-FINAL.md)
 - [安装和操作](docs/P1-OPERATIONS.md) · [后台任务 Review](docs/history/WORKER-REVIEW.md)
-- [开发方案](docs/DEVELOPMENT-PLAN.md) · [文档索引](docs/README.md)
+- [开发方案](docs/DEVELOPMENT-PLAN.md) · [文档索引](docs/README.md) · [生产部署](docs/DEPLOY-PRODUCTION.md)
 
-新实现未迁入旧项目平台源码。许可证为 [AGPL-3.0-only](LICENSE)，正式品牌待确定；包保持 private，避免误发布 npm。构建会生成本部署对应源码下载包，页面提供获取入口。
+新实现未迁入旧项目平台源码。许可证为 [AGPL-3.0-only](LICENSE)，正式品牌为 Qoo.IM Directory（域名和公开仓库名待定）；包保持 private，避免误发布 npm。构建会生成本部署对应源码下载包，页面提供获取入口。
 
 ## 本地运行
 
@@ -36,12 +36,24 @@ pnpm exec playwright install chromium firefox webkit
 pnpm check
 pnpm build
 pnpm test:p0
-pnpm test:p0:next
 pnpm test:p1
 pnpm test:p2
 pnpm test:p3
 pnpm test:p4
 pnpm test:p5
+pnpm test:p6
+pnpm test:p7
+pnpm test:p8
+pnpm test:p9
+pnpm test:p10
+pnpm test:p11
+pnpm test:p12
+pnpm test:p13
+pnpm test:p14
+pnpm test:p15
+pnpm test:p16
+pnpm test:p17
+pnpm test:p20
 pnpm test:release
 pnpm test:capacity
 pnpm template:preview

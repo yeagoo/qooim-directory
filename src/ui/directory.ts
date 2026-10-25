@@ -65,49 +65,12 @@ export function directoryPage(
     locale,
   );
 }
-export function detailPage(
-  site: Site,
-  origin: string,
-  path: string,
-  item: Item,
-  alternates: { locale: string; slug: string }[],
-) {
-  const title = item.seo_title || item.title,
-    description = item.seo_description || item.description;
-  return document(
-    title,
-    `<main class="public">${header(site.name)}<section class="resource-detail"><a href="/${item.locale}/${escape(path)}">← 全部资源</a><p class="eyebrow">SELECTED BY ${escape(site.name)}</p><h1>${escape(item.title)}</h1><p class="detail-description">${escape(item.description)}</p><div class="actions">${item.url ? `<a class="button" href="${escape(item.url)}" target="_blank" rel="noopener noreferrer">访问网站 ↗</a>` : ""}<button class="secondary favorite" data-id="${escape(item.resource_id)}">收藏</button></div><nav>${alternates.map((a) => `<a href="/${a.locale}/${escape(path)}/${escape(a.slug)}">${a.locale === "zh" ? "中文" : "English"}</a>`).join(" · ")}</nav></section></main>`,
-    "/assets/directory.js",
-    metadata(
-      title,
-      description,
-      origin + `/${item.locale}/${path}/${item.slug}`,
-      alternates.map((a) => ({
-        locale: a.locale,
-        url: origin + `/${a.locale}/${path}/${a.slug}`,
-      })),
-    ),
-    item.locale,
-  );
-}
 export function personalPage(name: string, locales: ("zh" | "en")[]) {
   return document(
     "我的收藏与投稿 · " + name,
     `<main class="public">${header(name)}<h1>收藏好发现，分享新方向。</h1><label for="personal-locale">内容语言</label><select id="personal-locale">${locales.map((l) => `<option value="${l}">${l === "zh" ? "中文" : "English"}</option>`).join("")}</select><section class="panel"><h2>我的收藏</h2><div id="favorites">正在加载…</div></section><section class="panel"><h2>推荐一个网站</h2><form id="submission"><label for="url">网站地址</label><div class="row"><input id="url" name="url" type="url" autocomplete="url" required><input type="button" class="button secondary" id="autofill-metadata" value="自动获取名称和说明"></div><p class="muted">自动获取只填写空白的名称或说明，不会覆盖你已经输入的内容。</p><label for="title">名称</label><input id="title" name="title" required maxlength="200"><label for="description">推荐理由</label><textarea id="description" name="description" required maxlength="5000"></textarea><label for="image">网站 logo 或截图（可选，JPEG/PNG/WebP，不超过 1 MiB）</label><input id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp"><div class="actions"><button type="submit">提交审核</button></div></form><h2>我的投稿</h2><div id="submissions"></div></section></main>`,
     "/assets/directory.js",
     '<meta name="robots" content="noindex,nofollow">',
-  );
-}
-export function missingPage(
-  name: string,
-  path: string,
-  alternates: { locale: string; slug: string }[],
-) {
-  return document(
-    "内容暂不可用 · " + name,
-    `<main class="public">${header(name)}<h1>这个语言的内容暂不可用。</h1><p>可以返回本站目录，查看已发布的资源。</p><nav>${alternates.map((a) => `<a href="/${a.locale}/${escape(path)}/${escape(a.slug)}">${a.locale === "zh" ? "查看中文" : "View English"}</a>`).join(" · ")}</nav><a href="/">返回目录</a></main>`,
-    undefined,
-    '<meta name="robots" content="noindex,follow">',
   );
 }
 export type SitemapUrl = {

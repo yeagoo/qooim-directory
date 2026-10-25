@@ -21,6 +21,9 @@ export type AuthPolicy = {
   updateSeconds: number;
   absoluteSeconds: number;
   historyDays: number;
+  // OIDC issuers and user-info endpoints must resolve to public addresses unless
+  // this is set (private identity providers on an internal network, tests).
+  oidcAllowPrivate?: boolean;
 };
 
 export function authPolicy(
@@ -83,6 +86,7 @@ export function authPolicy(
       .min(7)
       .max(365)
       .parse(env.AUTH_HISTORY_DAYS ?? 30),
+    oidcAllowPrivate: flag("OIDC_ALLOW_PRIVATE_NETWORK"),
   };
 }
 

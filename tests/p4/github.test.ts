@@ -13,7 +13,7 @@ import { database } from "../../p0/tests/database.js";
 import { migrate } from "../../src/server/migrate.js";
 import { Application } from "../../src/server/http.js";
 import { GithubClient, GithubError } from "../../src/server/github-client.js";
-import { GithubWorker, GithubSources } from "../../src/server/github.js";
+import { GithubWorker } from "../../src/server/github.js";
 import {
   CollectorWorker,
   parseJsonFeed,

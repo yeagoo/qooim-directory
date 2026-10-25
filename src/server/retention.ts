@@ -6,6 +6,11 @@ export type RetentionPolicy = {
   collectorSupersededDays: number;
   collectorReviewedDays: number;
   mediaOrphanGraceMinutes: number;
+  // Idempotency keys only need to outlive client retries; outbox rows once delivered.
+  operationDays: number;
+  outboxDays: number;
+  // Audit history is kept forever unless an operator opts in (export it first).
+  auditDays: number | null;
   batchSize: number;
   maxBatches: number;
   intervalMinutes: number;
@@ -27,6 +32,16 @@ export function retentionPolicy(
       pick("RETENTION_COLLECTOR_REVIEWED_DAYS"),
     ),
     mediaOrphanGraceMinutes: 60,
+    operationDays: days(7, 90).parse(pick("RETENTION_OPERATION_DAYS")),
+    outboxDays: days(1, 30).parse(pick("RETENTION_OUTBOX_DAYS")),
+    auditDays: z.coerce
+      .number()
+      .int()
+      .min(365)
+      .max(36500)
+      .nullable()
+      .default(null)
+      .parse(pick("RETENTION_AUDIT_DAYS") ?? null),
     batchSize: 1000,
     maxBatches: 100,
     intervalMinutes: 60,

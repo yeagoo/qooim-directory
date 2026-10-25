@@ -8,7 +8,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { fork } from "node:child_process";
 import { once } from "node:events";
 import { request as httpRequest } from "node:http";
-import { chromium } from "@playwright/test";
+import { chromium, type Page } from "@playwright/test";
 import type { AddressInfo } from "node:net";
 import type { Pool } from "pg";
 import { database } from "../../p0/tests/database.js";
@@ -109,7 +109,7 @@ test("P1 new sites require an independent account space unless legacy is explici
 test("P1 migrations are repeatable, reject checksum drift, and rollback a failed upgrade", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "20",
+    "22",
   );
   const dir = await mkdtemp(join(tmpdir(), "network-migrations-"));
   try {
@@ -3073,6 +3073,12 @@ async function configPageFixture() {
     accept,
   };
 }
+// Deactivating a site asks for a second click; other buttons act on the first.
+async function clickAction(page: Page, selector: string) {
+  const button = page.locator(selector).first();
+  await button.click();
+  if ((await button.textContent()) === "再次点击确认停用") await button.click();
+}
 const configActions = [
   { path: "save", selector: "#save", success: "草稿已保存" },
   { path: "publish", selector: "#publish", success: "发布成功" },
@@ -3139,7 +3145,7 @@ for (const action of configActions) {
       });
       await f.open();
       await f.prepare();
-      await f.page.locator(action.selector).click();
+      await clickAction(f.page, action.selector);
       await f.page.waitForFunction(() =>
         document
           .querySelector("#message")
@@ -3189,7 +3195,7 @@ for (const action of configActions.filter((a) => a.path !== "save")) {
       const response = f.page.waitForResponse((r) =>
         r.url().endsWith("/sites/atlas"),
       );
-      await f.page.locator(action.selector).click();
+      await clickAction(f.page, action.selector);
       await (await response).finished();
       await f.settle();
       assert.equal(
@@ -3461,7 +3467,7 @@ test("config write review: status refresh preserves imported source versions ins
     const response = f.page.waitForResponse((r) =>
       r.url().endsWith("/sites/atlas"),
     );
-    await f.page.locator("#toggle").click();
+    await clickAction(f.page, "#toggle");
     await (await response).finished();
     await f.settle();
     assert.equal(
@@ -3503,7 +3509,7 @@ for (const action of configActions.filter((a) =>
       const response = f.page.waitForResponse((r) =>
         r.url().endsWith("/sites/atlas"),
       );
-      await f.page.locator(action.selector).click();
+      await clickAction(f.page, action.selector);
       await (await response).finished();
       await f.settle();
       assert.equal(
