@@ -368,6 +368,22 @@ export async function exportSource(destination) {
     throw error;
   }
 }
+// A tagged commit must carry its own version: package.json is written into
+// backups and SOURCE-MANIFEST.json, so a stale version mislabels them.
+export function versionTagBlocker(version, tag) {
+  if (!tag) return null;
+  return tag === "v" + version
+    ? null
+    : `package.json version ${version} does not match tag ${tag}`;
+}
+async function exactTag() {
+  try {
+    const { stdout } = await exec("git", ["describe", "--tags", "--exact-match"]);
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
 export async function checkRelease({ image = false } = {}) {
   const temporary = await import("node:fs/promises").then((fs) =>
     fs.mkdtemp(join(process.env.TMPDIR ?? "/tmp", "navigation-release-")),
@@ -381,6 +397,14 @@ export async function checkRelease({ image = false } = {}) {
           report.manualLicenseReview.join(", "),
       );
     if (image) blockers.push(...(await distributionBlockers()));
+    const tag = await exactTag();
+    if (!tag)
+      console.error("Not on an exact tag: skipping the version/tag check.");
+    const mismatch = versionTagBlocker(
+      JSON.parse(await readFile("package.json", "utf8")).version,
+      tag,
+    );
+    if (mismatch) blockers.push(mismatch);
     if (blockers.length)
       throw new Error("Release blocked: " + blockers.join("; "));
     return {

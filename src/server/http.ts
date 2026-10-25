@@ -35,7 +35,6 @@ import {
   adminLogin,
   accountPage,
   accountHomePage,
-  publicPage,
   staticPage,
   css,
 } from "../ui/pages.js";
@@ -265,12 +264,23 @@ export class Application {
     response.headers.set("x-content-type-options", "nosniff");
     response.headers.set("referrer-policy", "no-referrer");
     response.headers.set("x-frame-options", "DENY");
+    response.headers.set(
+      "permissions-policy",
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+    );
+    // HSTS only on HTTPS (directly or via the proxy); no includeSubDomains, since
+    // sites can be subdomains of names this deployment does not control.
+    if (
+      new URL(request.url).protocol === "https:" ||
+      request.headers.get("x-forwarded-proto") === "https"
+    )
+      response.headers.set("strict-transport-security", "max-age=31536000");
     // Keep a route's own stricter policy (the sandboxed submission image); any other
     // CSP is replaced by the site policy.
     if (!response.headers.get("content-security-policy")?.startsWith("default-src 'none'"))
       response.headers.set(
         "content-security-policy",
-        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       );
     return response;
   }
@@ -376,6 +386,11 @@ export class Application {
         throw new HttpError(405, "Method not allowed");
       return sourceDownload(request, resolve(".local/source.tar.gz"));
     }
+    if (path === "/favicon.ico" || path === "/favicon.svg") {
+      if (request.method !== "GET")
+        throw new HttpError(405, "Method not allowed");
+      return this.asset("favicon.svg", "image/svg+xml");
+    }
     if (path.startsWith("/assets/")) {
       if (request.method !== "GET")
         throw new HttpError(405, "Method not allowed");
@@ -428,7 +443,9 @@ export class Application {
                     ? "toolso.js"
                     : path === "/assets/toolso-init.js" && !admin
                       ? "toolso-init.js"
-                      : null;
+                      : path === "/assets/admin-theme-init.js" && admin
+                        ? "admin-theme-init.js"
+                        : null;
       if (!file) throw new NotFound();
       return this.asset(file);
     }

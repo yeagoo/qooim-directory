@@ -713,14 +713,11 @@ export class AiService {
   }
 }
 export class AiWorker {
-  private operators: Operators;
   constructor(
     private pool: Pool,
     private key: string,
     private transport: AiTransport = providerRequest,
-  ) {
-    this.operators = new Operators(pool);
-  }
+  ) {}
   async runOnce() {
     await this.pool.query(
       "UPDATE ai_job SET status='pending',lease_token=NULL,lease_until=NULL WHERE status='processing' AND kind<>'distribute' AND lease_until<now()",

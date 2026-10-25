@@ -5,19 +5,13 @@ import { readFile, mkdtemp, cp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { fork } from "node:child_process";
-import { once } from "node:events";
-import { request as httpRequest } from "node:http";
 import { chromium, type Page } from "@playwright/test";
 import type { AddressInfo } from "node:net";
 import type { Pool } from "pg";
 import { database } from "../../p0/tests/database.js";
 import { migrate } from "../../src/server/migrate.js";
 import { Application } from "../../src/server/http.js";
-import { AuthRegistry, prefix } from "../../src/server/auth.js";
-import { runJobs } from "../../src/server/jobs.js";
 import { AiWorker } from "../../src/server/ai.js";
-import { configSchema } from "../../src/domain/config.js";
 import { HttpError, type Operator } from "../../src/server/operators.js";
 import { personalPage, directoryPage } from "../../src/ui/directory.js";
 let pool: Pool,
@@ -163,7 +157,7 @@ const request = (index: number, path: string) =>
 test("P2 upgrade preserves legacy publications, notes and original migration checksums", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "20",
+    "21",
   );
   const context = await app.catalog.resolve("legacy.test");
   assert.equal((await app.catalog.list(context, "zh"))[0].title, "Old content");

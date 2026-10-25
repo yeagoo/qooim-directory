@@ -35,14 +35,21 @@ export const jsonConfig = z.strictObject({
 });
 export const githubConfig = z.strictObject({ repository: repositoryName });
 
+// Out-of-range or surrogate references stay as written instead of throwing
+// (one bad entity used to fail the whole collector task).
+const codePoint = (whole: string, code: number) =>
+  !Number.isFinite(code) ||
+  code === 0 ||
+  code > 0x10ffff ||
+  (code >= 0xd800 && code <= 0xdfff)
+    ? whole
+    : String.fromCodePoint(code);
 const decode = (value: string) =>
   value
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
-      String.fromCodePoint(parseInt(hex, 16)),
-    )
-    .replace(/&#([0-9]+);/g, (_, number) =>
-      String.fromCodePoint(parseInt(number, 10)),
+    .replace(/&#x([0-9a-f]+);/gi, (whole, hex) => codePoint(whole, parseInt(hex, 16)))
+    .replace(/&#([0-9]+);/g, (whole, number) =>
+      codePoint(whole, parseInt(number, 10)),
     )
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")

@@ -122,7 +122,7 @@ dialog#cmdk{width:min(560px,calc(100vw - 32px));margin-top:12vh;padding:0;border
 @media(max-width:850px){.topbar{padding:0 16px}.console .search-entry{width:auto}.search-entry kbd,.topbar .pill,.topbar-tools .button{display:none}.content{padding:20px 16px 48px}.overview,.site-grid{grid-template-columns:1fr}.tabs{gap:18px}}
 @media(max-width:520px){.console .search-entry{width:34px;padding:0;justify-content:center;font-size:0}.console .search-entry::before{content:"⌕";font-size:16px}.topbar .brand b,.topbar .sep{display:none}}
 @media(prefers-reduced-motion:reduce){.skeleton-page span,.skeleton{animation:none}}
-.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.meter{width:100%}.media-thumb{width:100%;max-height:180px;object-fit:cover;border-radius:6px}.media-thumb.contain{max-height:140px;object-fit:contain}.pre-wrap{white-space:pre-wrap}td.alert{color:var(--danger);font-weight:600}`;
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.meter{width:100%}.media-thumb{width:100%;max-height:180px;object-fit:cover;border-radius:6px}.media-thumb.contain{max-height:140px;object-fit:contain}.pre-wrap{white-space:pre-wrap}td.alert{color:var(--danger);font-weight:600}.noscript{margin:0;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--danger-soft);color:var(--danger);text-align:center}`;
 export function document(
   title: string,
   body: string,
@@ -131,7 +131,7 @@ export function document(
   lang = "zh-CN",
   bodyClass = "",
 ) {
-  return `<!doctype html><html lang="${escape(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title>${head}<link rel="stylesheet" href="/assets/network.css"></head><body${bodyClass ? ` class="${escape(bodyClass)}"` : ""}>${body}<footer class="footer" aria-label="Source"><a href="/source.tar.gz">获取本部署源码 · AGPL-3.0</a></footer>${script ? `<script type="module" src="${script}"></script>` : ""}</body></html>`;
+  return `<!doctype html><html lang="${escape(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><title>${escape(title)}</title>${head}<link rel="stylesheet" href="/assets/network.css"></head><body${bodyClass ? ` class="${escape(bodyClass)}"` : ""}>${body}<footer class="footer" aria-label="Source"><a href="/source.tar.gz">获取本部署源码 · AGPL-3.0</a></footer>${script ? `<script type="module" src="${script}"></script>` : ""}</body></html>`;
 }
 export function staticPage(
   siteName: string,
@@ -160,12 +160,13 @@ export function staticPage(
   );
 }
 const logo = `<svg class="logo" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 22 21H2Z" fill="currentColor"></path></svg>`;
+const ADMIN_HEAD = '<script src="/assets/admin-theme-init.js"></script>';
 export function adminPage() {
   return document(
     "站群工作台",
-    `<div class="shell"><header class="topbar"><div class="topbar-row"><a class="brand" href="/admin">${logo}<span class="sep" aria-hidden="true">/</span><b>Qoo.IM 站群</b><span class="pill">运营者</span></a><div class="topbar-tools"><button type="button" class="search-entry" id="cmdk-open" aria-haspopup="dialog">搜索站点、条目、页面…<kbd>⌘K</kbd></button><a class="button" href="/admin#distribute">统一分发</a><details class="menu" id="account-menu"><summary><span id="account" class="muted"></span><span class="visually-hidden">：账号与外观</span></summary><div class="menu-panel"><fieldset class="theme-choice"><legend>外观</legend><label><input type="radio" name="theme" value="system">跟随系统</label><label><input type="radio" name="theme" value="light">浅色</label><label><input type="radio" name="theme" value="dark">深色</label></fieldset><button class="secondary" id="logout">退出登录</button></div></details></div></div><nav id="nav" class="tabs" aria-label="主导航"><a href="/admin">总览</a><a href="/admin#resources">资源主档</a><a href="/admin#distribute">统一分发</a><a href="/admin#github">开源项目</a><a href="/admin#team">成员权限</a><a href="/admin#tasks">运行任务</a><a href="/admin#audit">审计日志</a></nav></header><main class="content"><div id="message" role="status" aria-live="polite"></div><div id="workspace"><div class="skeleton-page" aria-label="正在加载"><span></span><span></span><span></span></div></div></main><dialog id="cmdk" aria-label="命令面板"><input id="cmdk-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-label="搜索页面、站点或资源" placeholder="跳转到页面、站点，或输入资源标识…" autocomplete="off" aria-controls="cmdk-list"><ul id="cmdk-list" role="listbox" aria-label="搜索结果"></ul><p class="cmdk-hint">↑↓ 选择 · Enter 打开 · Esc 关闭</p></dialog></div>`,
+    `<noscript><p class="noscript">工作台需要启用 JavaScript 才能使用。请在浏览器中允许本站脚本后刷新页面。</p></noscript><div class="shell"><header class="topbar"><div class="topbar-row"><a class="brand" href="/admin">${logo}<span class="sep" aria-hidden="true">/</span><b>Qoo.IM 站群</b><span class="pill">运营者</span></a><div class="topbar-tools"><button type="button" class="search-entry" id="cmdk-open" aria-haspopup="dialog">搜索站点、条目、页面…<kbd>⌘K</kbd></button><a class="button" href="/admin#distribute">统一分发</a><details class="menu" id="account-menu"><summary><span id="account" class="muted"></span><span class="visually-hidden">：账号与外观</span></summary><div class="menu-panel"><fieldset class="theme-choice"><legend>外观</legend><label><input type="radio" name="theme" value="system">跟随系统</label><label><input type="radio" name="theme" value="light">浅色</label><label><input type="radio" name="theme" value="dark">深色</label></fieldset><button class="secondary" id="logout">退出登录</button></div></details></div></div><nav id="nav" class="tabs" aria-label="主导航"><a href="/admin">总览</a><a href="/admin#resources">资源主档</a><a href="/admin#distribute">统一分发</a><a href="/admin#github">开源项目</a><a href="/admin#team">成员权限</a><a href="/admin#tasks">运行任务</a><a href="/admin#audit">审计日志</a></nav></header><main class="content"><div id="message" role="status" aria-live="polite"></div><div id="workspace"><div class="skeleton-page" aria-label="正在加载"><span></span><span></span><span></span></div></div></main><dialog id="cmdk" aria-label="命令面板"><input id="cmdk-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-label="搜索页面、站点或资源" placeholder="跳转到页面、站点，或输入资源标识…" autocomplete="off" aria-controls="cmdk-list"><ul id="cmdk-list" role="listbox" aria-label="搜索结果"></ul><p class="cmdk-hint">↑↓ 选择 · Enter 打开 · Esc 关闭</p></dialog></div>`,
     "/assets/admin.js",
-    "",
+    ADMIN_HEAD,
     "zh-CN",
     "console",
   );
@@ -173,9 +174,9 @@ export function adminPage() {
 export function adminLogin() {
   return document(
     "登录工作台",
-    `<main class="login"><div class="login-brand">${logo}<b>Qoo.IM 站群</b></div><h1>登录工作台</h1><p class="muted">使用运营者账号继续管理你的站点。</p><form id="operator-login"><label for="email">邮箱</label><input id="email" name="email" type="email" autocomplete="username" required><label for="password">密码</label><input id="password" name="password" type="password" autocomplete="current-password" required><div class="actions"><button>登录</button></div></form><div id="message" role="status"></div></main>`,
+    `<noscript><p class="noscript">工作台需要启用 JavaScript 才能使用。请在浏览器中允许本站脚本后刷新页面。</p></noscript><main class="login"><div class="login-brand">${logo}<b>Qoo.IM 站群</b></div><h1>登录工作台</h1><p class="muted">使用运营者账号继续管理你的站点。</p><form id="operator-login"><label for="email">邮箱</label><input id="email" name="email" type="email" autocomplete="username" required><label for="password">密码</label><input id="password" name="password" type="password" autocomplete="current-password" required><div class="actions"><button>登录</button></div></form><div id="message" role="status"></div></main>`,
     "/assets/admin.js",
-    "",
+    ADMIN_HEAD,
     "zh-CN",
     "console",
   );

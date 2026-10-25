@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import type { Media } from "./media.js";

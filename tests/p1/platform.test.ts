@@ -109,7 +109,7 @@ test("P1 new sites require an independent account space unless legacy is explici
 test("P1 migrations are repeatable, reject checksum drift, and rollback a failed upgrade", async () => {
   assert.equal(
     (await pool.query("SELECT count(*) FROM schema_migration")).rows[0].count,
-    "20",
+    "21",
   );
   const dir = await mkdtemp(join(tmpdir(), "network-migrations-"));
   try {
