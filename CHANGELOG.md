@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased — M20 稳定版加固
+## Unreleased
+
+## v0.2.0-rc.4 — 2026-10-26 — M20 稳定版加固
+
+镜像 `sha256:b20df17d…` 已由 QooIM 确认，复核材料见 [rc.4](docs/IMAGE-EVIDENCE-REVIEW-PACKET-20261026-RC4.md)。部署时媒体目录必须对 UID 1000 可写。
 
 审查依据见 [全项目 Review](docs/CODE-REVIEW-20261025.md)，验收见 [M20](docs/ACCEPTANCE-M20-20261025.md)，部署见 [生产部署](docs/DEPLOY-PRODUCTION.md)。
 

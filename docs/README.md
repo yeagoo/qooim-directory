@@ -60,7 +60,7 @@
 | [M20 验收记录](ACCEPTANCE-M20-20261025.md) | 稳定版加固：CI、生产部署、健康检查、限流、保留期、访客账号、密钥轮换 |
 | [生产部署](DEPLOY-PRODUCTION.md) | 反向代理、环境变量、健康检查与日志、备份、保留期、密钥轮换、访客账号 |
 | [rc.3 镜像复核材料](IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md) | v0.2.0-rc.3 候选镜像证据，QooIM 已于 2026-10-25 确认 |
-| [rc.4 镜像复核材料](IMAGE-EVIDENCE-REVIEW-PACKET-20261026-RC4.md) | v0.2.0-rc.4 候选镜像证据，待 QooIM 确认 |
+| [rc.4 镜像复核材料](IMAGE-EVIDENCE-REVIEW-PACKET-20261026-RC4.md) | v0.2.0-rc.4 镜像证据，QooIM 已确认 |
 | [M11 验收记录](ACCEPTANCE-M11-20261023.md) | 按角色显示操作、媒体提交后删除、单条候选审核修复 |
 | [M2 验收记录](ACCEPTANCE-M2-20261021.md) | 站点级 Passkey、虚拟认证器测试、升级与安全边界 |
 | [M3 验收记录](ACCEPTANCE-M3-20261021.md) | 媒体库、图片发布、加密媒体备份与恢复 |
