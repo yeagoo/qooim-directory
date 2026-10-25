@@ -1,6 +1,6 @@
 # Qoo.IM Directory 文档
 
-更新日期：2026-10-21。首版 P0–P5 已实现并通过回归；源码与镜像门禁已通过，六组镜像为带保留签署。公开发行仍待真实 GitHub/Google 联调、域名/仓库名和容量边界确认。
+更新日期：2026-10-25。P0–P5 与 M1–M19 已实现；`v0.2.0-rc.3` 的源码与镜像证据已由 QooIM 确认。稳定版仍待真实 GitHub/Google OAuth、真实 AI 供应商、真实 RSS/npm 源、Passkey 真机、域名/仓库名和容量边界确认。全项目审查见[2026-10-25 全项目 Review](CODE-REVIEW-20261025.md)。
 
 ## 先读
 
@@ -57,7 +57,7 @@
 | [M18 验收记录](ACCEPTANCE-M18-20261025.md) | 站点 persona、统一分发、定时发布、AI 额度预扣、手动模式 |
 | [M19 验收记录](ACCEPTANCE-M19-20261025.md) | 后台方案 3 改版 |
 | [项目历史总览](PROJECT-HISTORY.md) | 背景、各阶段、版本、协作规则和未完成事项的汇总 |
-| [rc.3 镜像复核材料](IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md) | v0.2.0-rc.3 候选镜像证据，待 QooIM 确认 |
+| [rc.3 镜像复核材料](IMAGE-EVIDENCE-REVIEW-PACKET-20261025-RC3.md) | v0.2.0-rc.3 候选镜像证据，QooIM 已于 2026-10-25 确认 |
 | [M11 验收记录](ACCEPTANCE-M11-20261023.md) | 按角色显示操作、媒体提交后删除、单条候选审核修复 |
 | [M2 验收记录](ACCEPTANCE-M2-20261021.md) | 站点级 Passkey、虚拟认证器测试、升级与安全边界 |
 | [M3 验收记录](ACCEPTANCE-M3-20261021.md) | 媒体库、图片发布、加密媒体备份与恢复 |
@@ -67,6 +67,7 @@
 | [v0.2.0-rc.1 Release Notes](RELEASE-NOTES-v0.2.0-rc.1.md) | 预发布范围、验证与未完成项 |
 | [镜像 evidence 复核包](IMAGE-EVIDENCE-REVIEW-PACKET-20261021.md) | QooIM 对六组镜像 evidence 的确认与保留项 |
 | [代码 Review 修复记录](CODE-REVIEW-20261021.md) | 2026-10-21 的问题、修复与保留项 |
+| [2026-10-25 全项目 Review](CODE-REVIEW-20261025.md) | 全仓架构、安全、性能、测试、运维与发布就绪度审查，含问题清单与路线图 |
 | [源码许可与镜像证据](SOURCE-LICENSE-DECISIONS.md) | MIT 归属、sharp 移除、六组证据 |
 | [镜像审查指南](IMAGE-REVIEW-GUIDE.md) | 逐项核对、署名格式与 AGPL 提示 |
 | [镜像审查工作表](IMAGE-REVIEW-WORKSHEET.md) | 每组已具备/仍缺内容 |
