@@ -1,4 +1,4 @@
--- M20: retention timestamps for idempotency keys and the outbox; visitor bans.
+-- M20: retention timestamps for idempotency keys and the outbox, and an audit age index.
 ALTER TABLE content_operation ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE config_operation ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE outbox ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();
