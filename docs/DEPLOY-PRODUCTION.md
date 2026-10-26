@@ -141,3 +141,16 @@ M20 起，密文带有密钥标识（`v1.<key id>.…`）；更早的密文没�
 3. 运行 `docker compose up -d`：`init` 会先执行迁移，再启动 Web 和 worker。
 
 迁移在一个事务里执行；大库上建索引的迁移会锁表一段时间，请安排在维护窗口。
+
+## 在 Openship 等平台上部署
+
+如果平台的入口代理只负责 TLS，无法给转发的请求加自定义头，请改用 `docker-compose.openship.yml`。
+
+- **入口路由**：多了一个内部 Caddy 服务 `edge`，配置在 `deploy/Caddyfile.openship`。它从平台入口的 `X-Forwarded-For` 中取出访客地址，加上 `X-Network-Proxy-Key`，再转发给 web。平台的路由要指向 `edge:3000`，所有站点域名和后台域名都指向这同一个服务。
+- **媒体存储**：放在命名卷 `media` 中。这个卷由镜像初始化，属主是 UID 1000。宿主机上不发布任何端口。
+- **环境变量**：在平台中设置，不要写进仓库。
+  - 必填：`POSTGRES_PASSWORD`、`AUTH_ENCRYPTION_KEY`（64 位十六进制，可用 `openssl rand -hex 32` 生成）、`PROXY_TRUST_TOKEN`、`ADMIN_ORIGIN`、`OPERATOR_EMAIL`、`OPERATOR_PASSWORD`。
+  - 选填：SMTP 相关、`GITHUB_SYNC_TOKEN`、`RETENTION_*`。没有配置 SMTP 时，必须设置 `AUTH_REQUIRE_EMAIL=false`。
+- **备份**：数据库卷和 `media` 卷都要备份，也可以用 `scripts/backup.mjs` 来做。
+
+2026-10-26 在本机用一次性密钥验证过：通过 edge 访问时 `/health` 全部正常（迁移 22/22、worker 心跳、媒体可写），运营者登录返回 Secure cookie。

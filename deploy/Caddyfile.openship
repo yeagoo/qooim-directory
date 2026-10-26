@@ -1,0 +1,24 @@
+# Internal hop for Openship deployments. Openship's edge terminates TLS and forwards
+# plain HTTP here; this Caddy injects the proxy trust token and the visitor address
+# (taken from the edge's X-Forwarded-For) before passing requests to web.
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static private_ranges
+		client_ip_headers X-Forwarded-For X-Real-IP
+	}
+}
+
+:3000 {
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy web:3000 {
+		header_up -X-Network-Proxy-Key
+		header_up -X-Network-Client-IP
+		header_up X-Network-Proxy-Key "{$PROXY_TRUST_TOKEN}"
+		header_up X-Network-Client-IP {client_ip}
+		header_up X-Forwarded-Proto https
+	}
+}

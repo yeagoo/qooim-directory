@@ -1,0 +1,91 @@
+# Compose file for deploying with Openship (or any platform whose edge terminates
+# TLS but cannot add request headers). Differences from compose.yaml:
+# - an internal Caddy ("edge") on port 3000 adds X-Network-Proxy-Key and the client
+#   address, then forwards to web; point the platform's route at edge:3000;
+# - media lives in a named volume (initialised from the image, owned by UID 1000);
+# - nothing is published on the host.
+# Set the variables below in the platform's environment, never in the repository.
+x-runtime: &runtime
+  DATABASE_URL: postgresql://network:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/network
+  AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Set AUTH_ENCRYPTION_KEY}
+  AUTH_ENCRYPTION_KEY_PREVIOUS: ${AUTH_ENCRYPTION_KEY_PREVIOUS:-}
+  OIDC_ALLOW_PRIVATE_NETWORK: ${OIDC_ALLOW_PRIVATE_NETWORK:-false}
+  REQUEST_LOG: ${REQUEST_LOG:-on}
+  ADMIN_ORIGIN: ${ADMIN_ORIGIN:?Set ADMIN_ORIGIN}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  MAIL_FROM: ${MAIL_FROM:-}
+  SMTP_ALLOW_INSECURE: ${SMTP_ALLOW_INSECURE:-false}
+  AUTH_REQUIRE_EMAIL: ${AUTH_REQUIRE_EMAIL:-true}
+  AUTH_HISTORY_DAYS: ${AUTH_HISTORY_DAYS:-30}
+  GITHUB_SYNC_TOKEN: ${GITHUB_SYNC_TOKEN:-}
+  PROXY_TRUST_TOKEN: ${PROXY_TRUST_TOKEN:?Set PROXY_TRUST_TOKEN}
+  MEDIA_ROOT: /app/data/media
+  RETENTION_AI_DAYS: ${RETENTION_AI_DAYS:-}
+  RETENTION_COLLECTOR_TASK_DAYS: ${RETENTION_COLLECTOR_TASK_DAYS:-}
+  RETENTION_COLLECTOR_SUPERSEDED_DAYS: ${RETENTION_COLLECTOR_SUPERSEDED_DAYS:-}
+  RETENTION_COLLECTOR_REVIEWED_DAYS: ${RETENTION_COLLECTOR_REVIEWED_DAYS:-}
+  RETENTION_OPERATION_DAYS: ${RETENTION_OPERATION_DAYS:-}
+  RETENTION_OUTBOX_DAYS: ${RETENTION_OUTBOX_DAYS:-}
+  RETENTION_AUDIT_DAYS: ${RETENTION_AUDIT_DAYS:-}
+services:
+  db:
+    image: postgres@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    environment:
+      POSTGRES_DB: network
+      POSTGRES_USER: network
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [database:/var/lib/postgresql]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -h 127.0.0.1 -U network -d network]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  init:
+    build: .
+    image: navigation-network:openship
+    command: init
+    environment:
+      <<: *runtime
+      OPERATOR_EMAIL: ${OPERATOR_EMAIL:?Set OPERATOR_EMAIL}
+      OPERATOR_PASSWORD: ${OPERATOR_PASSWORD:?Set OPERATOR_PASSWORD}
+      SEED_DEMO: "false"
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+  web:
+    image: navigation-network:openship
+    command: web
+    environment: *runtime
+    volumes: [media:/app/data/media]
+    depends_on:
+      init: { condition: service_completed_successfully }
+    restart: unless-stopped
+  worker:
+    image: navigation-network:openship
+    command: worker
+    environment: *runtime
+    volumes: [media:/app/data/media]
+    depends_on:
+      init: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD, node, --import, tsx, scripts/worker-health.ts]
+      interval: 20s
+      timeout: 5s
+      start_period: 30s
+    restart: unless-stopped
+  edge:
+    image: caddy@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
+    environment:
+      PROXY_TRUST_TOKEN: ${PROXY_TRUST_TOKEN}
+    volumes: [./deploy/Caddyfile.openship:/etc/caddy/Caddyfile:ro]
+    expose: ["3000"]
+    depends_on: [web]
+    restart: unless-stopped
+volumes:
+  database:
+  media:
