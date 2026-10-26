@@ -146,7 +146,7 @@ M20 起，密文带有密钥标识（`v1.<key id>.…`）；更早的密文没�
 
 如果平台的入口代理只负责 TLS，无法给转发的请求加自定义头，请改用 `docker-compose.openship.yml`。
 
-- **入口路由**：多了一个内部 Caddy 服务 `edge`，配置在 `deploy/Caddyfile.openship`。它从平台入口的 `X-Forwarded-For` 中取出访客地址，加上 `X-Network-Proxy-Key`，再转发给 web。平台的路由要指向 `edge:3000`，所有站点域名和后台域名都指向这同一个服务。
+- **入口路由**：多了一个内部 Caddy 服务 `edge`，配置在 `deploy/openship-edge/Caddyfile`，构建时复制进镜像（Openship 不支持相对路径的文件挂载）。它从平台入口的 `X-Forwarded-For` 中取出访客地址，加上 `X-Network-Proxy-Key`，再转发给 web。平台的路由要指向 `edge:3000`，所有站点域名和后台域名都指向这同一个服务。
 - **媒体存储**：放在命名卷 `media` 中。这个卷由镜像初始化，属主是 UID 1000。宿主机上不发布任何端口。
 - **环境变量**：在平台中设置，不要写进仓库。
   - 必填：`POSTGRES_PASSWORD`、`AUTH_ENCRYPTION_KEY`（64 位十六进制，可用 `openssl rand -hex 32` 生成）、`PROXY_TRUST_TOKEN`、`ADMIN_ORIGIN`、`OPERATOR_EMAIL`、`OPERATOR_PASSWORD`。

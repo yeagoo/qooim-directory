@@ -81,10 +81,10 @@ services:
       start_period: 30s
     restart: unless-stopped
   edge:
-    image: caddy@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
+    build: ./deploy/openship-edge
+    image: navigation-network-edge:openship
     environment:
       PROXY_TRUST_TOKEN: ${PROXY_TRUST_TOKEN}
-    volumes: [./deploy/Caddyfile.openship:/etc/caddy/Caddyfile:ro]
     expose: ["3000"]
     depends_on: [web]
     restart: unless-stopped
