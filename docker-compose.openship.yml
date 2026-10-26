@@ -58,6 +58,7 @@ services:
       db: { condition: service_healthy }
     restart: "no"
   web:
+    build: .
     image: navigation-network:openship
     command: web
     environment: *runtime
@@ -66,6 +67,7 @@ services:
       init: { condition: service_completed_successfully }
     restart: unless-stopped
   worker:
+    build: .
     image: navigation-network:openship
     command: worker
     environment: *runtime
